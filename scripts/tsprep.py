@@ -1,8 +1,10 @@
 #######################################################################################
+
 # tsprep.py : reads and prepares raster files for time series feature extraction
 # Aug-20-2018
 # author: Adane(Eddie) Bedada
 # @adbe.gwu.edu
+
 ########################################################################################
 
 
@@ -53,9 +55,7 @@ class sRead:
         raster_array = np.stack([raster.ReadAsArray()
                                  for raster in sRead.image(self)],
                                 axis=-1)
-        raster_array[np.isnan(raster_array)] = 0
-        raster_array[np.isinf(raster_array)] = 0
-        raster_array[raster_array == -np.inf] = 0
+        
         return raster_array
 
 
@@ -66,7 +66,7 @@ class sRead:
             data - 3 dimensional images shaped to 2d
             index - row id for each pixel
             df - 2d array returned as data frame
-            df2 - dataframe stacked for multi index
+            df3 - dataframe stacked for multi index
 
         return: dataframe
         '''
@@ -85,13 +85,10 @@ class sRead:
 
         df2 = df.reindex(sorted(df.columns), axis=1) #sort by month
         df2 = df2.stack().reset_index()
+        
 
         df2['time'] = df2['level_1'].str.split('-').str[1] # extract time
-
         df2.columns =['id', 'kind', 'value', 'time']
-
-        '''tsfresh doesn't accept na values '''
-
-        df3 = df2.replace(df2.value[0], 0)
+        df3 = df2.replace(df2.value[0], 0) #replace large -ve numbers
 
         return df3
