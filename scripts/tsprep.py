@@ -1,4 +1,9 @@
-
+#######################################################################################
+# tsprep.py : reads and prepares raster files for time series feature extraction
+# Aug-20-2018
+# author: Adane(Eddie) Bedada
+# @adbe.gwu.edu
+########################################################################################
 
 
 import numpy as np
@@ -28,40 +33,30 @@ class sRead:
 
         return image_name
 
-
-    def image2array(self):
+    def image(self):
 
         '''
-        image2array: reads images, stack as bands and returns array
-            image - a for loop to connect a directory to the file ending with .tif
-            raster_files -  open images with gdal
-            raster_array - converts each raster to array and stack
-                            them together by columns
+                  image2array: reads images, stack as bands and returns array
+                      image - a for loop to connect a directory to the file ending with .tif
+                      raster_files -  open images with gdal
+                      raster_array - converts each raster to array and stack them together by columns
 
-        return: array
-        '''
+                  return: array
+                  '''
 
         images = glob.glob("{}/**/*.tif".format(self), recursive=True)
+        raster_files = [gdal.Open(f, gdal.GA_ReadOnly) for f in images]
+        return raster_files
 
 
-
-        image_names = [os.path.basename(tif).split('.')[0]
-                       for tif in images]
-
-
-
-        raster_files = [gdal.Open(f,gdal.GA_ReadOnly)
-                        for f in images]
-
-
-
+    def image2array(self):
         raster_array = np.stack([raster.ReadAsArray()
-                                 for raster in raster_files],
-                                axis = -1)
-
+                                 for raster in sRead.image(self)],
+                                axis=-1)
+        raster_array[np.isnan(raster_array)] = 0
+        raster_array[np.isinf(raster_array)] = 0
+        raster_array[raster_array == -np.inf] = 0
         return raster_array
-
-
 
 
     def ts_series(self):
