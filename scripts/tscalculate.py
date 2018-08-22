@@ -18,6 +18,8 @@ from tsfresh.utilities.distribution import MultiprocessingDistributor
 from tsprep import sRead
 
 
+
+path = "/Users/adbe/mmann/Demo_Data/temperature/"
 # If correctly provided, the the 5 rows of the data will be printed
 my_df = sRead.ts_series(path)
 print(my_df.head())
@@ -42,7 +44,9 @@ def calculateFeatures(self):
 
     fc_parameters = {
         "mean": None,
-        "maximum": None
+        "maximum": None,
+        "median":None,
+        "minimum":None
     }
 
     extracted_features = extract_features(my_df,
@@ -51,6 +55,9 @@ def calculateFeatures(self):
                                           column_value="value",
                                           column_id="id",
                                           distributor=Distributor)
+
+    print(extracted_features.head())
+    extracted_features.to_csv("extracted-test-05.csv")
     return extracted_features
 
 
@@ -62,47 +69,30 @@ def features2array(self):
 
     :return: numpy array
     '''
+    rows, cols, num = sRead.image2array(path).shape
 
 
-    raw_data = sRead.image(path)
-    rows = raw_data[0].RasterXSize
-    cols = raw_data[0].RasterYSize
-
-
-    my_features = calculateFeatures(self)  # Calculate Features
+    my_df = calculateFeatures(self)  # Calculate Features
 
     '''convert dataframe to array currently supported but gives incorrect output'''
-    # df_features = my_features.drop(my_features.columns[1], axis=1) # drop row index
-    # num_of_layers = df_features.shape[1]
-    # matrix_features = df_features.values
-    # f2array = matrix_features.reshape(cols, rows, num_of_layers)
 
-    '''convert dataframe to array: depreciating but gives correct output'''
 
-    feature_matrix = my_features.as_matrix(columns=my_features.columns[1:])
-    ba = feature_matrix.shape[1]
-    f2Array = feature_matrix.reshape(rows, cols, ba)
+
+    #df_features = my_df.drop(my_df.columns[0], axis=1)
+    print(my_df.shape)
+
+    matrix_features = my_df.values
+    num_of_layers = matrix_features.shape[1]
+    print(matrix_features.shape[1])
+
+    f2Array = matrix_features.reshape(rows, cols, num_of_layers)
+    print(f2Array.shape)
+
     return f2Array
 
 
 
-
 def CreateTiff(Name, Array, driver, NDV, GeoT, Proj, DataType):
-    '''
-    CreateTiff stores each extracted feature as a band
-
-    :param Name: Name out the output file
-    :param Array: Array created by the script
-    :param driver: Data format
-    :param NDV:  No Data Value
-    :param GeoT: Transform
-    :param Proj: Projection
-    :param DataType: Float ?
-    :return: Raster file
-    '''
-
-
-
     Array[np.isnan(Array)] = NDV
 
     rows = Array.shape[1]
@@ -115,38 +105,33 @@ def CreateTiff(Name, Array, driver, NDV, GeoT, Proj, DataType):
     DataSet.SetGeoTransform(GeoT)
     DataSet.SetProjection(Proj)
 
-    for i, image in range(Array.shape[2], 1):
-        DataSet.GetRasterBand(i).WriteArray(image)
-        DataSet.GetRasterBand(i).SetNoDataValue(NDV)
+    for i in range(band):
+        DataSet.GetRasterBand(i + 1).WriteArray(Array[:, :, i])
+        DataSet.GetRasterBand(i + 1).SetNoDataValue(noData)
 
     DataSet.FlushCache()
     return Name
 
 
-'''Two information that will be required from the user is 
-the path to folders containing the rasters and output file name
-'''
-
-path="/Users/adbe/mmann/Demo_Data/temperature/"
-output_file = r'TempFeatures.tiff'
+def main(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType):
+    # reverse array so the tif looks like the array
+    CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType)  # convert array to raster
 
 
+if __name__ == "__main__":
 
-# Feature Extractions begins here
-f2Array = features2array(path)
+    output_file = "charm2015.tiff"
 
+    raw_data = sRead.image(path)
+    f2Array = features2array(path)
 
-# Get Meta Data from the raw data
-raw_data = sRead.image(path)
-GeoTransform = raw_data[0].GetGeoTransform()
-driver = gdal.GetDriverByName('GTiff')
+    GeoTransform = raw_data[0].GetGeoTransform()
+    driver = gdal.GetDriverByName('GTiff')
 
-noData = f2Array[np.isnan(f2Array)]
-Projection = raw_data[0].GetProjectionRef()
-DataType = gdal.GDT_Byte
+    noData = -9999
 
-
-# Writes raster
-CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType)
+    Projection = raw_data[0].GetProjectionRef()
+    DataType = gdal.GDT_Float32
 
 
+    main(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType)

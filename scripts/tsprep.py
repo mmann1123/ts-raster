@@ -53,9 +53,7 @@ class sRead:
         raster_array = np.stack([raster.ReadAsArray()
                                  for raster in sRead.image(self)],
                                 axis=-1)
-        raster_array[np.isnan(raster_array)] = 0
-        raster_array[np.isinf(raster_array)] = 0
-        raster_array[raster_array == -np.inf] = 0
+
         return raster_array
 
 
