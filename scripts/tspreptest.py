@@ -1,5 +1,6 @@
 #######################################################################################
-# tsprep.py : reads rasters files from multiple folders,
+'''this a test script: may dont work correctly''''
+# tspreptest.py : reads rasters files from multiple folders,
 #              extract custom features and write values to raster
 # Aug-20-2018
 # author: Adane(Eddie) Bedada
