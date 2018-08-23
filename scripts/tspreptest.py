@@ -142,7 +142,7 @@ raw_data = sRead.image(path)
 GeoTransform = raw_data[0].GetGeoTransform()
 driver = gdal.GetDriverByName('GTiff')
 
-noData = f2Array[np.isnan(f2Array)]
+noData = -9999
 Projection = raw_data[0].GetProjectionRef()
 DataType = gdal.GDT_Byte
 

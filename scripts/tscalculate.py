@@ -57,7 +57,9 @@ def calculateFeatures(self):
                                           distributor=Distributor)
 
     print(extracted_features.head())
-    extracted_features.to_csv("extracted-test-05.csv")
+    kr = pd.DataFrame(list(extracted_features.columns))
+    kr.index += 1
+    kr.to_csv("features_names.csv")
     return extracted_features
 
 
@@ -120,7 +122,7 @@ def main(output_file, f2Array, driver, noData, GeoTransform, Projection, DataTyp
 
 if __name__ == "__main__":
 
-    output_file = "charm2015.tiff"
+    output_file = "Temprature_Features.tiff"
 
     raw_data = sRead.image(path)
     f2Array = features2array(path)
