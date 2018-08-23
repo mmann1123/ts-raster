@@ -1,10 +1,12 @@
-######################################################################$$$$$$$$$$$$$$$##
-#  tsrandom.py:- Generates any number of points from a vector file
+########################################################################################
+#  tsrandom.py:- Generates random points from a vector file 
+#               Input: geojson of boundary
+#               output: points.shp
 
 # Aug-21-2018
 # author: Adane(Eddie) Bedada
 # @adbe.gwu.edu
-#######################################################################################
+############################################################3############################
 
 
 
@@ -38,8 +40,8 @@ counter = 0
 multipoint = ogr.Geometry(ogr.wkbMultiPoint)
 outDriver = ogr.GetDriverByName('ESRI Shapefile')
 
-outDataSource = outDriver.CreateDataSource('Cali-pts-prj.shp')
-outLayer = outDataSource.CreateLayer('Cali-pts-prj.shp', geom_type=ogr.wkbPoint)
+outDataSource = outDriver.CreateDataSource('points.shp')
+outLayer = outDataSource.CreateLayer('points.shp', geom_type=ogr.wkbPoint)
 
 
 
@@ -69,6 +71,6 @@ spatialRef = osr.SpatialReference()
 spatialRef.ImportFromEPSG(3310)
 
 spatialRef.MorphToESRI()
-file = open('Cali-pts-prj.prj', 'w')
+file = open('points.prj', 'w')
 file.write(spatialRef.ExportToWkt())
 file.close()
