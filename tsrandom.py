@@ -40,13 +40,13 @@ except ImportError:
     multipoint = ogr.Geometry(ogr.wkbMultiPoint)
     outDriver = ogr.GetDriverByName('ESRI Shapefile')
 
-<<<<<<< HEAD
+
     outDataSource = outDriver.CreateDataSource('Cali-pts-prj.shp')
     outLayer = outDataSource.CreateLayer('Cali-pts-prj.shp', geom_type=ogr.wkbPoint)
-=======
+
 outDataSource = outDriver.CreateDataSource('points.shp')
 outLayer = outDataSource.CreateLayer('points.shp', geom_type=ogr.wkbPoint)
->>>>>>> 0d936e0e13f3dbe785a09c5ccc6424fda7060366
+
 
 
 
@@ -75,7 +75,6 @@ outLayer = outDataSource.CreateLayer('points.shp', geom_type=ogr.wkbPoint)
     spatialRef = osr.SpatialReference()
     spatialRef.ImportFromEPSG(3310)
 
-<<<<<<< HEAD
     spatialRef.MorphToESRI()
     file = open('Cali-pts-prj.prj', 'w')
     file.write(spatialRef.ExportToWkt())
@@ -85,9 +84,9 @@ outLayer = outDataSource.CreateLayer('points.shp', geom_type=ogr.wkbPoint)
 #E###############################################
 # tips and sources: @sadeq-sepehrnoush on stackexchange
 #                   https://www.pcjericks.github.io
-=======
+
 spatialRef.MorphToESRI()
 file = open('points.prj', 'w')
 file.write(spatialRef.ExportToWkt())
 file.close()
->>>>>>> 0d936e0e13f3dbe785a09c5ccc6424fda7060366
+
