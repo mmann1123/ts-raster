@@ -32,18 +32,36 @@ def sample(raster, input, output, n_samples, epsg=3310):
     :return: Data Frame
     '''
 
+    dataType = prj_full_path2 = os.path.basename(input).split('.')[1]
+
+    if dataType == "shp":
+
+        driver = ogr.GetDriverByName("ESRI Shapefile")
+        file = driver.Open(input, 0)
+        layer = file.GetLayer()
+        env = layer.GetExtent()
+        polygon = ogr.Geometry(ogr.wkbGeometryCollection)
+        xmin, ymin, xmax, ymax = env[0], env[2], env[1], env[3]
+
+        for feature in layer:
+            geom = feature.GetGeometryRef()
+            ring = geom.GetGeometryRef(0)
+            polygon.AddGeometry(ring)
+
+    else:
+
+        with open(input) as f:
+            data = json.load(f)
+        for feature in data['features']:
+            geom = feature['geometry']
+            geom = json.dumps(geom)
+            polygon = ogr.CreateGeometryFromJson(geom)
+
+        env = polygon.GetEnvelope()
+        xmin, ymin, xmax, ymax = env[0], env[2], env[1], env[3]
+
     src_ds = gdal.Open(raster)
     geoT = src_ds.GetGeoTransform()
-
-    with open(input) as f:
-        data = json.load(f)
-    for feature in data['features']:
-        geom = feature['geometry']
-        geom = json.dumps(geom)
-        polygon = ogr.CreateGeometryFromJson(geom)
-
-    env = polygon.GetEnvelope()
-    xmin, ymin, xmax, ymax = env[0], env[2], env[1], env[3]
 
     num_points = n_samples
     counter = 0
@@ -78,19 +96,23 @@ def sample(raster, input, output, n_samples, epsg=3310):
             mx, my = point.GetX(), point.GetY()
             px = int((mx - geoT[0]) / geoT[1])
             py = int((my - geoT[3]) / geoT[5])
+            xcount = 1
+            ycount = 1
 
             ext = []
 
             # Extract pixels values for all bands
             for i in range(0, src_ds.RasterCount):
                 i += 1
-                extracted = src_ds.GetRasterBand(i).ReadAsArray(px, py, 1, 1)
-                result = pd.DataFrame(extracted)
-                ext.append(result)
+                dump = src_ds.GetRasterBand(i).ReadAsArray(px, py, 1, 1)
+                extract = [x for x in dump if x != None]
+                result = extract[0]
+                ext.append(result[0])
+
             rows.append(ext)
 
-        # Return data frame
-        df = pd.DataFrame(rows)
+    # Return data frame
+    df = pd.DataFrame(rows)
 
     # Create projection (prj file)
     spatialRef = osr.SpatialReference()
@@ -115,7 +137,9 @@ def sample(raster, input, output, n_samples, epsg=3310):
     r = os.path.join(prj_path, text)
 
     df.to_csv(r)
-
+    # print(env)
     return df
+
+
 
 
