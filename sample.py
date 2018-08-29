@@ -18,14 +18,13 @@ try:
     import gdal, ogr, osr
     from osgeo import ogr
 except ImportError:
-    raise ImportError('OGR must be installed')
+    raise ImportError('GDAL must be installed')
 
 import rasterio
 
 
-def sample(raster, input, output, n_samples):
+def sample(raster, input, output, n_samples, epsg=3310):
     '''
-
     :param raster: the raster data from which sample will be taken
     :param input: boundary of the sample area
     :param output: location of sample points
@@ -36,7 +35,6 @@ def sample(raster, input, output, n_samples):
     src_ds = gdal.Open(raster)
     geoT = src_ds.GetGeoTransform()
 
-
     with open(input) as f:
         data = json.load(f)
     for feature in data['features']:
@@ -44,27 +42,29 @@ def sample(raster, input, output, n_samples):
         geom = json.dumps(geom)
         polygon = ogr.CreateGeometryFromJson(geom)
 
-
     env = polygon.GetEnvelope()
     xmin, ymin, xmax, ymax = env[0], env[2], env[1], env[3]
 
     num_points = n_samples
     counter = 0
+    rows = []
 
-
-    outDriver = ogr.GetDriverByName("ESRI Shapefile")
     multipoint = ogr.Geometry(ogr.wkbMultiPoint)
+    outDriver = ogr.GetDriverByName("ESRI Shapefile")
     outDataSource = outDriver.CreateDataSource(output)
     outLayer = outDataSource.CreateLayer(output, geom_type=ogr.wkbPoint)
-
 
     for i in range(0, num_points):
         i += 1
 
+        '''
+        If random point (i) is inside the boundary: 
+        store the location and extract pixel values
+        '''
+
         point = ogr.Geometry(ogr.wkbPoint)
         point.AddPoint(random.uniform(xmin, xmax),
                        random.uniform(ymin, ymax))
-
 
         if point.Within(polygon):
             multipoint.AddGeometry(point)
@@ -75,48 +75,47 @@ def sample(raster, input, output, n_samples):
             outFeature.SetGeometry(point)
             outLayer.CreateFeature(outFeature)
 
-            outFeature = None
-        outDataSource = None
+            mx, my = point.GetX(), point.GetY()
+            px = int((mx - geoT[0]) / geoT[1])
+            py = int((my - geoT[3]) / geoT[5])
 
-        # To do: change hard cord on spatialRef
-        spatialRef = osr.SpatialReference()
-        spatialRef.ImportFromEPSG(3310)
+            ext = []
 
-        spatialRef.MorphToESRI()
-        prj_full_path = os.path.split(output)
-        prj_path = os.path.split(output)[0]
-        prj_file_name = os.path.split(output)[1]
+            # Extract pixels values for all bands
+            for i in range(0, src_ds.RasterCount):
+                i += 1
+                extracted = src_ds.GetRasterBand(i).ReadAsArray(px, py, 1, 1)
+                result = pd.DataFrame(extracted)
+                ext.append(result)
+            rows.append(ext)
 
+        # Return data frame
+        df = pd.DataFrame(rows)
 
-        prj_full_path = os.path.basename(output).split('.')[0]
-        k = prj_full_path + '.prj'
-        file = open(k, 'w')
-        r = os.path.join(prj_path, k)
-        file = open(r, 'w')
+    # Create projection (prj file)
+    spatialRef = osr.SpatialReference()
+    spatialRef.ImportFromEPSG(epsg)
 
-        file.write(spatialRef.ExportToWkt())
-        file.close()
+    spatialRef.MorphToESRI()
+    prj_full_path = os.path.split(output)
+    prj_path = os.path.split(output)[0]
+    prj_file_name = os.path.split(output)[1]
 
+    prj_full_path = os.path.basename(output).split('.')[0]
+    k = prj_full_path + '.prj'
+    file = open(k, 'w')
+    r = os.path.join(prj_path, k)
+    file = open(r, 'w')
 
-        mx, my = point.GetX(), point.GetY()
-        px = int((mx - geoT[0]) / geoT[1])
-        py = int((my - geoT[3]) / geoT[5])
+    file.write(spatialRef.ExportToWkt())
+    file.close()
 
-        ext = []
+    # write to csv
+    text = prj_full_path + '.txt'
+    r = os.path.join(prj_path, text)
 
+    df.to_csv(r)
 
-        for i in range(0, src_ds.RasterCount):
-            i += 1
-            extracted = src_ds.GetRasterBand(i).ReadAsArray(px, py, 1, 1)
-            extracted != None
-            result = pd.DataFrame(extracted)
-            ext.append(result)
+    return df
 
-
-        df = pd.DataFrame(ext, index=None).T
-        text = prj_full_path + '.csv'
-        df.to_csv(text)
-
-        # to do: update return values
-        return (df)
 
