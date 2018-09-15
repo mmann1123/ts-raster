@@ -53,6 +53,7 @@ def sample(raster, input, output, n_samples, epsg=3310):
 
     else:
 
+        #get boundary values from json
         with open(input) as f:
             data = json.load(f)
         for feature in data['features']:
@@ -74,7 +75,7 @@ def sample(raster, input, output, n_samples, epsg=3310):
     counter = 0
     rows = []
 
-
+    # write random points to vector-point
     multipoint = ogr.Geometry(ogr.wkbMultiPoint)
     outDriver = ogr.GetDriverByName("ESRI Shapefile")
     outDataSource = outDriver.CreateDataSource(output)
