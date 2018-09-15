@@ -32,21 +32,21 @@ class sRead:
 
     def image(self):
 
-        '''
-                  image2array: reads images, stack as bands and returns array
-                      image - a for loop to connect a directory to the file ending with .tif
-                      raster_files -  open images with gdal
-                      raster_array - converts each raster to array and stack them together by columns
-
-                  return: array
-                  '''
-
         images = glob.glob("{}/**/*.tif".format(self), recursive=True)
         raster_files = [gdal.Open(f, gdal.GA_ReadOnly) for f in images]
         return raster_files
 
 
     def image2array(self):
+        '''
+            image2array: reads images, stack as bands and returns array
+                image - a for loop to connect a directory to the file ending with .tif
+                raster_files -  open images with gdal
+                raster_array - converts each raster to array and stack them together by columns
+
+            return: array
+        '''
+
         raster_array = np.stack([raster.ReadAsArray()
                                  for raster in sRead.image(self)],
                                 axis=-1)
