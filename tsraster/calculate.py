@@ -17,8 +17,6 @@ from tsraster.prep import sRead
 
 
 
-my_df = sRead.ts_series(path)
-print(my_df.head())
 
 def calculateFeatures(self):
     '''
