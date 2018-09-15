@@ -33,7 +33,7 @@ def calculateFeatures(self):
                                              disable_progressbar=False,
                                              progressbar_title="Feature Extraction")
 
-
+    #select features to be extracted
     fc_parameters = {
         "mean": None,
         "maximum": None,

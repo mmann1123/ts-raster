@@ -111,5 +111,9 @@ ts-raster also supports:
   
  ### Development
  
+ The current version of ts-raster extracts only 4 features but can be customized by the user. 
+ Read up the list of features that can be extracted by follow this
+  [link](https://tsfresh.readthedocs.io/en/latest/text/list_of_features.html) and customize the
+  `CalculateFeatures` function under **calculate.py**. Modify the list under *fc_parameters* as needed.
 
 

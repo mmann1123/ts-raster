@@ -23,7 +23,6 @@ class sRead:
 
         images = glob.glob("{}/**/*.tif".format(self), recursive=True)
 
-
         image_name = [os.path.basename(tif).split('.')[0]
                       for tif in images]
 
@@ -31,7 +30,7 @@ class sRead:
         return image_name
 
     def image(self):
-
+        #read images from sub-directories
         images = glob.glob("{}/**/*.tif".format(self), recursive=True)
         raster_files = [gdal.Open(f, gdal.GA_ReadOnly) for f in images]
         return raster_files
@@ -47,6 +46,7 @@ class sRead:
             return: array
         '''
 
+        #stack images as bands
         raster_array = np.stack([raster.ReadAsArray()
                                  for raster in sRead.image(self)],
                                 axis=-1)
@@ -82,7 +82,6 @@ class sRead:
         df2 = df2.stack().reset_index()
 
         df2['time'] = df2['level_1'].str.split('-').str[1] # extract time
-
         df2.columns =['id', 'kind', 'value', 'time']
 
         '''tsfresh doesn't accept na values '''
