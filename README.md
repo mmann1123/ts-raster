@@ -1,9 +1,9 @@
 # ts-raster
 --------------------
-ts-raster is a python package for extracting and analyzing of time-series characterstics from raster data. The feature extraction follows the footsteps of approaches developed in the python package <a href="https://github.com/blue-yonder/tsfresh">tsfresh</a>. 
+ts-raster is a python package for extracting and analyzing of time-series characteristics from raster data. The feature extraction follows the footsteps of approaches developed in the python package <a href="https://github.com/blue-yonder/tsfresh">tsfresh</a>. 
 
 - input : historical raster data (e.g. Monthly temperature data (2000-2018) 
-- Extracted Feature: Mean, minimum, maximum, standard deviation... characterstics for all the data 
+- Extracted Feature: Mean, minimum, maximum, standard deviation... characteristics for all the data 
 - output: data frame(CSV) or (array)Raster files of each
 
 For analysis, several machine learning models as well as an ensemble modeling technique are incorporated. 
@@ -13,7 +13,7 @@ For analysis, several machine learning models as well as an ensemble modeling te
 
     git clone https://github.com/adbeda/ts-raster
     cd ts-raster
-    pip install -e .
+    pip install tsraster
 
 
 
@@ -60,14 +60,13 @@ Convert each image to array and stack them as bands
 ```python
 
 rasters = tr.image2array(path)
-
-rasters[0]
 rasters.shape
 ```
-
     (1120, 872, 9)
 
 
+
+Calculate features
 
 ```python
 ts_features = calculateFeatures(path)
@@ -75,6 +74,7 @@ ts_features = calculateFeatures(path)
 
     Feature Extraction: 100%|██████████| 80/80 [01:18<00:00,  1.02it/s]
 
+output: dataframe
 
     variable  value__maximum  value__mean  value__median  value__minimum
     id                                                                  
@@ -85,5 +85,19 @@ ts_features = calculateFeatures(path)
     5.0                  0.0          0.0            0.0             0.0
 
 
-Four features characterizing/summerising all input rasters are produced. 
+output: image
+
+![png](examples/output_20_0.png)
+
+
+
+ts-raster also supports:
+    
+   - creation of tiff file as an output containing each feature
+   - random sampling from raster images using a vector file (GeoJson or Shapefile) for masking is required.
+   - training and testing machine learning models (random forest, xgboost, elasticnet)
+  
+ ### Development
+ 
+
 
