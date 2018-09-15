@@ -63,7 +63,7 @@ def features2array(self):
 
     :return: numpy array
     '''
-    rows, cols, num = sRead.image2array(path).shape
+    rows, cols, num = sRead.image2array(self).shape
 
 
     my_df = calculateFeatures(self)  # Calculate Features
@@ -73,8 +73,6 @@ def features2array(self):
 
 
     #df_features = my_df.drop(my_df.columns[0], axis=1)
-    print(my_df.shape)
-
     matrix_features = my_df.values
     num_of_layers = matrix_features.shape[1]
     print(matrix_features.shape[1])
