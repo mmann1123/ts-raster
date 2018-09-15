@@ -2,9 +2,6 @@
 # sample.py : Sample Any number of points and get their location, and respective pixel value
 #             - Supports satellite images with multiple bands
 # Aug-26-2018
-# author: Adane(Eddie) Bedada
-# @adbe.gwu.edu
-#############################################################################################
 
 
 import numpy as np
