@@ -1,10 +1,10 @@
 # ts-raster
---------------------
+
 ts-raster is a python package for extracting and analyzing of time-series characteristics from raster data. The feature extraction follows the footsteps of approaches developed in the python package <a href="https://github.com/blue-yonder/tsfresh">tsfresh</a>. 
 
 - input : historical raster data (e.g. Monthly temperature data (2000-2018) 
 - Extracted Feature: Mean, minimum, maximum, standard deviation... characteristics for all the data 
-- output: data frame(CSV) or (array)Raster files of each
+- output: data frame(CSV) or (array)Raster file
 
 For analysis, several machine learning models as well as an ensemble modeling technique are incorporated. 
 
@@ -20,21 +20,33 @@ For analysis, several machine learning models as well as an ensemble modeling te
 
 ### Input Data Structure
 
-The input raster files from which features will be extracted have to prepared as:
+The input raster files from which features will be extracted are organized to allow extraction from files contained multiple folders.
+
+Example data:
 
     temprature
         2005
-            temp-200501.tif 
-            temp-200502.tif
-            temp-200503.tif ...
+            tmx-200501.tif 
+            tmx-200502.tif
+            tmx-200503.tif ...
         2006
-            temp-200601.tif
-            temp-200602.tif
-            temp-200603.tif...
+            tmx-200601.tif
+            tmx-200602.tif
+            tmx-200603.tif...
         2007
             ...
-        
-A simple example:
+  
+ temprature: *the variable* <br>
+  - 2005, 2006, 2007: *the years* <br>
+    - tmx-200501.tif: the image <br>
+        - tmx : unique identifier of each image <br>
+        - 200501: year and month 
+    
+<br>
+
+ts-raster will consider the value '200501' as a unique time identifier.
+
+#### Usage:
 
 
 ```python
