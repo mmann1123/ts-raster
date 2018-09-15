@@ -1,0 +1,6 @@
+README.md
+tsraster.egg-info/PKG-INFO
+tsraster.egg-info/SOURCES.txt
+tsraster.egg-info/dependency_links.txt
+tsraster.egg-info/requires.txt
+tsraster.egg-info/top_level.txt

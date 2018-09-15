@@ -1,1 +1,2 @@
 include README.md LICENSE
+exclude .DS_Store

@@ -22,12 +22,12 @@ VERSION = 1.0
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'tsfresh', 'geopandas', 'gdal', 'numpy', 'sk-learn', 'pandas'
+    'tsfresh', 'geopandas', 'gdal', 'numpy', 'scikit-learn', 'pandas'
 ]
 
 
 EXTRAS = {
-   'rasterio'
+   "raster-reader-and-write": ['rasterio']
 }
 
 

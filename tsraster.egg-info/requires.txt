@@ -1,0 +1,9 @@
+tsfresh
+geopandas
+gdal
+numpy
+scikit-learn
+pandas
+
+[raster-reader-and-write]
+rasterio
