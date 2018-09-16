@@ -16,13 +16,14 @@ NAME = 'tsraster'
 DESCRIPTION = 'time series feature extraction from raster data'
 URL = 'https://github.com/adbeda/ts-raster'
 EMAIL = 'adbe@gwu.edu'
-AUTHOR = 'Adane (Eddie) Bedada'
+AUTHOR = 'Adane Bedada'
 REQUIRES_PYTHON = '>=3.6.0'
-VERSION = 1.0
+VERSION = 0.1
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'tsfresh', 'geopandas']
+    'tsfresh', 'geopandas', 'gdal', 'numpy', 'scikit-learn', 'pandas'
+]
 
 
 EXTRAS = {
