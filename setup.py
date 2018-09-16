@@ -18,19 +18,19 @@ URL = 'https://github.com/adbeda/ts-raster'
 EMAIL = 'adbe@gwu.edu'
 AUTHOR = 'Adane Bedada'
 REQUIRES_PYTHON = '>=3.6.0'
-VERSION = 0.12
+VERSION = 0.1
 
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'tsfresh>=0.11.0',
-    'geopandas>=0.4.0',
+    'tsfresh==0.11.0',
+    'geopandas==0.4.0',
     'gdal>=2.1',
     'numpy>=1.14.0',
-    'scikit-learn>=0.19.1',
-    'pandas>=0.22.0',
-    'geojson>=2.2.0',
-    'rasterio>=1.0.2'
+    'scikit-learn>=0.19.0',
+    'pandas==0.22.0',
+    'geojson==2.4.0',
+    'rasterio==1.0.2'
 ]
 
 
