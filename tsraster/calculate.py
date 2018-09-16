@@ -89,7 +89,7 @@ def CreateTiff(Name, Array, driver, NDV, GeoT, Proj, DataType):
     rows = Array.shape[1]
     cols = Array.shape[0]
     band = Array.shape[2]
-
+    noData = -9999
     driver = gdal.GetDriverByName('GTiff')
 
     DataSet = driver.Create(Name, rows, cols, band, gdal.GDT_Float32)
