@@ -10,10 +10,15 @@ For analysis, several machine learning models as well as an ensemble modeling te
 
 
 ### Installation
+stable version:
+    
+    pip install tsraster
+
+from github: 
 
     git clone https://github.com/adbeda/ts-raster
     cd ts-raster
-    pip install tsraster
+    pip install e .
 
 
 
