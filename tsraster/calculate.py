@@ -48,7 +48,7 @@ def calculateFeatures(self):
                                           column_id="id",
                                           distributor=Distributor)
 
-    print(extracted_features.head())
+
     kr = pd.DataFrame(list(extracted_features.columns))
     kr.index += 1
     kr.to_csv("features_names.csv")
@@ -75,10 +75,9 @@ def features2array(self):
     #df_features = my_df.drop(my_df.columns[0], axis=1)
     matrix_features = my_df.values
     num_of_layers = matrix_features.shape[1]
-    print(matrix_features.shape[1])
 
     f2Array = matrix_features.reshape(rows, cols, num_of_layers)
-    print(f2Array.shape)
+
 
     return f2Array
 
