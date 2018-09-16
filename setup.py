@@ -22,8 +22,7 @@ VERSION = 1.0
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'tsfresh', 'geopandas', 'gdal', 'numpy', 'scikit-learn', 'pandas'
-]
+    'tsfresh', 'geopandas']
 
 
 EXTRAS = {
