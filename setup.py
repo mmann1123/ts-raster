@@ -18,7 +18,11 @@ URL = 'https://github.com/adbeda/ts-raster'
 EMAIL = 'adbe@gwu.edu'
 AUTHOR = 'Adane Bedada'
 REQUIRES_PYTHON = '>=3.6.0'
+<<<<<<< HEAD
 VERSION = 0.1.0
+=======
+VERSION = 0.1
+>>>>>>> 01a8416ce15da6a5e2a1095fbc9377271cd5d380
 
 # What packages are required for this module to be executed?
 REQUIRED = [
