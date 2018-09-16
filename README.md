@@ -13,7 +13,7 @@ For analysis, several machine learning models as well as an ensemble modeling te
 
     git clone https://github.com/adbeda/ts-raster
     cd ts-raster
-    pip install tsraster
+    pip install e.
 
 
 
