@@ -126,3 +126,21 @@ if __name__ == "__main__":
 
 
     main(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType)
+
+
+def extractFeatures(input_file, output_file):
+    # reverse array so the tif looks like the array
+
+    output_file = output_file
+
+    raw_data = sRead.image(input_file)
+    GeoTransform = raw_data[0].GetGeoTransform()
+    driver = gdal.GetDriverByName('GTiff')
+
+    noData = -9999
+
+    Projection = raw_data[0].GetProjectionRef()
+    DataType = gdal.GDT_Float32
+    f2Array = features2array(input_file)
+
+    CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType)
