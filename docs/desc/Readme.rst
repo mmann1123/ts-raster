@@ -20,5 +20,6 @@ Description of modules
 
     calculate.calculateFeatures >> extracts features based on parameters requested
     calculate.features2array >> converts features stored in dataframe to array
-    calculate.CreateTiff >> creates a raster containing features calcuated
+    calculate.CreateTiff >> creates a raster containing features calculated
+    calculate.extractFeatures >> converts features to raster (name provided by user)    
 

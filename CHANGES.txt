@@ -1,8 +1,7 @@
+sep-16-2018
+===========
+- fixed the function to create tiff from features
+
 sep-14-2018
 ===========
-- version 1.0 release
-
-sep-15-2018
-===========
-- fixed extra module requirements
-- tested installation
+- version 0.1 release
