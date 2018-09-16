@@ -16,19 +16,21 @@ NAME = 'tsraster'
 DESCRIPTION = 'time series feature extraction from raster data'
 URL = 'https://github.com/adbeda/ts-raster'
 EMAIL = 'adbe@gwu.edu'
-AUTHOR = 'Adane (Eddie) Bedada'
+AUTHOR = 'Adane Bedada'
 REQUIRES_PYTHON = '>=3.6.0'
-VERSION = 1.0
+VERSION = 0.1.0
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'tsfresh', 'geopandas', 'gdal', 'numpy', 'scikit-learn', 'pandas'
+    'tsfresh>=0.11.0',
+    'geopandas>=0.4.0',
+    'gdal>=2.1',
+    'numpy>=1.14.0',
+    'scikit-learn>=0.19.1',
+    'pandas>=0.22.0',
+    'geojson>=2.2.0',
+    'rasterio>=1.0.2'
 ]
-
-
-EXTRAS = {
-   "raster-reader-and-write": ['rasterio']
-}
 
 
 here = os.path.abspath(os.path.dirname(__file__))
@@ -100,7 +102,6 @@ setup(
     url=URL,
     packages=find_packages(exclude=('tests',)),
     install_requires=REQUIRED,
-    extras_require=EXTRAS,
     include_package_data=True,
     license='MIT',
     classifiers=[

@@ -1,5 +1,4 @@
 tsfresh==0.11.0
-Shapely==1.6.3
 GDAL==2.2.4
 pandas==0.23.0
 geojson==2.4.0
