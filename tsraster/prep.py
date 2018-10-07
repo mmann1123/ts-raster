@@ -89,6 +89,47 @@ class sRead:
         df3 = df2.replace(df2.value[0], 0)
 
         return df3
+    
+    def image2series(self):
+
+        '''
+        ts_series: reads array and returns multi index data frame for time series
+            data - 3 dimensional images shaped to 2d
+            index - row id for each pixel
+            df - 2d array returned as data frame
+            df2 - dataframe stacked for multi index
+
+        return: dataframe
+        '''
+
+        rows, cols, num = sRead.image2array(self).shape
+        data = sRead.image2array(self).reshape(rows*cols, num)
+
+        # create index
+        index = [str(i)
+                 for i in range(1, len(data) + 1)]
+
+        # convert array to dataframe
+        # change dtype from float64 to integer
+        df = pd.DataFrame(data=data[0:,0:],
+                          index=index, dtype=np.int8, columns=sRead.image_names(self))
+
+        #reindex columns
+        df2 = df.reindex(sorted(df.columns), axis=1) #sort by month
+
+        # stack n-columns (months) into one column
+        df2 = df2.stack().reset_index()
+
+        # rename column
+        df2['time'] = df2['level_1'].str.split('-').str[1] # extract time
+        df2.columns =['id', 'kind', 'value', 'time']
+
+        '''tsfresh doesn't accept na values '''
+
+        #replace -Inf with 0
+        #df3 = df2.replace(df2.value[0], 0)
+
+        return df2
 
 
     def targetData(self):
