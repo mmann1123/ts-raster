@@ -89,3 +89,24 @@ class sRead:
         df3 = df2.replace(df2.value[0], 0)
 
         return df3
+
+
+    def targetData(self):
+        '''
+        ts_series: reads and converts arrays to Series
+        return: pd.Series
+        '''
+
+        # read image
+        rows, cols, num = sRead.image2array(self).shape
+
+        # reshape array to 1D
+        data = sRead.image2array(self).reshape(rows * cols)
+
+        # create index
+        index = [str(i) for i in range(1, len(data) + 1)]
+
+        # convert array pd.Series
+        df = pd.Series(data=data, index=index, dtype=np.int8)
+
+        return df
