@@ -13,6 +13,7 @@ import pandas as pd
 
 from tsfresh import extract_features
 from tsfresh.utilities.distribution import MultiprocessingDistributor
+from tsfresh.feature_selection.relevance import calculate_relevance_table as crt
 from tsraster.prep import sRead
 
 
@@ -143,3 +144,26 @@ def extractFeatures(input_file, output_file):
     f2Array = features2array(input_file)
 
     CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType)
+
+
+def checkRelevance(x, y, ml_task="regression", fdr_level=0.05):
+    '''
+    selectFeatures: selects only significant features
+    param x: pandas dataframe containing the features extracted
+    parm y : pandas series
+    '''
+    # read files
+
+    features = x
+    target = y
+
+    # drop id column
+    features = features.drop(labels="id", axis=1)
+
+    # calculate relevance
+    relevance_test = crt(features,
+                         target,
+                         ml_task=ml_task,
+                         fdr_level=fdr_level)
+
+    return relevance_test
