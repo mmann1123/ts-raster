@@ -89,7 +89,7 @@ class sRead:
         df3 = df2.replace(df2.value[0], 0)
 
         return df3
-    
+
     def image2series(self):
 
         '''
