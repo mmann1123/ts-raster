@@ -1,12 +1,13 @@
 # ts-raster
 
-ts-raster is a python package for extracting and analyzing of time-series characteristics from raster data. The feature extraction follows the footsteps of approaches developed in the python package <a href="https://github.com/blue-yonder/tsfresh">tsfresh</a>. 
+ts-raster is a python package for analyzing time-series characteristics from raster data. 
+It allows feature extraction, dimension reduction and applications of machine learning techniques for geospatial data.
 
-- input : historical raster data (e.g. Monthly temperature data (2000-2018) 
-- Extracted Feature: Mean, minimum, maximum, standard deviation... characteristics for all the data 
-- output: data frame(CSV) or (array)Raster file
+- input data : historical raster data (e.g. Monthly temperature data (2000-2018) 
+- extracted features: Mean, minimum, maximum, variance, standard deviation... of the input data
+- output: dataframe with features as columns or raster file with features as bands
 
-For analysis, several machine learning models as well as an ensemble modeling technique are incorporated. 
+
 
 
 ### Installation
@@ -116,9 +117,12 @@ ts-raster also supports:
   
  ### Development
  
- The current version of ts-raster extracts only 4 features but can be customized by the user. 
+ The current version of ts-raster extracts 4 features but can be customized by the user. 
  Read up the list of features that can be extracted by follow this
   [link](https://tsfresh.readthedocs.io/en/latest/text/list_of_features.html) and customize the
   `CalculateFeatures` function under **calculate.py**. Modify the list under *fc_parameters* as needed.
 
-
+ ### Acknowledgements
+ - The feature extraction follows the footsteps of approaches developed in the python package <a href="https://github.com/blue-yonder/tsfresh">tsfresh</a>.
+ 
+- The designing of the package follows the technical and theoretical guidance Prof.[Mike Mann](https:www/github.com/mmann1123) of the George Washington University.
