@@ -125,4 +125,4 @@ ts-raster also supports:
  ### Acknowledgements
  - The feature extraction follows the footsteps of approaches developed in the python package <a href="https://github.com/blue-yonder/tsfresh">tsfresh</a>.
  
-- The designing of the package follows the technical and theoretical guidance Prof.[Mike Mann](https:www/github.com/mmann1123) of the George Washington University.
+- The designing of the package is guided by the advice of Prof.[Mike Mann](https://github.com/mmann1123) of the George Washington University.
