@@ -10,6 +10,7 @@ Aug-26-2018
 import numpy as np
 import gdal
 import pandas as pd
+import pickle 
 
 from tsfresh import extract_features
 from tsfresh.utilities.distribution import MultiprocessingDistributor
@@ -19,18 +20,33 @@ from tsraster.prep import sRead
 
 
 
-def calculateFeatures(self):
+def calculateFeatures(path,reset_df):
     '''
     calculateFeatures literally calculate features
 
-    :param self: reads the dataframe created with ts_series
+    :param path: reads the dataframe created with ts_series
     Distributor is a tsfresh feature for parallel processing
     fc_parameters is a dictionary containin the features to be extracted
+    :param reset_df should a new version of my_df be generated otherwise
+    read from saved object pickle
     :return: a dataframe with features
     '''
 
-    my_df = sRead.ts_series(self)
-    Distributor = MultiprocessingDistributor(n_workers=16,
+    if reset_df == False:
+    #if reset_df =F read in pickle file holding saved version of my_df
+        with open(os.path.join(path,'my_df.pkl'), 'rb') as input:
+            my_df = pickle.load(input)
+    else:
+    #if reset_df =T calculate ts_series and save pickle
+        my_df = sRead.ts_series(path)
+
+        with open(os.path.join(path,'my_df.pkl'), 'wb') as output:
+            my_df = sRead.ts_series(path)
+            pickle.dump(my_df, output, pickle.HIGHEST_PROTOCOL)
+        print(os.path.join(path,'my_df.pkl'))
+
+    
+    Distributor = MultiprocessingDistributor(n_workers=10,
                                              disable_progressbar=False,
                                              progressbar_title="Feature Extraction")
 
@@ -42,13 +58,13 @@ def calculateFeatures(self):
         "minimum":None
     }
 
+
     extracted_features = extract_features(my_df,
                                           default_fc_parameters=fc_parameters,
                                           column_sort="time",
                                           column_value="value",
                                           column_id="id",
                                           distributor=Distributor)
-
 
     kr = pd.DataFrame(list(extracted_features.columns))
     kr.index += 1
