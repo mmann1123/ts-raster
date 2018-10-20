@@ -10,7 +10,8 @@ Aug-26-2018
 import numpy as np
 import gdal
 import pandas as pd
-import pickle 
+import pickle
+import os
 
 from tsfresh import extract_features
 from tsfresh.utilities.distribution import MultiprocessingDistributor
@@ -51,11 +52,18 @@ def calculateFeatures(path,reset_df):
                                              progressbar_title="Feature Extraction")
 
     #select features to be extracted
+    #Example: No parameters:  "maximum": None
+    # "agg_linear_trend": [{"attr": 'slope', "chunk_len": 3, "f_agg": "min"}] # for one set of args
+    #"large_standard_deviation": [{"r": 0.05}, {"r": 0.1}] to run with two sets of parameters
+    # parameters found : https://tsfresh.readthedocs.io/en/latest/api/tsfresh.feature_extraction.html 
+    
     fc_parameters = {
         "mean": None,
         "maximum": None,
         "median":None,
-        "minimum":None
+        "minimum":None,
+        "agg_linear_trend": [{"attr": 'slope', "chunk_len": 6, "f_agg": "min"}]
+        
     }
 
 
