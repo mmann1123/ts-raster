@@ -62,8 +62,20 @@ def calculateFeatures(path,reset_df):
         "maximum": None,
         "median":None,
         "minimum":None,
-        "agg_linear_trend": [{"attr": 'slope', "chunk_len": 6, "f_agg": "min"}]
+        "agg_linear_trend": [{"attr": 'slope', "chunk_len": 6, "f_agg": "min"},{"attr": 'slope', "chunk_len": 6, "f_agg": "max"}],
+        "last_location_of_maximum:":None,
         
+        "last_location_of_maximum:":None,
+        "last_location_of_minimum:":None,
+        "longest_strike_above_mean:":None,
+        "longest_strike_below_mean:":None,
+        "mean_abs_change:":None,
+        "mean_change:":None,
+        "number_cwt_peaks:":[{"n": 6},{"n": 12}],
+        "quantile:":[{"q": 0.15},{"q": 0.05},{"q": 0.85},{"q": 0.95}],
+        "ratio_beyond_r_sigma:":[{"r": 2},{"r": 3}],
+        "skewness:":None,
+        "sum_values:":None        
     }
 
 
