@@ -4,11 +4,15 @@ prep.py : reads and prepares raster files for time series feature extraction
 
 
 import numpy as np
-import gdal
 import glob
 import os.path
 import pandas as pd
 from tsfresh import extract_features
+try:
+    import gdal
+    from osgeo import gdal
+except ImportError:
+    raise ImportError('GDAL must be installed')
 
 class sRead:
 

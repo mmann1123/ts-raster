@@ -25,7 +25,6 @@ VERSION = 0.13
 REQUIRED = [
     'tsfresh==0.11.0',
     'geopandas==0.4.0',
-    'gdal>=2.1',
     'numpy>=1.14.0',
     'scikit-learn>=0.19.0',
     'pandas==0.22.0',

@@ -2,6 +2,7 @@
 .DS_Store
 tsraster/__pycache__
 examples/.ipynb_checkpoints
+<<<<<<< HEAD
 
 
 # Created by https://www.gitignore.io/api/python
@@ -139,3 +140,6 @@ pip-selfcheck.json
 
 
 # End of https://www.gitignore.io/api/python
+=======
+../../../.
+>>>>>>> 88911d175ac34a291ac0e129a5d6228b55a03e40
