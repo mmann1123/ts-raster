@@ -12,6 +12,7 @@ import gdal
 import pandas as pd
 import pickle
 import os
+import warnings
 
 from tsfresh import extract_features
 from tsfresh.utilities.distribution import MultiprocessingDistributor
@@ -22,80 +23,77 @@ from tsraster.prep import sRead
 
 
 def calculateFeatures(path,reset_df):
-    '''
-    calculateFeatures literally calculate features
+	'''
+	calculateFeatures literally calculate features
 
-    :param path: reads the dataframe created with ts_series
-    Distributor is a tsfresh feature for parallel processing
-    fc_parameters is a dictionary containin the features to be extracted
-    :param reset_df should a new version of my_df be generated otherwise
-    read from saved object pickle
-    :return: a dataframe with features
-    '''
-
-    if reset_df == False:
-    #if reset_df =F read in pickle file holding saved version of my_df
-        with open(os.path.join(path,'my_df.pkl'), 'rb') as input:
-            my_df = pickle.load(input)
-    else:
-    #if reset_df =T calculate ts_series and save pickle
-        my_df = sRead.ts_series(path)
-
-        with open(os.path.join(path,'my_df.pkl'), 'wb') as output:
-            pickle.dump(my_df, output, pickle.HIGHEST_PROTOCOL)
-        print(os.path.join(path,'my_df.pkl'))
-
-    
-    Distributor = MultiprocessingDistributor(n_workers=10,
-                                             disable_progressbar=False,
-                                             progressbar_title="Feature Extraction")
-
-    #select features to be extracted
-    #Example: No parameters:  "maximum": None
-    # "agg_linear_trend": [{"attr": 'slope', "chunk_len": 3, "f_agg": "min"}] # for one set of args
-    #"large_standard_deviation": [{"r": 0.05}, {"r": 0.1}] to run with two sets of parameters
-    # parameters found : https://tsfresh.readthedocs.io/en/latest/api/tsfresh.feature_extraction.html 
-    
-    fc_parameters = {
-        "mean": None,
-        "maximum": None,
-        "median":None,
-        "minimum":None,
-        #"agg_linear_trend": [{"attr": 'slope', "chunk_len": 6, "f_agg": "min"},{"attr": 'slope', "chunk_len": 6, "f_agg": "max"}],
-        #"last_location_of_maximum":None,
-        #"last_location_of_maximum":None,
-        #"last_location_of_minimum":None,
-        #"longest_strike_above_mean":None,
-        #"longest_strike_below_mean":None,
-        #"mean_abs_change":None,
-        #"mean_change":None,
-        #"number_cwt_peaks":[{"n": 6},{"n": 12}],
-        #"quantile":[{"q": 0.15},{"q": 0.05},{"q": 0.85},{"q": 0.95}],
-        #"ratio_beyond_r_sigma":[{"r": 2},{"r": 3}],
-        #"skewness":None,
-        "sum_values":None
-    }
+	:param path: reads the dataframe created with ts_series
+	Distributor is a tsfresh feature for parallel processing
+	fc_parameters is a dictionary containin the features to be extracted
+	:param reset_df should a new version of my_df be generated otherwise
+	read from saved object pickle
+	:return: a dataframe with features
+	'''
 
 
-    extracted_features = extract_features(my_df,
-                                          default_fc_parameters=fc_parameters,
-                                          column_sort="time",
-                                          column_value="value",
-                                          column_id="id",
-                                          distributor=Distributor)
+	if reset_df == False:
+	    #if reset_df =F read in csv file holding saved version of my_df
+	    my_df = pd.read_csv(os.path.join(path,'my_df.csv')) 
+	else:
+	    #if reset_df =T calculate ts_series and save csv
+	    my_df = sRead.ts_series(path)
+	    my_df.to_csv(os.path.join(path,'my_df.csv'), chunksize=10000, index=False) 
 
-    # write data frame 
-    kr = pd.DataFrame(list(extracted_features.columns))
-    kr.index += 1
-    kr.columns = ['band', 'feature_name']
-    kr.to_csv("features_names.csv")
 
-    # write out features to pickle file
-    with open(os.path.join(path,'extracted_features.pkl'), 'wb') as output:
-        pickle.dump(extracted_features, output, pickle.HIGHEST_PROTOCOL)
-    print(os.path.join(path,'extracted_features.pkl'))
+	Distributor = MultiprocessingDistributor(n_workers=6,
+	                                         disable_progressbar=False,
+	                                         progressbar_title="Feature Extraction")
 
-    return extracted_features
+	#select features to be extracted
+	#Example: No parameters:  "maximum": None
+	# "agg_linear_trend": [{"attr": 'slope', "chunk_len": 3, "f_agg": "min"}] # for one set of args
+	#"large_standard_deviation": [{"r": 0.05}, {"r": 0.1}] to run with two sets of parameters
+	# parameters found : https://tsfresh.readthedocs.io/en/latest/api/tsfresh.feature_extraction.html 
+
+	fc_parameters = {
+	    "mean": None,
+	    "maximum": None,
+	    #"median":None,
+	    "minimum":None,
+	    #"agg_linear_trend": [{"attr": 'slope', "chunk_len": 6, "f_agg": "min"},{"attr": 'slope', "chunk_len": 6, "f_agg": "max"}],
+	    #"last_location_of_maximum":None,
+	    #"last_location_of_maximum":None,
+	    #"last_location_of_minimum":None,
+	    #"longest_strike_above_mean":None,
+	    #"longest_strike_below_mean":None,
+	    #"mean_abs_change":None,
+	    #"mean_change":None,
+	    #"number_cwt_peaks":[{"n": 6},{"n": 12}],
+	    #"quantile":[{"q": 0.15},{"q": 0.05},{"q": 0.85},{"q": 0.95}],
+	    #"ratio_beyond_r_sigma":[{"r": 2},{"r": 3}],
+	    #"skewness":None,
+	    #"sum_values":None
+	}
+
+
+	extracted_features = extract_features(my_df,
+	                                      default_fc_parameters=fc_parameters,
+	                                      column_sort="time",
+	                                      column_value="value",
+	                                      column_id="id",
+	                                      distributor=Distributor)
+
+	# write data frame 
+	kr = pd.DataFrame(list(extracted_features.columns))
+	kr.index += 1
+	kr.index.names = ['band']
+	kr.columns = ['feature_name']
+	kr.to_csv(os.path.join(path,"features_names.csv"))
+
+	# write out features to csv file
+	print(os.path.join(path,'extracted_features.csv'))
+	extracted_features.to_csv(os.path.join(path,'extracted_features.csv'), chunksize=10000) 
+
+	return extracted_features
 
 
 def features2array(self):
