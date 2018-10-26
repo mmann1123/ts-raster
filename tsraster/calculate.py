@@ -5,10 +5,7 @@ reads raster files from multiple folders, extract custom features and write valu
 Aug-26-2018
 '''
 
-
-
 import numpy as np
-import gdal
 import pandas as pd
 import pickle
 import os
@@ -17,6 +14,13 @@ from tsfresh import extract_features
 from tsfresh.utilities.distribution import MultiprocessingDistributor
 from tsfresh.feature_selection.relevance import calculate_relevance_table as crt
 from tsraster.prep import sRead
+
+try:
+    import gdal
+    from osgeo import gdal
+except ImportError:
+    raise ImportError('GDAL must be installed')
+
 
 def calculateFeatures(path, parameters, reset_df, tiff_output=True):
     '''
