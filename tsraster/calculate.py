@@ -18,10 +18,7 @@ from tsfresh.utilities.distribution import MultiprocessingDistributor
 from tsfresh.feature_selection.relevance import calculate_relevance_table as crt
 from tsraster.prep import sRead
 
-
-
-
-def calculateFeatures(path,reset_df):
+def calculateFeatures(path, parameters, reset_df, tiff_output=True):
     '''
     calculateFeatures literally calculate features
 
@@ -51,36 +48,9 @@ def calculateFeatures(path,reset_df):
                                              disable_progressbar=False,
                                              progressbar_title="Feature Extraction")
 
-    #select features to be extracted
-    #Example: No parameters:  "maximum": None
-    # "agg_linear_trend": [{"attr": 'slope', "chunk_len": 3, "f_agg": "min"}] # for one set of args
-    #"large_standard_deviation": [{"r": 0.05}, {"r": 0.1}] to run with two sets of parameters
-    # parameters found : https://tsfresh.readthedocs.io/en/latest/api/tsfresh.feature_extraction.html 
-    
-    fc_parameters = {
-        "mean": None,
-        "maximum": None,
-        "median":None,
-        "minimum":None,
-        "agg_linear_trend": [{"attr": 'slope', "chunk_len": 6, "f_agg": "min"},{"attr": 'slope', "chunk_len": 6, "f_agg": "max"}],
-        "last_location_of_maximum":None,
-        
-        "last_location_of_maximum":None,
-        "last_location_of_minimum":None,
-        "longest_strike_above_mean":None,
-        "longest_strike_below_mean":None,
-        "mean_abs_change":None,
-        "mean_change":None,
-        "number_cwt_peaks":[{"n": 6},{"n": 12}],
-        "quantile":[{"q": 0.15},{"q": 0.05},{"q": 0.85},{"q": 0.95}],
-        "ratio_beyond_r_sigma":[{"r": 2},{"r": 3}],
-        "skewness":None,
-        "sum_values":None
-    }
-
 
     extracted_features = extract_features(my_df,
-                                          default_fc_parameters=fc_parameters,
+                                          default_fc_parameters=parameters,
                                           column_sort="time",
                                           column_value="value",
                                           column_id="id",
