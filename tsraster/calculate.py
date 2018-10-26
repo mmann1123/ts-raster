@@ -37,7 +37,7 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
     if reset_df == False:
 	    #if reset_df =F read in csv file holding saved version of my_df
 	    my_df = pd.read_csv(os.path.join(path,'my_df.csv')) 
-	else:
+    else:
 	    #if reset_df =T calculate ts_series and save csv
 	    my_df = sRead.ts_series(path)
 	    my_df.to_csv(os.path.join(path,'my_df.csv'), chunksize=10000, index=False) 
@@ -55,16 +55,16 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
                                           column_id="id",
                                           distributor=Distributor)
 
-    # write data frame 
-	kr = pd.DataFrame(list(extracted_features.columns))
-	kr.index += 1
-	kr.index.names = ['band']
-	kr.columns = ['feature_name']
-	kr.to_csv(os.path.join(path,"features_names.csv"))
+    # write data frame
+    kr = pd.DataFrame(list(extracted_features.columns))
+    kr.index += 1
+    kr.index.names = ['band']
+    kr.columns = ['feature_name']
+    kr.to_csv(os.path.join(path,"features_names.csv"))
 
-	# write out features to csv file
-	print(os.path.join(path,'extracted_features.csv'))
-	extracted_features.to_csv(os.path.join(path,'extracted_features.csv'), chunksize=10000) 
+    # write out features to csv file
+    print(os.path.join(path,'extracted_features.csv'))
+    extracted_features.to_csv(os.path.join(path,'extracted_features.csv'), chunksize=10000) 
 
     return extracted_features
 
