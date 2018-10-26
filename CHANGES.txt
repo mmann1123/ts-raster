@@ -1,3 +1,16 @@
+Oct-26-2018
+===========
+- feature parameters outside of the package
+
+Oct-19-2018
+===========
+- Included more feature parameters
+
+Oct-13-2018
+===========
+- Added relevance testing feature
+- improved image to series conversion
+
 sep-16-2018
 ===========
 - fixed the function to create tiff from features
