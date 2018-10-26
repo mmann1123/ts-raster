@@ -42,7 +42,6 @@ def calculateFeatures(path,reset_df):
         my_df = sRead.ts_series(path)
 
         with open(os.path.join(path,'my_df.pkl'), 'wb') as output:
-            my_df = sRead.ts_series(path)
             pickle.dump(my_df, output, pickle.HIGHEST_PROTOCOL)
         print(os.path.join(path,'my_df.pkl'))
 
@@ -64,7 +63,6 @@ def calculateFeatures(path,reset_df):
         "minimum":None,
         "agg_linear_trend": [{"attr": 'slope', "chunk_len": 6, "f_agg": "min"},{"attr": 'slope', "chunk_len": 6, "f_agg": "max"}],
         "last_location_of_maximum":None,
-        
         "last_location_of_maximum":None,
         "last_location_of_minimum":None,
         "longest_strike_above_mean":None,
@@ -86,9 +84,17 @@ def calculateFeatures(path,reset_df):
                                           column_id="id",
                                           distributor=Distributor)
 
+    # write data frame 
     kr = pd.DataFrame(list(extracted_features.columns))
     kr.index += 1
+    kr.columns = ['band', 'feature_name']
     kr.to_csv("features_names.csv")
+
+    # write out features to pickle file
+    with open(os.path.join(path,'extracted_features.pkl'), 'wb') as output:
+        pickle.dump(extracted_features, output, pickle.HIGHEST_PROTOCOL)
+    print(os.path.join(path,'extracted_features.pkl'))
+
     return extracted_features
 
 
