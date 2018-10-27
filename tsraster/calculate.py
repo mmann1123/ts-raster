@@ -69,7 +69,7 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
     return extracted_features
 
 
-def features2array(self):
+def features2array(path):
     '''
     features2array converts dataframe containing extracted features to array
     :param self: - collects meta data from the first image in the dataset
@@ -77,17 +77,18 @@ def features2array(self):
 
     :return: numpy array
     '''
-    rows, cols, num = sRead.image2array(self).shape
+    rows, cols, num = sRead.image2array(path).shape
 
 
-    my_df = calculateFeatures(self)  # Calculate Features
+    my_df = calculateFeatures(path)  # Calculate Features
+    my_features = extracted_features
 
     '''convert dataframe to array currently supported but gives incorrect output'''
 
 
 
     #df_features = my_df.drop(my_df.columns[0], axis=1)
-    matrix_features = my_df.values
+    matrix_features = my_features.values
     num_of_layers = matrix_features.shape[1]
 
     f2Array = matrix_features.reshape(rows, cols, num_of_layers)
