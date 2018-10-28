@@ -11,6 +11,7 @@ import pandas as pd
 import json
 import geojson
 import random
+
 try:
     import ogr, osr
     from osgeo import ogr
@@ -40,11 +41,8 @@ except ImportError:
     outDataSource = outDriver.CreateDataSource('Cali-pts-prj.shp')
     outLayer = outDataSource.CreateLayer('Cali-pts-prj.shp', geom_type=ogr.wkbPoint)
 
-outDataSource = outDriver.CreateDataSource('points.shp')
-outLayer = outDataSource.CreateLayer('points.shp', geom_type=ogr.wkbPoint)
-
-
-
+    outDataSource = outDriver.CreateDataSource('points.shp')
+    outLayer = outDataSource.CreateLayer('points.shp', geom_type=ogr.wkbPoint)
 
     for i in range(num_points):
         while counter < num_points:
@@ -76,10 +74,6 @@ outLayer = outDataSource.CreateLayer('points.shp', geom_type=ogr.wkbPoint)
     file.write(spatialRef.ExportToWkt())
     file.close()
 
-
-#E###############################################
-# tips and sources: @sadeq-sepehrnoush on stackexchange
-#                   https://www.pcjericks.github.io
 
 spatialRef.MorphToESRI()
 file = open('points.prj', 'w')
