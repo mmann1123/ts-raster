@@ -1,7 +1,7 @@
 
 '''this test script produces a data-frame containing extracted features '''
 
-from tsraster.calculate_v2 import calculateFeatures
+from tsraster.calculate import calculateFeatures
 
 #file directory
 path = "../docs/img/temperature/"

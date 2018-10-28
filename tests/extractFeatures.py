@@ -4,7 +4,7 @@ this test script produces a tiff file containing extracted Features
 
 import os.path
 
-from tsraster.calculate_v2 import exportFeatures
+from tsraster.calculate import exportFeatures
 import pandas as pd
 
 #file directory

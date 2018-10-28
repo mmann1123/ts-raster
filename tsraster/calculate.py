@@ -92,7 +92,9 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
 
     # write out features to tiff file
     if tiff_output == False:
+
         '''tiff_output is true and by default exports tiff '''
+
         return extracted_features
     else:
         # get image dimension from raw data
@@ -116,7 +118,7 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
         DataType = gdal.GDT_Float32
 
         #export tiff
-        extracted_features = CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType)
+        CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType)
 
         return extracted_features
 
