@@ -84,45 +84,76 @@ rasters.shape
 
 
 
-Calculate features
+Calculate Features
+
+ The number of features one can extract can be customized by choosing from the complete list of the statistical summaries
+ listed [here](https://tsfresh.readthedocs.io/en/latest/text/list_of_features.html). 
+ The following example, for instance, contains 16 features.
+
+            parameters = {
+            "mean": None,
+            "maximum": None,
+            "median":None,
+            "minimum":None,
+            "mean_abs_change":None,
+            "mean_change":None,
+            "quantile":[{"q": 0.15},{"q": 0.05},{"q": 0.85},{"q": 0.95}],
+            "longest_strike_above_mean":None,
+            "longest_strike_below_mean":None,
+            "number_cwt_peaks":[{"n": 6},{"n": 12}],
+            "skewness":None,
+            "sum_values":None
+        }
 
 ```python
-ts_features = calculateFeatures(path)
+ts_features = calculateFeatures(path=path, 
+                                 parameters=parameters, 
+                                reset_df=False, 
+                                tiff_output=False)
 ```
 
-    Feature Extraction: 100%|██████████| 80/80 [01:18<00:00,  1.02it/s]
+    Feature Extraction: 100%|██████████| 50/50 [09:57<00:00,  2.31s/it]  
 
-output: dataframe
+    ../docs/img/temperature/extracted_features.csv
 
-    variable  value__maximum  value__mean  value__median  value__minimum
-    id                                                                  
-    1.0                  0.0          0.0            0.0             0.0
-    2.0                  0.0          0.0            0.0             0.0
-    3.0                  0.0          0.0            0.0             0.0
-    4.0                  0.0          0.0            0.0             0.0
-    5.0                  0.0          0.0            0.0             0.0
+Set `rest_df` to `True` if the raster files have already been converted to a pandas dataframe. 
+To save the extracted features as stacked bands in one GeoTiff file, turn `tiff_output`, to`True`.
 
 
-output: image
 
-![png](examples/output_20_0.png)
+output option (1): pandas-dataframe
+```python
+ts_features.describe()
+```
+    variable    value__longest_strike_above_mean 	value__longest_strike_below_mean 	value__maximum 	 value__mean 	value__mean_abs_change 	value__mean_change 	value__median 	value__minimum 	value__number_cwt_peaks__n_12 	value__number_cwt_peaks__n_6 	value__quantile__q_0.05 	value__quantile__q_0.15 	value__quantile__q_0.85 	value__quantile__q_0.95 	value__skewness 	value__sum_values
+    count                          976640.000000 	                   976640.000000 	 976640.000000 976640.000000 	         976640.000000 	     976640.000000 	976640.000000 	976640.000000 	                976640.000000 	               976640.000000 	          976640.000000 	          976640.000000 	          976640.000000 	          976640.000000 	  976640.000000 	    976640.000000
+    mean 	                            6.848954 	                        6.842414 	     12.174632 	    7.053721 	              2.441626 	          0.398589 	     5.764061 	     3.676642 	                     0.381241 	                    0.588133 	               3.836781 	               4.149142 	              10.977326 	              11.764437 	       0.226742 	        63.483490
+    std 	                            2.873678 	                        2.881861 	     16.604448 	    9.836145 	              3.339791 	          0.560275 	     8.230023 	     5.625607 	                     0.529043 	                    0.839891 	               5.801362 	               6.174634 	              15.021573 	              16.064091 	       0.310793 	        88.525303
+    min 	                            1.000000 	                        2.000000 	      0.000000 	   -0.569444 	              0.000000 	          0.000000 	    -4.375000 	    -7.250000 	                     0.000000 	                    0.000000 	              -7.100000 	              -6.800000 	               0.000000 	               0.000000 	      -0.686569 	        -5.125000
+    25% 	                            3.000000 	                        3.000000 	      0.000000 	    0.000000 	              0.000000 	          0.000000 	     0.000000 	     0.000000 	                     0.000000 	                    0.000000 	               0.000000 	               0.000000 	               0.000000 	               0.000000 	       0.000000 	         0.000000
+    50% 	                            9.000000 	                        9.000000 	      0.000000 	    0.000000 	              0.000000 	          0.000000 	     0.000000 	     0.000000 	                     0.000000 	                    0.000000 	               0.000000 	               0.000000 	               0.000000 	               0.000000 	       0.000000 	         0.000000
+    75% 	                            9.000000 	                        9.000000 	     31.062500 	   17.548611 	              6.531250 	          1.000000 	    14.000000 	     8.687500 	                     1.000000 	                    1.000000 	               8.962500 	               9.512500 	              27.800000 	              29.975000 	       0.596130 	       157.937500
+    max 	                            9.000000 	                        9.000000 	     49.000000 	   30.666667 	              9.859375 	          2.000000 	    27.000000 	    20.000000 	                     2.000000 	                    3.000000 	              20.000000 	              20.200000 	              45.000000 	              47.800000 	       1.558534                276.000000
+    
+    
+
+
+output option(2): multi-bands image
+
+![png](examples/output_8_0.png)
 
 
 
 ts-raster also supports:
     
-   - creation of tiff file as an output containing each feature
-   - random sampling from raster images using a vector file (GeoJson or Shapefile) for masking is required.
+   - identification of relevant features
+   - dimension reduction through feature selection 
+   - Stratified random sampling from features/raster files
    - training and testing machine learning models (random forest, xgboost, elasticnet)
   
- ### Development
- 
- The current version of ts-raster extracts 4 features but can be customized by the user. 
- Read up the list of features that can be extracted by follow this
-  [link](https://tsfresh.readthedocs.io/en/latest/text/list_of_features.html) and customize the
-  `CalculateFeatures` function under **calculate.py**. Modify the list under *fc_parameters* as needed.
+
 
  ### Acknowledgements
  - The feature extraction follows the footsteps of approaches developed in the python package <a href="https://github.com/blue-yonder/tsfresh">tsfresh</a>.
  
-- The designing of the package is guided by the advice of Prof.[Mike Mann](https://github.com/mmann1123) of the George Washington University.
+- The designing of the package is guided by the advice of Prof. [Mike Mann](https://github.com/mmann1123) of the George Washington University.
