@@ -37,7 +37,7 @@ def CreateTiff(Name, Array, driver, NDV, GeoT, Proj, DataType, path):
     noData = -9999
     driver = gdal.GetDriverByName('GTiff')
     Name_out = os.path.join(path,Name)
-    
+    print('tif:'+ Name_out)
     DataSet = driver.Create(Name_out, rows, cols, band, gdal.GDT_Float32)
     DataSet.SetGeoTransform(GeoT)
     DataSet.SetProjection(Proj)
@@ -63,9 +63,10 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
         #if reset_df =F read in csv file holding saved version of my_df
 	    my_df = pd.read_csv(os.path.join(path,'my_df.csv'))
     else:
-	    #if reset_df =T calculate ts_series and save csv
-	    my_df = sRead.ts_series(path)
-	    my_df.to_csv(os.path.join(path,'my_df.csv'), chunksize=10000, index=False)
+        #if reset_df =T calculate ts_series and save csv
+        my_df = sRead.ts_series(path)
+        print('df: '+os.path.join(path,'my_df.csv'))
+        my_df.to_csv(os.path.join(path,'my_df.csv'), chunksize=10000, index=False)
 
     Distributor = MultiprocessingDistributor(n_workers=10,
                                              disable_progressbar=False,
@@ -86,7 +87,7 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
     kr.to_csv(os.path.join(path,"features_names.csv"))
 
     # write out features to csv file
-    print(os.path.join(path,'extracted_features.csv'))
+    print("features:"+os.path.join(path,'extracted_features.csv'))
     extracted_features.to_csv(os.path.join(path,'extracted_features.csv'), chunksize=10000)
 
     # write out features to tiff file
