@@ -68,7 +68,7 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
         print('df: '+os.path.join(path,'my_df.csv'))
         my_df.to_csv(os.path.join(path,'my_df.csv'), chunksize=10000, index=False)
 
-    Distributor = MultiprocessingDistributor(n_workers=10,
+    Distributor = MultiprocessingDistributor(n_workers=6,
                                              disable_progressbar=False,
                                              progressbar_title="Feature Extraction")
 
