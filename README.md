@@ -28,7 +28,7 @@ from github:
 
 The input raster files from which features will be extracted are organized to allow extraction from files contained multiple folders.
 
-Example data:
+Example data for annual summaries:
 
     temprature
         2005
@@ -41,7 +41,19 @@ Example data:
             tmx-200603.tif...
         2007
             ...
-  
+            
+Example data for multi-period (5 year) summaries:  
+     temprature
+        2005-2010
+            tmx-200501.tif 
+            ...
+            tmx-201012.tif
+        2011-2015
+            tmx-201101.tif 
+            ...
+            tmx-201512.tif
+        ...
+        
  temprature: *the variable* <br>
   - 2005, 2006, 2007: *the years* <br>
     - tmx-200501.tif: the image <br>
@@ -156,4 +168,4 @@ ts-raster also supports:
  ### Acknowledgements
  - The feature extraction follows the footsteps of approaches developed in the python package <a href="https://github.com/blue-yonder/tsfresh">tsfresh</a>.
  
-- The designing of the package is guided by the advice of Prof. [Mike Mann](https://github.com/mmann1123) of the George Washington University.
+- The designing of the package is guided by & developed with Prof. [Mike Mann](https://github.com/mmann1123) of the George Washington University.
