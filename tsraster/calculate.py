@@ -5,22 +5,20 @@ reads raster files from multiple folders, extract custom features and write valu
 Aug-26-2018
 '''
 
+
 import numpy as np
 import pandas as pd
-import pickle
 import os
-import warnings
 import gdal
+from pathlib import Path
 
 from tsfresh import extract_features
 from tsfresh.utilities.distribution import MultiprocessingDistributor
 from tsfresh.feature_selection.relevance import calculate_relevance_table as crt
 from tsraster.prep import sRead
 
-
-def CreateTiff(Name, Array, driver, NDV, GeoT, Proj, DataType):
+def CreateTiff(Name, Array, driver, NDV, GeoT, Proj, DataType, path):
     '''
-
     :param Name: name of the output tiff file
     :param Array: numpy array to be converted to
     :param driver: output image (data) format
@@ -38,8 +36,9 @@ def CreateTiff(Name, Array, driver, NDV, GeoT, Proj, DataType):
     band = Array.shape[2]
     noData = -9999
     driver = gdal.GetDriverByName('GTiff')
-
-    DataSet = driver.Create(Name, rows, cols, band, gdal.GDT_Float32)
+    Name_out = os.path.join(path,Name)
+    
+    DataSet = driver.Create(Name_out, rows, cols, band, gdal.GDT_Float32)
     DataSet.SetGeoTransform(GeoT)
     DataSet.SetProjection(Proj)
 
@@ -102,23 +101,28 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
         # get the total number of features extracted
         matrix_features = extracted_features.values
         num_of_layers = matrix_features.shape[1]
-
+        
         #reshape the dimension of features extracted
         f2Array = matrix_features.reshape(rows, cols, num_of_layers)
         output_file = 'extracted_features.tiff'
-
+        
+        # deal with output location 
+        out_path = Path(path).parent.joinpath(Path(path).stem+"_features")
+        out_path.mkdir(parents=True, exist_ok=True)
+        
+        
         #Get Meta Data from raw data
         raw_data = sRead.image(path)
         GeoTransform = raw_data[0].GetGeoTransform()
         driver = gdal.GetDriverByName('GTiff')
-
+        
         noData = -9999
-
+        
         Projection = raw_data[0].GetProjectionRef()
         DataType = gdal.GDT_Float32
-
+        
         #export tiff
-        CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType)
+        CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType, path=out_path)
 
         return extracted_features
 
