@@ -177,9 +177,9 @@ def exportFeatures(path, input_file, output_file,
 
 def checkRelevance(x, y, ml_task="auto", fdr_level=0.05):
     '''
-    selectFeatures: selects only significant features
-    param x: pandas dataframe containing the features extracted
-    parm y : pandas series
+    :selectFeatures: selects only significant features
+    :param x: pandas dataframe containing the features extracted
+    :parm y : pandas series
     '''
     # read files
 
@@ -196,3 +196,28 @@ def checkRelevance(x, y, ml_task="auto", fdr_level=0.05):
                          fdr_level=fdr_level)
 
     return relevance_test
+
+def checkRelevance2(x, y, ml_task="auto", fdr_level=0.05):
+    '''
+    :selectFeatures: selects only significant features
+    :param x: pandas dataframe containing the features extracted
+    :parm y : pandas series
+    :return: relevance_test is feature relevance results, df is concatenated df[,0]= Y and df[,1:] = X data  
+    '''
+    # read files
+
+    features = x
+    target = y
+
+    # drop id column
+    features = features.drop(labels="id", axis=1)
+
+    # calculate relevance
+    relevance_test = crt(features,
+                         target,
+                         ml_task=ml_task,
+                         fdr_level=fdr_level)
+    df = pd.concat([target,features],axis=1)
+    df.iloc[:,~df.columns.duplicated()]  # remove repeated index columns take first
+    
+    return relevance_test, df
