@@ -149,7 +149,7 @@ class sRead:
         data = sRead.image2array(self).reshape(rows * cols)
 
         # create index
-        index = pd.RangeIndex(start=0, stop=len(data), step=1)
+        index = pd.RangeIndex(start=0, stop=len(data), step=1)  
 
         # convert array pd.Series
         df = pd.Series(data=data, index=index, dtype=np.int8)
