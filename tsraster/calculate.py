@@ -79,12 +79,16 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
                                           column_id="id",
                                           distributor=Distributor)
 
+    # deal with output location 
+    out_path = Path(path).parent.joinpath(Path(path).stem+"_features")
+    out_path.mkdir(parents=True, exist_ok=True)
+    
     # write data frame
     kr = pd.DataFrame(list(extracted_features.columns))
     kr.index += 1
     kr.index.names = ['band']
     kr.columns = ['feature_name']
-    kr.to_csv(os.path.join(path,"features_names.csv"))
+    kr.to_csv(os.path.join(out_path,"features_names.csv"))
 
     # write out features to csv file
     print("features:"+os.path.join(path,'extracted_features.csv'))
@@ -105,12 +109,7 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
         
         #reshape the dimension of features extracted
         f2Array = matrix_features.reshape(rows, cols, num_of_layers)
-        output_file = 'extracted_features.tiff'
-        
-        # deal with output location 
-        out_path = Path(path).parent.joinpath(Path(path).stem+"_features")
-        out_path.mkdir(parents=True, exist_ok=True)
-        
+        output_file = 'extracted_features.tiff'  
         
         #Get Meta Data from raw data
         raw_data = sRead.image(path)
