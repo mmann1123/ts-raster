@@ -58,30 +58,38 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
     :param tiff_output: boolean option for exporting tiff file
     :return: extracted features as a dataframe and tiff file
     '''
-
+  
     if reset_df == False:
         #if reset_df =F read in csv file holding saved version of my_df
-	    my_df = pd.read_csv(os.path.join(path,'my_df.csv'))
+    	    my_df = pd.read_csv(os.path.join(path,'my_df.csv'))
     else:
         #if reset_df =T calculate ts_series and save csv
         my_df = sRead.ts_series(path)
         print('df: '+os.path.join(path,'my_df.csv'))
         my_df.to_csv(os.path.join(path,'my_df.csv'), chunksize=10000, index=False)
-
+    
     Distributor = MultiprocessingDistributor(n_workers=6,
                                              disable_progressbar=False,
                                              progressbar_title="Feature Extraction")
-
+    
     extracted_features = extract_features(my_df,
                                           default_fc_parameters=parameters,
                                           column_sort="time",
                                           column_value="value",
                                           column_id="id",
                                           distributor=Distributor)
-
+    
     # deal with output location 
     out_path = Path(path).parent.joinpath(Path(path).stem+"_features")
     out_path.mkdir(parents=True, exist_ok=True)
+    
+    # get file prefix
+    prefix = [f for f in os.listdir(path) if f.endswith('.tif')][0][0:4]
+    
+    # write out features to csv file
+    print("features:"+os.path.join(out_path,'extracted_features.csv'))
+    extracted_features.columns = [prefix + str(col) for col in extracted_features.columns]
+    extracted_features.to_csv(os.path.join(out_path,'extracted_features.csv'), chunksize=10000)
     
     # write data frame
     kr = pd.DataFrame(list(extracted_features.columns))
@@ -89,16 +97,12 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
     kr.index.names = ['band']
     kr.columns = ['feature_name']
     kr.to_csv(os.path.join(out_path,"features_names.csv"))
-
-    # write out features to csv file
-    print("features:"+os.path.join(out_path,'extracted_features.csv'))
-    extracted_features.to_csv(os.path.join(out_path,'extracted_features.csv'), chunksize=10000)
-
+    
     # write out features to tiff file
     if tiff_output == False:
-
+    
         '''tiff_output is true and by default exports tiff '''
-
+    
         return extracted_features
     else:
         # get image dimension from raw data
@@ -123,7 +127,6 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
         
         #export tiff
         CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType, path=out_path)
-
         return extracted_features
 
 
