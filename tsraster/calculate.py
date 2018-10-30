@@ -91,8 +91,8 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
     kr.to_csv(os.path.join(out_path,"features_names.csv"))
 
     # write out features to csv file
-    print("features:"+os.path.join(path,'extracted_features.csv'))
-    extracted_features.to_csv(os.path.join(path,'extracted_features.csv'), chunksize=10000)
+    print("features:"+os.path.join(out_path,'extracted_features.csv'))
+    extracted_features.to_csv(os.path.join(out_path,'extracted_features.csv'), chunksize=10000)
 
     # write out features to tiff file
     if tiff_output == False:
