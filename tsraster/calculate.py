@@ -175,7 +175,7 @@ def exportFeatures(path, input_file, output_file,
 
 
 
-def checkRelevance(x, y, ml_task="regression", fdr_level=0.05):
+def checkRelevance(x, y, ml_task="auto", fdr_level=0.05):
     '''
     selectFeatures: selects only significant features
     param x: pandas dataframe containing the features extracted
