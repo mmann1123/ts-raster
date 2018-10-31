@@ -8,6 +8,7 @@ import glob
 import os.path
 import pandas as pd
 from tsfresh import extract_features
+
 try:
     import gdal
     from osgeo import gdal
@@ -152,6 +153,7 @@ class sRead:
         index = pd.RangeIndex(start=0, stop=len(data), step=1)  
 
         # convert array pd.Series
-        df = pd.Series(data=data, index=index, dtype=np.int8)
+        df = pd.Series(data=data, index=index, dtype=np.int8, name='Y')
+     
 
         return df
