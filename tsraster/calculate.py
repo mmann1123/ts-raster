@@ -217,7 +217,10 @@ def checkRelevance2(x, y, ml_task="auto", fdr_level=0.05):
                          target,
                          ml_task=ml_task,
                          fdr_level=fdr_level)
-    df = pd.concat([target,features],axis=1)
-    df.iloc[:,~df.columns.duplicated()]  # remove repeated index columns take first
+
+    # gather subset of relevant features
+    relevant_feature_names = relevance_test.feature[relevance_test.relevant==True]
+    relevant_features = features[relevant_feature_names]    
     
-    return relevance_test, df
+    
+    return relevance_test, relevant_features
