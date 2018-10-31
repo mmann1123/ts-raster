@@ -5,62 +5,50 @@ from sklearn.linear_model import ElasticNet
 from sklearn.metrics import r2_score
 from sklearn import preprocessing
 import pandas as pd
+from os.path import isfile
 
 class model(object):
 
-    def get_data(self):
-        df = pd.read_csv(self)
-        data = df.drop('Unnamed: 0', axis=1)
-
-        sdf = scaler.fit_transform(data)
-        d = data.shape[1]
-
-        X = pd.DataFrame(sdf[:, 0])
-        y = pd.DataFrame(sdf[:, 1:d])
+    def get_data(obj, scale=False):
+        '''
+           :param obj: path to csv or name of pandas dataframe  with yX, or list holding dataframes [y,X]
+           :param scale: should data be centered and scaled True or False
+        
+           :return: X_train, X_test, y_train, y_test splits 
+        '''
+        
+        # read in inputs
+        print("input should be csv or pandas dataframe with yX, or [y,X]")
+        if str(type(obj)) == "<class 'pandas.core.frame.DataFrame'>":
+            df = obj
+        elif type(obj) == list and len(obj) == 2:
+            print('reading in list')
+            df = pd.concat([obj[0],obj[1]],axis=1) # join Y and X 
+            df.iloc[:,~df.columns.duplicated()]  # remove any repeated columns, take first
+        elif isfile(obj, ): 
+            df = pd.read_csv(obj)
+        else:
+            print("input format not dataframe, csv, or list")
+            
+            
+        df = df.drop(['Unnamed: 0'], axis=1)  # clear out unknown columns 
+        
+        # check if center and scale
+        if scale == True:
+            min_max_scaler = preprocessing.MinMaxScaler()
+            np_scaled = min_max_scaler.fit_transform(df)
+            df = pd.DataFrame(np_scaled)
+        
+        y = df.iloc[:,0]
+        X = df.iloc[:,1:]
         X_train, X_test, y_train, y_test = tts(X, y,
                                                test_size=0.33,
-                                               random_state=42)
-
-        return X_train, X_test, y_train, y_test
-
-def get_data2(obj, scale=False):
-
-    '''
-       :param obj: path to csv or name of pandas dataframe  with yX, or list holding dataframes [y,X]
-       :param scale: should data be centered and scaled True or False
-    
-       :return: X_train, X_test, y_train, y_test splits 
-    '''
-    
-    # read in inputs
-    print("input should be csv or pandas dataframe with yX, or [y,X]")
-    if str(type(obj)) == "<class 'pandas.core.frame.DataFrame'>":
-        df = obj
-    elif type(obj) == list and len(obj) == 2:
-        print('reading in list')
-        df = pd.concat([obj[0],obj[1]],axis=1) # join Y and X 
-        df.iloc[:,~df.columns.duplicated()]  # remove any repeated columns, take first
-    elif os.path.isfile(obj, ): 
-        df = pd.read_csv(obj)
+                                               random_state=42) 
         
-    df = df.drop(['Unnamed: 0'], axis=1)  # clear out unknown columns 
-    
-    # check if center and scale
-    if scale == True:
-        min_max_scaler = preprocessing.MinMaxScaler()
-        np_scaled = min_max_scaler.fit_transform(df)
-        df = pd.DataFrame(np_scaled)
-    
-    y = df.iloc[:,0]
-    X = df.iloc[:,1:]
-    X_train, X_test, y_train, y_test = tts(X, y,
-                                           test_size=0.33,
-                                           random_state=42) 
-    
-    return X_train, X_test, y_train, y_test
+        return X_train, X_test, y_train, y_test
+  
 
-
-    def RandomForest(self):
+    def RandomForestReg(X_train, y_train):
         RF = RandomForestRegressor(n_estimators=100,
                                    criterion="mse",
                                    max_depth=10,
@@ -76,7 +64,7 @@ def get_data2(obj, scale=False):
         MSE = ("MSE = {}".format(mse_accuracy))
         R_Squared = ("R-Squared = {}".format(r_squared))
 
-        return MSE, R_Squared
+        return RF, MSE, R_Squared
 
     # Not working correctly
     def GradientBoosting(self):
@@ -97,7 +85,7 @@ def get_data2(obj, scale=False):
         MSE = ("MSE = {}".format(mse_accuracy))
         R_Squared = ("R-Squared = {}".format(r_squared))
 
-        return MSE, R_Squared
+        return GBoost, MSE, R_Squared
 
 
     def ElasticNet(self):
@@ -112,7 +100,20 @@ def get_data2(obj, scale=False):
         MSE = ("MSE = {}".format(mse_accuracy))
         R_Squared = ("R-Squared = {}".format(r_squared))
 
-        return MSE, R_Squared
+        return enet, MSE, R_Squared
 
-
+#    def get_data(self):
+#        df = pd.read_csv(self)
+#        data = df.drop('Unnamed: 0', axis=1)
+#
+#        sdf = scaler.fit_transform(data)
+#        d = data.shape[1]
+#
+#        X = pd.DataFrame(sdf[:, 0])
+#        y = pd.DataFrame(sdf[:, 1:d])
+#        X_train, X_test, y_train, y_test = tts(X, y,
+#                                               test_size=0.33,
+#                                               random_state=42)
+#
+#        return X_train, X_test, y_train, y_test
 
