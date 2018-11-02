@@ -213,6 +213,30 @@ class sRead:
             
             
             
+            
+    def mask_df(raster_mask, original_df):
+        '''
+        mask_df: reads in raster mask and subsets df by mask index
+             raster_mask - tif containing (0,1) mask 
+             original_df - a pandas dataframe or series to mask can be path to csv or pandas series or dataframe
+        '''
+        
+        # convert mask to pandas series
+        index_mask = sRead.targetData(raster_mask)
+        index_mask = index_mask[index_mask == 1]
+        
+             # check if polygon is already geopandas dataframe if so, don't read again
+        if not(isinstance(original_df, pd.core.series.Series)) and \
+                not(isinstance(original_df, pd.core.frame.DataFrame)): 
+            original_df = pd.read_csv(original_df)
+        else:
+            original_df = original_df
+            
+        # limit to matching index from index_mask
+        original_df = original_df[original_df.index.isin(index_mask.index)]
+        
+        return original_df
+            
     def check_mask(raster_mask,raster_input_ex):
         '''
         :check_mask: Checks that mask and input rasters have identical properties
@@ -222,13 +246,13 @@ class sRead:
         '''
         mask_list = []
         ex_list = []
-        test_list = ['Mask','Resolution','Bounds']
+        test_list = ['Mask','Resolution','Bounds','Shape']
         
         with rasterio.open(raster_mask) as mask:
-            mask_list = [mask.crs,mask.res,mask.bounds]
+            mask_list = [mask.crs,mask.res,mask.bounds,mask.shape]
          
         with rasterio.open(raster_input_ex) as ex:
-            ex_list = [ex.crs,ex.res,ex.bounds]
+            ex_list = [ex.crs,ex.res,ex.bounds, ex.shape]
          
         for i in range(0,len(mask_list)):
             if mask_list[i] == ex_list[i]:
@@ -238,5 +262,6 @@ class sRead:
         
         # close rasters
         mask.close()        
-        ex.close()                    
-            
+        ex.close()        
+
+
