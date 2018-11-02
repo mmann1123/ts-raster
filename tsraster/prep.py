@@ -237,6 +237,25 @@ class sRead:
         
         return original_df
             
+    def unmask_df(original_df, mask_df_output):
+        '''
+        mask_df: reads in raster mask and subsets df by mask index
+             raster_mask - tif containing (0,1) mask 
+             original_df - a pandas dataframe or series to mask can be path to csv or pandas series or dataframe
+        '''
+        
+             # check if polygon is already geopandas dataframe if so, don't read again
+        if not(isinstance(original_df, pd.core.series.Series)) and \
+                not(isinstance(original_df, pd.core.frame.DataFrame)): 
+            original_df = pd.read_csv(original_df)
+        else:
+            original_df = original_df
+            
+        # replace values based on masked values
+        original_df.update(mask_df_output)
+    
+        return original_df
+
     def check_mask(raster_mask,raster_input_ex):
         '''
         :check_mask: Checks that mask and input rasters have identical properties
