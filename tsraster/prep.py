@@ -7,23 +7,22 @@ import numpy as np
 import glob
 import os.path
 import pandas as pd
-from tsfresh import extract_features
 import geopandas as gpd
 import rasterio
 from rasterio import features
 
 try:
     import gdal
-    from osgeo import gdal
+    from osgeo import gdal             #IS THIS NEEDED? OSGEO IS PROBLEMATIC ON WINDOWS
 except ImportError:
     raise ImportError('GDAL must be installed')
+
 
 class sRead:
 
     def image_names(self):
 
         '''
-
         image_names: reads images and returns the name of the file
              image_files - a for loop to connect a directory to the file ending with .tif
              image_names -  a for loop to split and return name
@@ -38,9 +37,17 @@ class sRead:
         return image_name
 
     def image(self):
-        #read images from sub-directories
-        images = glob.glob("{}/**/*.tif".format(self), recursive=True)
-        raster_files = [gdal.Open(f, gdal.GA_ReadOnly) for f in images]
+    #read images from sub-directories, or single raster if abs path is provided
+        '''
+        image: read images from sub-directories, or single raster if abs path is provided
+             self - an absolute path to a tif or a path to a directory of tifs
+        '''
+
+        if os.path.isdir(self):
+            images = glob.glob("{}/**/*.tif".format(self), recursive=True)
+            raster_files = [gdal.Open(f, gdal.GA_ReadOnly) for f in images]
+        else:
+            raster_files = [gdal.Open(self, gdal.GA_ReadOnly)]
         return raster_files
 
 
