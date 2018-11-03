@@ -1,5 +1,7 @@
 '''
 prep.py : reads and prepares raster files for time series feature extraction
+
+authors: m.mann & a.bedada
 '''
 
 
@@ -13,161 +15,103 @@ from rasterio import features
 import gdal
 
 
-def image_names(self):
-
+def image_names(path):
     '''
-    image_names: reads images and returns the name of the file
-         image_files - a for loop to connect a directory to the file ending with .tif
-         image_names -  a for loop to split and return name
+    :param path: directory path
+    :return: names of raster files
     '''
-
-    images = glob.glob("{}/**/*.tif".format(self), recursive=True)
-
+    images = glob.glob("{}/**/*.tif".format(path), recursive=True)
     image_name = [os.path.basename(tif).split('.')[0]
                   for tif in images]
 
-
     return image_name
 
-def images(self):
-#read images from sub-directories, or single raster if abs path is provided
+def read_images(path):
     '''
-    image: read images from sub-directories, or single raster if abs path is provided
-         self - an absolute path to a tif or a path to a directory of tifs
+    :param path: directory path
+    :return: raster files opened as GDALDataset
     '''
 
-    if os.path.isdir(self):
-        images = glob.glob("{}/**/*.tif".format(self), recursive=True)
+    if os.path.isdir(path):
+        images = glob.glob("{}/**/*.tif".format(path), recursive=True)
         raster_files = [gdal.Open(f, gdal.GA_ReadOnly) for f in images]
     else:
-        raster_files = [gdal.Open(self, gdal.GA_ReadOnly)]
+        raster_files = [gdal.Open(path, gdal.GA_ReadOnly)]
+
     return raster_files
 
 
-def image2array(self):
+def image_to_array(path):
     '''
-        image2array: reads images, stack as bands and returns array
-            image - a for loop to connect a directory to the file ending with .tif
-            raster_files -  open images with gdal
-            raster_array - converts each raster to array and stack them together by columns
-
-        return: array
+    :param path: directory path
+    :return: stacked numpy array
     '''
 
-    #stack images as bands
     raster_array = np.stack([raster.ReadAsArray()
-                             for raster in images(self)],
-                            axis=-1)
+                             for raster in read_images(path)],
+                             axis=-1)
 
     return raster_array
 
 
-def ts_series(self):
-
+def image_to_series(self):
     '''
-    ts_series: reads array and returns multi index data frame for time series
-        data - 3 dimensional images shaped to 2d
-        index - row id for each pixel
-        df - 2d array returned as data frame
-        df2 - dataframe stacked for multi index
-
-    return: dataframe
+    :param self: directory path
+    :return: One-dimensional ndarray with axis labels
     '''
 
-    rows, cols, num = image2array(self).shape
-    data = image2array(self).reshape(rows*cols, num)
-
-
-    index = [str(i)
-             for i in range(1, len(data) + 1)]
-
-
-    df = pd.DataFrame(data=data[0:,0:],
-                      index=index, columns=image_names(self))
-
-
-    df2 = df.reindex(sorted(df.columns), axis=1) #sort by month
-    df2 = df2.stack().reset_index()
-
-    df2['time'] = df2['level_1'].str.split('-').str[1] # extract time
-    df2.columns =['id', 'kind', 'value', 'time']
-
-    '''tsfresh doesn't accept na values '''
-
-    df3 = df2.replace(df2.value[0], 0)
-
-    return df3
-
-def image2series(self):
-
-    '''
-    ts_series: reads array and returns multi index data frame for time series
-        data - 3 dimensional images shaped to 2d
-        index - row id for each pixel
-        df - 2d array returned as data frame
-        df2 - dataframe stacked for multi index
-
-    return: dataframe
-    '''
-
-    rows, cols, num = image2array(self).shape
-    data = image2array(self).reshape(rows*cols, num)
+    rows, cols, num = image_to_array(self).shape
+    data = image_to_array(self).reshape(rows*cols, num)
 
     # create index
     index = [str(i)
              for i in range(1, len(data) + 1)]
 
     # convert array to dataframe
-    # change dtype from float64 to integer
     df = pd.DataFrame(data=data[0:,0:],
                       index=index, dtype=np.int8, columns=image_names(self))
 
-    #reindex columns
-    df2 = df.reindex(sorted(df.columns), axis=1) #sort by month
-
-    # stack n-columns (months) into one column
+    #reindex aand sort columns
+    df2 = df.reindex(sorted(df.columns), axis=1)
+    # stack columns as 1d array
     df2 = df2.stack().reset_index()
-
-    # rename column
-    df2['time'] = df2['level_1'].str.split('-').str[1] # extract time
+    # create a time series column
+    df2['time'] = df2['level_1'].str.split('-').str[1]
+    #rename all columns
     df2.columns =['id', 'kind', 'value', 'time']
-
-    '''tsfresh doesn't accept na values '''
-
-    #replace -Inf with 0
-    #df3 = df2.replace(df2.value[0], 0)
 
     return df2
 
 
 def targetData(self):
     '''
-    ts_series: reads and converts arrays to Series
-    return: pd.Series
+    :param self: raster file name (targeted for prediction)
+    :return: One-dimensional ndarray with axis
     '''
 
-    # read image
-    rows, cols, num = image2array(self).shape
+    # read image as array and reshape its dimension
+    rows, cols, num = image_to_array(self).shape
+    data = image_to_array(self).reshape(rows * cols)
 
-    # reshape array to 1D
-    data = image2array(self).reshape(rows * cols)
-
-    # create index
+    # create an index for each pixel
     index = pd.RangeIndex(start=0, stop=len(data), step=1)
 
-    # convert array pd.Series
+    # convert N-dimension array to one dimension array
     df = pd.Series(data=data, index=index, dtype=np.int8, name='Y')
 
     return df
 
 def poly_rasterizer(poly,raster_ex, raster_path_prefix, buffer_poly_cells=0):
+
     '''
-    :poly_rasterizer: Function rasterizes polygons assigning the value 1, it \\
-    can also add a buffer at a distance that is multiples of the example raster resolution
-    :param raster_path_prefix: full path and prefix for raster name
-    :param buffer_poly_cells: int specifying number of cells to buffer polygon with, 0 for no buffer
-    :return: raster
-     '''
+    :poly_rasterizer: rasterizes polygons by assigning a value 1. It can also add \\
+                    a buffer at a distance that is multiples of the example raster resolution
+    :param poly: polygon to rasterize
+    :param raster_ex: example tiff
+    :param raster_path_prefix: directory path to the output file
+    :param buffer_poly_cells: buffer size
+    :return: a GeoTiff raster
+    '''
 
     # check if polygon is already geopandas dataframe if so, don't read again
     if ('poly' in locals()):
@@ -210,8 +154,9 @@ def poly_rasterizer(poly,raster_ex, raster_path_prefix, buffer_poly_cells=0):
 def mask_df(raster_mask, original_df):
     '''
     mask_df: reads in raster mask and subsets df by mask index
-         raster_mask - tif containing (0,1) mask
-         original_df - a pandas dataframe or series to mask can be path to csv or pandas series or dataframe
+    :param raster_mask: tif containing (0,1) mask
+    :param original_df: a path to a pandas dataframe or series to mask
+    :return: masked tiff
     '''
 
     # convert mask to pandas series
@@ -233,8 +178,9 @@ def mask_df(raster_mask, original_df):
 def unmask_df(original_df, mask_df_output):
     '''
     mask_df: reads in raster mask and subsets df by mask index
-         raster_mask - tif containing (0,1) mask
-         original_df - a pandas dataframe or series to mask can be path to csv or pandas series or dataframe
+    :param original_df: tif containing (0,1) mask
+    :param mask_df_output: a path to a pandas dataframe or series to mask
+    :return: unmasked output
     '''
 
          # check if polygon is already geopandas dataframe if so, don't read again
@@ -253,7 +199,7 @@ def check_mask(raster_mask,raster_input_ex):
     '''
     :check_mask: Checks that mask and input rasters have identical properties
     :param raster_mask: full path and prefix for raster name
-    :raster_input_ex raster_ex: int specifying number of cells to buffer polygon with, 0 for no buffer
+    :param raster_input_ex_raster_ex: int specifying number of cells to buffer polygon with, 0 for no buffer
     :return: raster
     '''
     mask_list = []
