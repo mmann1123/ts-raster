@@ -15,7 +15,8 @@ from pathlib import Path
 from tsfresh import extract_features
 from tsfresh.utilities.distribution import MultiprocessingDistributor
 from tsfresh.feature_selection.relevance import calculate_relevance_table as crt
-from tsraster.prep import sRead
+from tsraster.prep import getData, image_to_series, image_to_array, read_images
+
 
 def CreateTiff(Name, Array, driver, NDV, GeoT, Proj, DataType, path):
     '''
@@ -64,7 +65,7 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
     	    my_df = pd.read_csv(os.path.join(path,'my_df.csv'))
     else:
         #if reset_df =T calculate ts_series and save csv
-        my_df = sRead.ts_series(path)
+        my_df = image_to_series(path)
         print('df: '+os.path.join(path,'my_df.csv'))
         my_df.to_csv(os.path.join(path,'my_df.csv'), chunksize=10000, index=False)
     
@@ -106,7 +107,7 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
         return extracted_features
     else:
         # get image dimension from raw data
-        rows, cols, num = sRead.image2array(path).shape
+        rows, cols, num = image_to_array(path).shape
         # get the total number of features extracted
         matrix_features = extracted_features.values
         num_of_layers = matrix_features.shape[1]
@@ -116,7 +117,7 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
         output_file = 'extracted_features.tiff'  
         
         #Get Meta Data from raw data
-        raw_data = sRead.image(path)
+        raw_data = read_images(path)
         GeoTransform = raw_data[0].GetGeoTransform()
         driver = gdal.GetDriverByName('GTiff')
         
@@ -137,7 +138,7 @@ def features2array(path, input_file):
     :return: array with height and width similar to the input rasters
     '''
 
-    rows, cols, num = sRead.image2array(path).shape
+    rows, cols, num = image_to_array(path).shape
     my_df = pd.read_csv(input_file)
 
 
@@ -164,7 +165,7 @@ def exportFeatures(path, input_file, output_file,
    :return: tiff file of the exported features
    '''
    output_file = output_file
-   raw_data = sRead.image(path)
+   raw_data = read_images(path)
    geoTransform = raw_data[0].GetGeoTransform()
    projection = raw_data[0].GetProjectionRef()
    f2Array = features2array(path, input_file)
