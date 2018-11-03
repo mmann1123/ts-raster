@@ -1,8 +1,5 @@
 '''
-prep.py :
-reads raster files from multiple folders, extract custom features and write values to raster
-
-Aug-26-2018
+calculate.py: a module for extracting, evaluating and saving features
 '''
 
 
@@ -11,11 +8,10 @@ import pandas as pd
 import os
 import gdal
 from pathlib import Path
-
 from tsfresh import extract_features
 from tsfresh.utilities.distribution import MultiprocessingDistributor
 from tsfresh.feature_selection.relevance import calculate_relevance_table as crt
-from tsraster.prep import getData, image_to_series, image_to_array, read_images
+from tsraster.prep import image_to_series, image_to_array, read_images
 
 
 def CreateTiff(Name, Array, driver, NDV, GeoT, Proj, DataType, path):
@@ -131,7 +127,7 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
         return extracted_features
 
 
-def features2array(path, input_file):
+def features_to_array(path, input_file):
     '''
     :param path: path to the directory of the raster files
     :param input_file: features in dataframe
@@ -168,7 +164,7 @@ def exportFeatures(path, input_file, output_file,
    raw_data = read_images(path)
    geoTransform = raw_data[0].GetGeoTransform()
    projection = raw_data[0].GetProjectionRef()
-   f2Array = features2array(path, input_file)
+   f2Array = features_to_array(path, input_file)
    export_features = CreateTiff(output_file, f2Array, driver, noData, geoTransform, projection, DataType)
 
    return export_features
