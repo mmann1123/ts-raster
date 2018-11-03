@@ -17,4 +17,5 @@ parameters = {
     "skewness":None,
     "sum_values":None
 }
-group_1_results = calculateFeatures(path=path, parameters=parameters, reset_df=False, tiff_output=True)
+results = calculateFeatures(path=path, parameters=parameters, reset_df=True, tiff_output=True)
+print(results)
