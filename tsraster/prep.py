@@ -17,8 +17,10 @@ import gdal
 
 def image_names(path):
     '''
+Reads raster files from multiple folders and returns their names
+
     :param path: directory path
-    :return: names of raster files
+    :return: names of the raster files
     '''
     images = glob.glob("{}/**/*.tif".format(path), recursive=True)
     image_name = [os.path.basename(tif).split('.')[0]
@@ -28,7 +30,10 @@ def image_names(path):
 
 def read_images(path):
     '''
-    :param path: directory path
+Reads a set of associated raster bands from a file.
+Can read one or multiple files stored in different folders.
+
+    :param path: file name or directory path
     :return: raster files opened as GDALDataset
     '''
 
@@ -40,9 +45,10 @@ def read_images(path):
 
     return raster_files
 
-
 def image_to_array(path):
     '''
+Converts images inside multople folders to stacked array
+
     :param path: directory path
     :return: stacked numpy array
     '''
@@ -54,14 +60,16 @@ def image_to_array(path):
     return raster_array
 
 
-def image_to_series(self):
+def image_to_series(path):
     '''
-    :param self: directory path
-    :return: One-dimensional ndarray with axis labels
+Converts images to one dimensional  array with axis labels
+
+    :param path: directory path
+    :return: pandas series
     '''
 
-    rows, cols, num = image_to_array(self).shape
-    data = image_to_array(self).reshape(rows*cols, num)
+    rows, cols, num = image_to_array(path).shape
+    data = image_to_array(path).reshape(rows*cols, num)
 
     # create index
     index = [str(i)
@@ -69,7 +77,7 @@ def image_to_series(self):
 
     # convert array to dataframe
     df = pd.DataFrame(data=data[0:,0:],
-                      index=index, dtype=np.int8, columns=image_names(self))
+                      index=index, dtype=np.int8, columns=image_names(path))
 
     #reindex aand sort columns
     df2 = df.reindex(sorted(df.columns), axis=1)
@@ -83,30 +91,31 @@ def image_to_series(self):
     return df2
 
 
-def targetData(self):
+def targetData(file):
     '''
-    :param self: raster file name (targeted for prediction)
+Reads and prepares the target data for prediction.
+
+    :param file: raster file name
     :return: One-dimensional ndarray with axis
     '''
 
     # read image as array and reshape its dimension
-    rows, cols, num = image_to_array(self).shape
-    data = image_to_array(self).reshape(rows * cols)
+    rows, cols, num = image_to_array(file).shape
+    data = image_to_array(file).reshape(rows * cols)
 
     # create an index for each pixel
     index = pd.RangeIndex(start=0, stop=len(data), step=1)
-
     # convert N-dimension array to one dimension array
     df = pd.Series(data=data, index=index, dtype=np.int8, name='Y')
 
     return df
 
 def poly_rasterizer(poly,raster_ex, raster_path_prefix, buffer_poly_cells=0):
-
     '''
-    :poly_rasterizer: rasterizes polygons by assigning a value 1. It can also add \\
-                    a buffer at a distance that is multiples of the example raster resolution
-    :param poly: polygon to rasterize
+Rasterizes polygons by assigning a value 1.
+It can also add a buffer at a distance that is multiples of the example raster resolution
+
+    :param poly: polygon to to convert to raster
     :param raster_ex: example tiff
     :param raster_path_prefix: directory path to the output file
     :param buffer_poly_cells: buffer size
@@ -149,11 +158,10 @@ def poly_rasterizer(poly,raster_ex, raster_path_prefix, buffer_poly_cells=0):
         dst.write(burned_value,1)
 
 
-
-
 def mask_df(raster_mask, original_df):
     '''
-    mask_df: reads in raster mask and subsets df by mask index
+Reads in raster mask and subsets dataframe by mask index
+
     :param raster_mask: tif containing (0,1) mask
     :param original_df: a path to a pandas dataframe or series to mask
     :return: masked tiff
@@ -177,7 +185,8 @@ def mask_df(raster_mask, original_df):
 
 def unmask_df(original_df, mask_df_output):
     '''
-    mask_df: reads in raster mask and subsets df by mask index
+Unmasks a dataframe with the raster file used for masking
+
     :param original_df: tif containing (0,1) mask
     :param mask_df_output: a path to a pandas dataframe or series to mask
     :return: unmasked output
@@ -195,11 +204,12 @@ def unmask_df(original_df, mask_df_output):
 
     return original_df
 
-def check_mask(raster_mask,raster_input_ex):
+def check_mask(raster_mask, raster_input_ex):
     '''
-    :check_mask: Checks that mask and input rasters have identical properties
+Checks that mask and input rasters have identical properties
+
     :param raster_mask: full path and prefix for raster name
-    :param raster_input_ex_raster_ex: int specifying number of cells to buffer polygon with, 0 for no buffer
+    :param raster_input_ex: int specifying number of cells to buffer polygon with, 0 for no buffer
     :return: raster
     '''
     mask_list = []

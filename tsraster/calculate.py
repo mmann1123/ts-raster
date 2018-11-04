@@ -174,9 +174,10 @@ def exportFeatures(path, input_file, output_file,
 
 def checkRelevance(x, y, ml_task="auto", fdr_level=0.05):
     '''
-    :selectFeatures: selects only significant features
+     selectFeatures: selects only significant features
+
     :param x: pandas dataframe containing the features extracted
-    :parm y : pandas series
+    :param y: pandas series
     '''
     # read files
 
@@ -195,29 +196,27 @@ def checkRelevance(x, y, ml_task="auto", fdr_level=0.05):
     return relevance_test
 
 def checkRelevance2(x, y, ml_task="auto", fdr_level=0.05):
-    '''
-    :selectFeatures: selects only significant features
-    :param x: pandas dataframe containing the features extracted
-    :parm y : pandas series
-    :return: relevance_test is feature relevance results, df is concatenated df[,0]= Y and df[,1:] = X data  
-    '''
-    # read files
+        '''
+        :selectFeatures: selects only significant features
+        :param x: pandas dataframe containing the features extracted
+        :param y: pandas series
+        :return: relevance_test is feature relevance results, df is concatenated df[,0]= Y and df[,1:] = X data
+        '''
+        # read files
+        features = x
+        target = y
 
-    features = x
-    target = y
+        # drop id column
+        features = features.drop(labels="id", axis=1)
 
-    # drop id column
-    features = features.drop(labels="id", axis=1)
+        # calculate relevance
+        relevance_test = crt(features,
+                             target,
+                             ml_task=ml_task,
+                             fdr_level=fdr_level)
 
-    # calculate relevance
-    relevance_test = crt(features,
-                         target,
-                         ml_task=ml_task,
-                         fdr_level=fdr_level)
+        # gather subset of relevant features
+        relevant_feature_names = relevance_test.feature[relevance_test.relevant==True]
+        relevant_features = features[relevant_feature_names]
 
-    # gather subset of relevant features
-    relevant_feature_names = relevance_test.feature[relevance_test.relevant==True]
-    relevant_features = features[relevant_feature_names]    
-    
-    
-    return relevance_test, relevant_features
+        return relevance_test, relevant_features
