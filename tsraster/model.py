@@ -67,7 +67,7 @@ def RandomForestReg(X_train, y_train):
     return RF, MSE, R_Squared
 
 # Not working correctly
-def GradientBoosting(self):
+def GradientBoosting(X_train, y_train):
     GBoost = GradientBoostingRegressor(n_estimators=3000,
                                        learning_rate=0.05,
                                        max_depth=4,
@@ -88,7 +88,7 @@ def GradientBoosting(self):
     return GBoost, MSE, R_Squared
 
 
-def ElasticNet(self):
+def ElasticNet(X_train, y_train):
     enet = ElasticNet(alpha=0.5,
                       l1_ratio=0.7)
 

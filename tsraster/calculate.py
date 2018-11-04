@@ -16,6 +16,8 @@ from tsraster.prep import image_to_series, image_to_array, read_images
 
 def CreateTiff(Name, Array, driver, NDV, GeoT, Proj, DataType, path):
     '''
+    Converts array to a single or multi band raster file
+
     :param Name: name of the output tiff file
     :param Array: numpy array to be converted to
     :param driver: output image (data) format
@@ -49,6 +51,9 @@ def CreateTiff(Name, Array, driver, NDV, GeoT, Proj, DataType, path):
 
 def calculateFeatures(path, parameters, reset_df, tiff_output=True):
     '''
+    Calculates features or the statistical characteristics of time-series raster data.
+    It can also save features as a csv file (dataframe) and/or tiff file.
+
     :param path: directory path to the raster files
     :param parameters: a dictionary of features to be extracted
     :param reset_df: boolean option for existing raster inputs as dataframe
@@ -129,7 +134,9 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
 
 def features_to_array(path, input_file):
     '''
-    :param path: path to the directory of the raster files
+     Converts a dataframe to array
+
+    :param path:  directory path to the raster files
     :param input_file: features in dataframe
     :return: array with height and width similar to the input rasters
     '''
@@ -152,6 +159,8 @@ def exportFeatures(path, input_file, output_file,
                     noData = -9999, DataType = gdal.GDT_Float32):
 
    '''
+   Saves features stored in a data frame as a mulit-band tiff file
+
    :param path: directory path to the raster files
    :param input_file: the features stored in pandas data frame
    :param output_file: the name of the output_file
@@ -174,13 +183,14 @@ def exportFeatures(path, input_file, output_file,
 
 def checkRelevance(x, y, ml_task="auto", fdr_level=0.05):
     '''
-     selectFeatures: selects only significant features
+    Checks the statistical relevance of features to the target data
 
     :param x: pandas dataframe containing the features extracted
     :param y: pandas series
+    :return: dataframe
     '''
-    # read files
 
+    # read files
     features = x
     target = y
 
@@ -197,10 +207,11 @@ def checkRelevance(x, y, ml_task="auto", fdr_level=0.05):
 
 def checkRelevance2(x, y, ml_task="auto", fdr_level=0.05):
         '''
-        :selectFeatures: selects only significant features
+        :Checks the statistical significance of features selects only significant ones
+
         :param x: pandas dataframe containing the features extracted
         :param y: pandas series
-        :return: relevance_test is feature relevance results, df is concatenated df[,0]= Y and df[,1:] = X data
+        :return: dataframe
         '''
         # read files
         features = x
