@@ -1,4 +1,4 @@
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, RandomForestClassifier
 from sklearn.model_selection import train_test_split as tts
 from sklearn.linear_model import ElasticNet
 #from sklearn.preprocessing import StandardScaler as scaler
@@ -9,10 +9,12 @@ from os.path import isfile
 
 
 
-def get_data(obj, scale=False):
+def get_data(obj, test_size=0.33,scale=False,stratify=True):
     '''
        :param obj: path to csv or name of pandas dataframe  with yX, or list holding dataframes [y,X]
-       :param scale: should data be centered and scaled True or False
+       :param test_size: percentage to hold out for testing (default 0.33)
+       :param scale: should data be centered and scaled True or False (default)
+       :param stratify: should the sample be stratified by the dependent valueTrue or False (default)
 
        :return: X_train, X_test, y_train, y_test splits
     '''
@@ -41,14 +43,21 @@ def get_data(obj, scale=False):
 
     y = df.iloc[:,0]
     X = df.iloc[:,1:]
-    X_train, X_test, y_train, y_test = tts(X, y,
-                                           test_size=0.33,
-                                           random_state=42)
+    
+    if stratify==True:
+        X_train, X_test, y_train, y_test = tts(X, y,
+                                               test_size=test_size,
+                                               stratify=y,
+                                               random_state=42)
+    else:
+        X_train, X_test, y_train, y_test = tts(X, y,
+                                               test_size=test_size,
+                                               random_state=42)
 
     return X_train, X_test, y_train, y_test
 
 
-def RandomForestReg(X_train, y_train):
+def RandomForestReg(X_train, y_train, X_test, y_test):
     RF = RandomForestRegressor(n_estimators=100,
                                criterion="mse",
                                max_depth=10,
@@ -64,7 +73,10 @@ def RandomForestReg(X_train, y_train):
     MSE = ("MSE = {}".format(mse_accuracy))
     R_Squared = ("R-Squared = {}".format(r_squared))
 
-    return RF, MSE, R_Squared
+    return RF, predict_test, MSE, R_Squared
+
+
+
 
 # Not working correctly
 def GradientBoosting(X_train, y_train):
