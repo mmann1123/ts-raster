@@ -5,6 +5,10 @@ examples/.ipynb_checkpoints
 .github/
 
 
+# specific outputs from test runs
+temperature_features/
+*my_df.csv
+
 # Created by https://www.gitignore.io/api/python
 
 ### Python ###
