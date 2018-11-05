@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import os
 import gdal
+import glob
 from pathlib import Path
 from tsfresh import extract_features
 from tsfresh.utilities.distribution import MultiprocessingDistributor
@@ -86,8 +87,9 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
     out_path.mkdir(parents=True, exist_ok=True)
     
     # get file prefix
-    prefix = [f for f in os.listdir(path) if f.endswith('.tif')][0][0:4]
-    
+    if os.path.isdir(path):
+        prefix = os.path.basename(glob.glob("{}/**/*.tif".format(path), recursive=True)[0])[0:4]
+        
     # write out features to csv file
     print("features:"+os.path.join(out_path,'extracted_features.csv'))
     extracted_features.columns = [prefix + str(col) for col in extracted_features.columns]
@@ -211,7 +213,7 @@ def checkRelevance2(x, y, ml_task="auto", fdr_level=0.05):
 
         :param x: pandas dataframe containing the features extracted
         :param y: pandas series
-        :return: dataframe
+        :return: 2 dataframes relevance_test, relevant_features
         '''
         # read files
         features = x
