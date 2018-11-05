@@ -85,8 +85,10 @@ Converts images to one dimensional  array with axis labels
     df2 = df2.stack().reset_index()
     # create a time series column
     df2['time'] = df2['level_1'].str.split('-').str[1]
+    df2['kind'] = df2['level_1'].str.split('-').str[0]
+
     #rename all columns
-    df2.columns =['id', 'kind', 'value', 'time']
+    df2.columns =['id', 'level_1', 'value', 'time','kind']
 
     return df2
 
