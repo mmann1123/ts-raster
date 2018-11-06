@@ -12,7 +12,7 @@ from pathlib import Path
 from tsfresh import extract_features
 from tsfresh.utilities.distribution import MultiprocessingDistributor
 from tsfresh.feature_selection.relevance import calculate_relevance_table as crt
-from tsraster.prep import image_to_series, image_to_array, read_images
+from tsraster.prep import image_to_series, image_to_array, read_images, image_to_series2
 
 
 def CreateTiff(Name, Array, driver, NDV, GeoT, Proj, DataType, path):
@@ -108,6 +108,88 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
         '''tiff_output is true and by default exports tiff '''
     
         return extracted_features
+    else:
+        # get image dimension from raw data
+        rows, cols, num = image_to_array(path).shape
+        # get the total number of features extracted
+        matrix_features = extracted_features.values
+        num_of_layers = matrix_features.shape[1]
+        
+        #reshape the dimension of features extracted
+        f2Array = matrix_features.reshape(rows, cols, num_of_layers)
+        output_file = 'extracted_features.tiff'  
+        
+        #Get Meta Data from raw data
+        raw_data = read_images(path)
+        GeoTransform = raw_data[0].GetGeoTransform()
+        driver = gdal.GetDriverByName('GTiff')
+        
+        noData = -9999
+        
+        Projection = raw_data[0].GetProjectionRef()
+        DataType = gdal.GDT_Float32
+        
+        #export tiff
+        CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType, path=out_path)
+        return extracted_features
+
+
+def calculateFeatures2(path, parameters, reset_df, tiff_output=True):
+    '''
+    Calculates features or the statistical characteristics of time-series raster data.
+    It can also save features as a csv file (dataframe) and/or tiff file.
+    
+    :param path: directory path to the raster files
+    :param parameters: a dictionary of features to be extracted
+    :param reset_df: boolean option for existing raster inputs as dataframe
+    :param tiff_output: boolean option for exporting tiff file
+    :return: extracted features as a dataframe and tiff file
+    '''
+      
+    if reset_df == False:
+        #if reset_df =F read in csv file holding saved version of my_df
+    	    my_df = pd.read_csv(os.path.join(path,'my_df.csv'))
+    else:
+        #if reset_df =T calculate ts_series and save csv
+        my_df = image_to_series2(path)
+        print('df: '+os.path.join(path,'my_df.csv'))
+        my_df.to_csv(os.path.join(path,'my_df.csv'), chunksize=10000, index=False)
+    
+    Distributor = MultiprocessingDistributor(n_workers=3,
+                                             disable_progressbar=False,
+                                             progressbar_title="Feature Extraction")
+    
+    extracted_features = extract_features(my_df,
+                                          default_fc_parameters=parameters,
+                                          column_id="id", 
+                                          column_sort="time", 
+                                          column_kind="kind", 
+                                          column_value="value",
+                                          distributor=Distributor)
+    
+    # deal with output location 
+    out_path = Path(path).parent.joinpath(Path(path).stem+"_features")
+    out_path.mkdir(parents=True, exist_ok=True)
+     
+    # write out features to csv file
+    print("features:"+os.path.join(out_path,'extracted_features.csv'))
+    extracted_features.to_csv(os.path.join(out_path,'extracted_features.csv'), chunksize=10000)
+    
+    # write data frame
+    kr = pd.DataFrame(list(extracted_features.columns))
+    kr.index += 1
+    kr.index.names = ['band']
+    kr.columns = ['feature_name']
+    kr.to_csv(os.path.join(out_path,"features_names.csv"))
+    
+    
+    # write out features to tiff file
+    if tiff_output == False:
+    
+        '''tiff_output is true and by default exports tiff '''
+    
+        return extracted_features  
+    
     else:
         # get image dimension from raw data
         rows, cols, num = image_to_array(path).shape
