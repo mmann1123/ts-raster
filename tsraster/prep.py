@@ -75,7 +75,7 @@ Converts images to one dimensional  array with axis labels
     index = [str(i)
              for i in range(1, len(data) + 1)]
 
-    # convert array to dataframe
+    # create wide df with images as columns
     df = pd.DataFrame(data=data[0:,0:],
                       index=index, dtype=np.int8, columns=image_names(path))
 
@@ -91,6 +91,49 @@ Converts images to one dimensional  array with axis labels
     df2.columns =['id', 'level_1', 'value', 'time','kind']
 
     return df2
+
+def image_to_series2(path):
+    '''
+    Converts images to one dimensional  array with axis labels
+    
+    :param path: directory path
+    :return: pandas series
+    '''
+    
+    # find all unique variables in path
+    unique_variables = list(set([os.path.basename(i).split('-')[0] 
+                 for i in glob.glob("{}/**/*.tif".format(path),
+                                    recursive=True) ]))
+    
+    # convert to array
+    rows, cols, num = image_to_array(path).shape
+    data = image_to_array(path).reshape(rows*cols, num)
+    
+    # create index
+    index = [str(i)
+             for i in range(1, len(data) + 1)]
+    
+    # create wide df with images as columns
+    df = pd.DataFrame(data=data[0:,0:],
+                      index=index, dtype=np.float32, columns=image_names(path))
+    # add row id
+    df['id'] = index
+    
+    # convert to long format
+    df = pd.wide_to_long(df, unique_variables, i="id", j="time",sep='-',)
+    
+    # set id and year multi-index as columns
+    # stack to long format 
+    df = df.stack( ).reset_index()
+    df.columns = ["id","time", "kind", "value"]
+    
+    # sort into correct format for feature extraction
+    
+    df.sort_values(['id', 'kind','time'], ascending=[True, True,True], inplace=True)
+    
+    df.head()
+    
+    return df
 
 
 def targetData(file):
