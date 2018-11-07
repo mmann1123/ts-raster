@@ -72,8 +72,7 @@ Converts images to one dimensional  array with axis labels
     data = image_to_array(path).reshape(rows*cols, num)
 
     # create index
-    index = [str(i)
-             for i in range(1, len(data) + 1)]
+    index = pd.RangeIndex(start=0, stop=len(data), step=1)#[str(i)  for i in range(1, len(data) + 1)]
 
     # create wide df with images as columns
     df = pd.DataFrame(data=data[0:,0:],
@@ -94,7 +93,7 @@ Converts images to one dimensional  array with axis labels
 
     return df2
 
-def image_to_series2(path):
+def image_to_series2(path, mask=None):
     '''
     Converts images to one dimensional  array with axis labels
     
@@ -112,35 +111,40 @@ def image_to_series2(path):
     data = image_to_array(path).reshape(rows*cols, num)
     
     # create index
-    index = [str(i)
-             for i in range(1, len(data) + 1)]
+    index = pd.RangeIndex(start=0, stop=len(data), step=1) 
     
     # create wide df with images as columns
-    df = pd.DataFrame(data=data[0:,0:],
+    df_original = pd.DataFrame(data=data[0:,0:],
                       index=index, 
                       dtype=np.float32, 
                       columns=image_names(path))
  
     # add row id
-    df['id'] = index
+    df_original['pixel_id'] = index
+    
+    if mask == None:
+        df_mask = df_original
+    else:
+        df_mask = mask_df(original_df=df_original,raster_mask=mask)
     
     # convert to long format
-    df = pd.wide_to_long(df, unique_variables, i="id", j="time",sep='-',)
+    df_long = pd.wide_to_long(df_mask, unique_variables, i="pixel_id", j="time",sep='-',)
     
-    # set id and year multi-index as columns
+    # set pixel_id and year multi-index as columns
     # stack to long format 
-    df = df.stack( ).reset_index()
-    df.columns = ["id","time", "kind", "value"]
+    df_long = df_long.stack( ).reset_index()
+    df_long.columns = ["pixel_id","time", "kind", "value"]
     
     # sort into correct format for feature extraction
     
-    df.sort_values(['id', 'kind','time'], 
+    df_long.sort_values(['pixel_id', 'kind','time'], 
                    ascending=[True, True,True], 
                    inplace=True)
     
-    df.head()
+    # create empty df to use an example for unmasking 
+    df_original = pd.DataFrame(index=df_original.index)
     
-    return df
+    return df_long, df_original 
 
 
 def targetData(file):

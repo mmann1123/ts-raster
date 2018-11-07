@@ -136,7 +136,7 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
         return extracted_features
 
 
-def calculateFeatures2(path, parameters, reset_df, tiff_output=True):
+def calculateFeatures2(path, parameters, mask=None, reset_df=True, tiff_output=True, missing_value =-9999):
     '''
     Calculates features or the statistical characteristics of time-series raster data.
     It can also save features as a csv file (dataframe) and/or tiff file.
@@ -150,30 +150,69 @@ def calculateFeatures2(path, parameters, reset_df, tiff_output=True):
       
     if reset_df == False:
         #if reset_df =F read in csv file holding saved version of my_df
-        my_df = pd.read_csv(os.path.join(path,'my_df.csv'))
+        df_long = pd.read_csv(os.path.join(path,'df_long.csv'))
+        
+        # create example of original df to help unmask 
+        df_original = pd.read_csv(os.path.join(path,'df_original.csv') )
+        df_original = pd.DataFrame(index = pd.RangeIndex(start=0,
+                                                         stop=len(df_original),
+                                                         step=1), 
+                                             dtype=np.float32)
+        
+        # set index name to pixel id 
+        df_original.index.names = ['pixel_id']
+        
     else:
         #if reset_df =T calculate ts_series and save csv
-        my_df = image_to_series2(path)
+        df_long, df_original   = image_to_series2(path, mask)
         
-        print('df: '+os.path.join(path,'my_df.csv'))
-        my_df.to_csv(os.path.join(path,'my_df.csv'), 
+        print('df: '+os.path.join(path,'df_long.csv'))
+        df_long.to_csv(os.path.join(path,'df_long.csv'), 
                      chunksize=10000, 
                      index=False)
     
-    #Distributor = MultiprocessingDistributor(n_workers=1,
-    #                                         disable_progressbar=False,
-    #                                         progressbar_title="Feature Extraction")
+        df_original.to_csv(os.path.join(path,'df_original.csv'), 
+                     chunksize=10000, 
+                     index=True)
+    
+    # remove missing values from df_long
+    df_long = df_long[df_long['value'] != missing_value]
+    
+    # check if the number of observation per pixel are not identical
+    if ~df_long.groupby(['pixel_id','kind']).kind.count().all():
+        print('ERROR: the number of observation per pixel are not identical')
+        print('       fix missing values to have a uniform time series')
+        print(df_long.groupby(['time']).time.unique())
+        
+        return(df_long.groupby(['pixel_id','kind']).kind.count().all())
+     
+        
+    Distributor = MultiprocessingDistributor(n_workers=2,
+                                             disable_progressbar=False,
+                                             progressbar_title="Feature Extraction")
     #Distributor = LocalDaskDistributor(n_workers=2)
-
-    extracted_features = extract_features(my_df,
-                                          chunksize=10e6,
+    
+    extracted_features = extract_features(df_long,
+                                          #chunksize=10e6,
                                           default_fc_parameters=parameters,
-                                          column_id="id", 
+                                          column_id="pixel_id", 
                                           column_sort="time", 
                                           column_kind="kind", 
-                                          column_value="value"#,
-                                          #distributor=Distributor
+                                          column_value="value",
+                                          distributor=Distributor
                                           )
+    
+    # extracted_features.index is == df_long.pixel_id
+    extracted_features.index.name= 'pixel_id'
+    
+    
+    #unmask extracted features to match df_original index 
+    extracted_features = pd.concat( [df_original, extracted_features], 
+                                            axis=1 )
+    
+    # fill missing values with correct 
+    extracted_features.fillna(missing_value, inplace=True)
+    
     
     # deal with output location 
     out_path = Path(path).parent.joinpath(Path(path).stem+"_features")
