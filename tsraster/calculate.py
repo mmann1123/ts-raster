@@ -10,7 +10,7 @@ import gdal
 import glob
 from pathlib import Path
 from tsfresh import extract_features
-from tsfresh.utilities.distribution import MultiprocessingDistributor
+from tsfresh.utilities.distribution import MultiprocessingDistributor, LocalDaskDistributor
 from tsfresh.feature_selection.relevance import calculate_relevance_table as crt
 from tsraster.prep import image_to_series, image_to_array, read_images, image_to_series2
 
@@ -75,12 +75,14 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
                                              disable_progressbar=False,
                                              progressbar_title="Feature Extraction")
     
-    extracted_features = extract_features(my_df,
+    
+    extracted_features = extract_features(my_df, 
                                           default_fc_parameters=parameters,
                                           column_sort="time",
                                           column_value="value",
                                           column_id="id",
-                                          distributor=Distributor)
+                                          distributor=Distributor
+                                          )
     
     # deal with output location 
     out_path = Path(path).parent.joinpath(Path(path).stem+"_features")
@@ -148,24 +150,30 @@ def calculateFeatures2(path, parameters, reset_df, tiff_output=True):
       
     if reset_df == False:
         #if reset_df =F read in csv file holding saved version of my_df
-    	    my_df = pd.read_csv(os.path.join(path,'my_df.csv'))
+        my_df = pd.read_csv(os.path.join(path,'my_df.csv'))
     else:
         #if reset_df =T calculate ts_series and save csv
         my_df = image_to_series2(path)
+        
         print('df: '+os.path.join(path,'my_df.csv'))
-        my_df.to_csv(os.path.join(path,'my_df.csv'), chunksize=10000, index=False)
+        my_df.to_csv(os.path.join(path,'my_df.csv'), 
+                     chunksize=10000, 
+                     index=False)
     
-    Distributor = MultiprocessingDistributor(n_workers=3,
-                                             disable_progressbar=False,
-                                             progressbar_title="Feature Extraction")
-    
+    #Distributor = MultiprocessingDistributor(n_workers=1,
+    #                                         disable_progressbar=False,
+    #                                         progressbar_title="Feature Extraction")
+    #Distributor = LocalDaskDistributor(n_workers=2)
+
     extracted_features = extract_features(my_df,
+                                          chunksize=10e6,
                                           default_fc_parameters=parameters,
                                           column_id="id", 
                                           column_sort="time", 
                                           column_kind="kind", 
-                                          column_value="value",
-                                          distributor=Distributor)
+                                          column_value="value"#,
+                                          #distributor=Distributor
+                                          )
     
     # deal with output location 
     out_path = Path(path).parent.joinpath(Path(path).stem+"_features")
@@ -302,7 +310,7 @@ def checkRelevance2(x, y, ml_task="auto", fdr_level=0.05):
         target = y
 
         # drop id column
-        features = features.drop(labels="id", axis=1)
+        features = features.drop(labels="id", axis=1,errors='ignore')
 
         # calculate relevance
         relevance_test = crt(features,
@@ -312,6 +320,6 @@ def checkRelevance2(x, y, ml_task="auto", fdr_level=0.05):
 
         # gather subset of relevant features
         relevant_feature_names = relevance_test.feature[relevance_test.relevant==True]
-        relevant_features = features[relevant_feature_names]
-
-        return relevance_test, relevant_features
+        X_relevant_features = features[relevant_feature_names]
+         
+        return relevance_test, X_relevant_features 

@@ -77,7 +77,9 @@ Converts images to one dimensional  array with axis labels
 
     # create wide df with images as columns
     df = pd.DataFrame(data=data[0:,0:],
-                      index=index, dtype=np.int8, columns=image_names(path))
+                      index=index, 
+                      dtype=np.float32, 
+                      columns=image_names(path))
 
     #reindex aand sort columns
     df2 = df.reindex(sorted(df.columns), axis=1)
@@ -115,7 +117,10 @@ def image_to_series2(path):
     
     # create wide df with images as columns
     df = pd.DataFrame(data=data[0:,0:],
-                      index=index, dtype=np.float32, columns=image_names(path))
+                      index=index, 
+                      dtype=np.float32, 
+                      columns=image_names(path))
+ 
     # add row id
     df['id'] = index
     
@@ -129,7 +134,9 @@ def image_to_series2(path):
     
     # sort into correct format for feature extraction
     
-    df.sort_values(['id', 'kind','time'], ascending=[True, True,True], inplace=True)
+    df.sort_values(['id', 'kind','time'], 
+                   ascending=[True, True,True], 
+                   inplace=True)
     
     df.head()
     

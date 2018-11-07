@@ -33,7 +33,7 @@ def get_data(obj, test_size=0.33,scale=False,stratify=True):
         print("input format not dataframe, csv, or list")
 
 
-    df = df.drop(['Unnamed: 0'], axis=1)  # clear out unknown columns
+    df = df.drop(['Unnamed: 0'], axis=1,errors ='ignore')  # clear out unknown columns
 
     # check if center and scale
     if scale == True:
