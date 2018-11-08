@@ -1,12 +1,11 @@
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, RandomForestClassifier
 from sklearn.model_selection import train_test_split as tts
-from sklearn.linear_model import ElasticNet
+from sklearn.linear_model import ElasticNet, accuracy_score,confusion_matrix, cohen_kappa_score
 #from sklearn.preprocessing import StandardScaler as scaler
 from sklearn.metrics import r2_score
 from sklearn import preprocessing
 import pandas as pd
 from os.path import isfile
-
 
 
 def get_data(obj, test_size=0.33,scale=False,stratify=True):
@@ -75,6 +74,28 @@ def RandomForestReg(X_train, y_train, X_test, y_test):
 
     return RF, predict_test, MSE, R_Squared
 
+def RandomForestClass(X_train, y_train, X_test, y_test):
+    RF = RandomForestClassifier(n_estimators=100,
+                               max_depth=10,
+                               min_samples_leaf=5,
+                               min_samples_split=5,
+                               random_state=42,
+                               oob_score = True)
+
+    model = RF.fit(X_train, y_train)
+    predict_test = model.predict(X=X_test)
+    
+    test_acc = accuracy_score(y_test, predict_test)
+    kappa = cohen_kappa_score(y_test, predict_test)
+    confusion = confusion_matrix(y_test, predict_test)
+    
+    print("Test Accuracy  :: ",test_acc )
+    print("Kappa  :: ",kappa )
+    
+    print("Test Confusion matrix ")
+    print(confusion)
+    
+    return RF,test_acc, kappa, confusion
 
 
 
