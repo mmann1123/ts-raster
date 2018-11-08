@@ -164,7 +164,8 @@ def calculateFeatures2(path, parameters, mask=None, reset_df=True, tiff_output=T
         
     else:
         #if reset_df =T calculate ts_series and save csv
-        df_long, df_original   = image_to_series2(path, mask)
+        df_long, df_original   = image_to_series2(path, 
+                                                  mask)
         
         print('df: '+os.path.join(path,'df_long.csv'))
         df_long.to_csv(os.path.join(path,'df_long.csv'), 

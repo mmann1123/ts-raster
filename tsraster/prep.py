@@ -93,7 +93,7 @@ Converts images to one dimensional  array with axis labels
 
     return df2
 
-def image_to_series2(path, mask=None):
+def image_to_series2(path, mask=None,missing_value=None):
     '''
     Converts images to one dimensional  array with axis labels
     
@@ -126,6 +126,10 @@ def image_to_series2(path, mask=None):
         df_mask = df_original
     else:
         df_mask = mask_df(original_df=df_original,raster_mask=mask)
+    
+    # remove any more missing values 
+    #if missing_value != None:
+    #    df_mask = df_mask[df_mask['value'] != missing_value]
     
     # convert to long format
     df_long = pd.wide_to_long(df_mask, unique_variables, i="pixel_id", j="time",sep='-',)
