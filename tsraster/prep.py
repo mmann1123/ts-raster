@@ -17,7 +17,7 @@ import gdal
 
 def image_names(path):
     '''
-Reads raster files from multiple folders and returns their names
+    Reads raster files from multiple folders and returns their names
 
     :param path: directory path
     :return: names of the raster files
@@ -30,8 +30,8 @@ Reads raster files from multiple folders and returns their names
 
 def read_images(path):
     '''
-Reads a set of associated raster bands from a file.
-Can read one or multiple files stored in different folders.
+    Reads a set of associated raster bands from a file.
+    Can read one or multiple files stored in different folders.
 
     :param path: file name or directory path
     :return: raster files opened as GDALDataset
@@ -47,7 +47,7 @@ Can read one or multiple files stored in different folders.
 
 def image_to_array(path):
     '''
-Converts images inside multople folders to stacked array
+    Converts images inside multople folders to stacked array
 
     :param path: directory path
     :return: stacked numpy array
@@ -62,7 +62,7 @@ Converts images inside multople folders to stacked array
 
 def image_to_series(path):
     '''
-Converts images to one dimensional  array with axis labels
+    Converts images to one dimensional  array with axis labels
 
     :param path: directory path
     :return: pandas series
@@ -93,7 +93,7 @@ Converts images to one dimensional  array with axis labels
 
 def targetData(file):
     '''
-Reads and prepares the target data for prediction.
+    Reads and prepares the target data for prediction.
 
     :param file: raster file name
     :return: One-dimensional ndarray with axis
@@ -112,8 +112,8 @@ Reads and prepares the target data for prediction.
 
 def poly_rasterizer(poly,raster_ex, raster_path_prefix, buffer_poly_cells=0):
     '''
-Rasterizes polygons by assigning a value 1.
-It can also add a buffer at a distance that is multiples of the example raster resolution
+    Rasterizes polygons by assigning a value 1.
+    It can also add a buffer at a distance that is multiples of the example raster resolution
 
     :param poly: polygon to to convert to raster
     :param raster_ex: example tiff
@@ -160,7 +160,7 @@ It can also add a buffer at a distance that is multiples of the example raster r
 
 def mask_df(raster_mask, original_df):
     '''
-Reads in raster mask and subsets dataframe by mask index
+    Reads in raster mask and subsets dataframe by mask index
 
     :param raster_mask: tif containing (0,1) mask
     :param original_df: a path to a pandas dataframe or series to mask
@@ -185,7 +185,7 @@ Reads in raster mask and subsets dataframe by mask index
 
 def unmask_df(original_df, mask_df_output):
     '''
-Unmasks a dataframe with the raster file used for masking
+    Unmasks a dataframe with the raster file used for masking
 
     :param original_df: tif containing (0,1) mask
     :param mask_df_output: a path to a pandas dataframe or series to mask
@@ -206,7 +206,7 @@ Unmasks a dataframe with the raster file used for masking
 
 def check_mask(raster_mask, raster_input_ex):
     '''
-Checks that mask and input rasters have identical properties
+    Checks that mask and input rasters have identical properties
 
     :param raster_mask: full path and prefix for raster name
     :param raster_input_ex: int specifying number of cells to buffer polygon with, 0 for no buffer

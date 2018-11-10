@@ -207,7 +207,7 @@ def checkRelevance(x, y, ml_task="auto", fdr_level=0.05):
 
 def checkRelevance2(x, y, ml_task="auto", fdr_level=0.05):
         '''
-        :Checks the statistical significance of features selects only significant ones
+        Checks the statistical significance of features selects only significant ones
 
         :param x: pandas dataframe containing the features extracted
         :param y: pandas series
