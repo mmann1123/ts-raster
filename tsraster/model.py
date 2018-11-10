@@ -1,6 +1,6 @@
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, RandomForestClassifier
 from sklearn.model_selection import train_test_split as tts
-from sklearn.linear_model import ElasticNet
+from sklearn.linear_model import ElasticNet, accuracy_score,confusion_matrix, cohen_kappa_score
 #from sklearn.preprocessing import StandardScaler as scaler
 from sklearn.metrics import r2_score
 from sklearn import preprocessing
@@ -8,11 +8,12 @@ import pandas as pd
 from os.path import isfile
 
 
-
-def get_data(obj, scale=False):
+def get_data(obj, test_size=0.33,scale=False,stratify=True):
     '''
        :param obj: path to csv or name of pandas dataframe  with yX, or list holding dataframes [y,X]
-       :param scale: should data be centered and scaled True or False
+       :param test_size: percentage to hold out for testing (default 0.33)
+       :param scale: should data be centered and scaled True or False (default)
+       :param stratify: should the sample be stratified by the dependent valueTrue or False (default)
 
        :return: X_train, X_test, y_train, y_test splits
     '''
@@ -31,7 +32,7 @@ def get_data(obj, scale=False):
         print("input format not dataframe, csv, or list")
 
 
-    df = df.drop(['Unnamed: 0'], axis=1)  # clear out unknown columns
+    df = df.drop(['Unnamed: 0'], axis=1,errors ='ignore')  # clear out unknown columns
 
     # check if center and scale
     if scale == True:
@@ -41,14 +42,21 @@ def get_data(obj, scale=False):
 
     y = df.iloc[:,0]
     X = df.iloc[:,1:]
-    X_train, X_test, y_train, y_test = tts(X, y,
-                                           test_size=0.33,
-                                           random_state=42)
+    
+    if stratify==True:
+        X_train, X_test, y_train, y_test = tts(X, y,
+                                               test_size=test_size,
+                                               stratify=y,
+                                               random_state=42)
+    else:
+        X_train, X_test, y_train, y_test = tts(X, y,
+                                               test_size=test_size,
+                                               random_state=42)
 
     return X_train, X_test, y_train, y_test
 
 
-def RandomForestReg(X_train, y_train):
+def RandomForestReg(X_train, y_train, X_test, y_test):
     RF = RandomForestRegressor(n_estimators=100,
                                criterion="mse",
                                max_depth=10,
@@ -64,7 +72,32 @@ def RandomForestReg(X_train, y_train):
     MSE = ("MSE = {}".format(mse_accuracy))
     R_Squared = ("R-Squared = {}".format(r_squared))
 
-    return RF, MSE, R_Squared
+    return RF, predict_test, MSE, R_Squared
+
+def RandomForestClass(X_train, y_train, X_test, y_test):
+    RF = RandomForestClassifier(n_estimators=100,
+                               max_depth=10,
+                               min_samples_leaf=5,
+                               min_samples_split=5,
+                               random_state=42,
+                               oob_score = True)
+
+    model = RF.fit(X_train, y_train)
+    predict_test = model.predict(X=X_test)
+    
+    test_acc = accuracy_score(y_test, predict_test)
+    kappa = cohen_kappa_score(y_test, predict_test)
+    confusion = confusion_matrix(y_test, predict_test)
+    
+    print("Test Accuracy  :: ",test_acc )
+    print("Kappa  :: ",kappa )
+    
+    print("Test Confusion matrix ")
+    print(confusion)
+    
+    return RF,test_acc, kappa, confusion
+
+
 
 # Not working correctly
 def GradientBoosting(X_train, y_train):
