@@ -13,7 +13,8 @@ import geopandas as gpd
 import rasterio
 from rasterio import features
 import gdal
-
+from re import sub
+from pathlib import Path
 
 def image_names(path):
     '''
@@ -299,4 +300,52 @@ def check_mask(raster_mask, raster_input_ex):
     mask.close()
     ex.close()
 
+def combine_extracted_features(path):
+    '''
+    Combines multiple extracted_features.csv files and assigns year prefix
+    based on subfolder names.
+    
+    Folder structure assumed as follows:
+         Test>
+                monthly1990-1995>
+                    extracted_features.csv
+                    extracted_features.tif
+                monthly1996-2000>
+                    extracted_features.csv
+                    extracted_features.tif
 
+    :param path: path to parent directory holding folders containing extracted features. (Example: Test) 
+    :return: merged df containing all extracted_features.csv data with assigned year prefix
+    '''
+  
+    
+    # get paths of all extracted_features.csv files
+    all_files = [os.path.join(root, name)
+                 for root, dirs, files in os.walk(path)
+                 for name in files
+                 if name.endswith(( "features.csv"))]
+    
+    # get parent directory names (assumed to hold year eg test1990/ or test1990-1995)
+    root, dirs, files = os.walk(path)
+    parent_folders = root[1]
+    
+    # extract numeric values from parent folder name
+    parent_folder_years = [sub(r'\D', "", parent_folder) for parent_folder in parent_folders]
+    print('Combining folder year names',parent_folder_years)
+
+    # data generator add year prefix to all column names 
+    df_from_each_file = (pd.read_csv(all_files[i]).add_prefix(parent_folder_years[i]+'-') for i in range(len(all_files)))
+    
+    # create joined df with all extraced_features data
+    concatenated_df   = pd.concat(df_from_each_file,
+                                  axis=1, 
+                                  ignore_index=False)
+    
+    # deal with output location 
+    out_path = Path(path).parent.joinpath(Path(path).stem+"_features")
+    out_path.mkdir(parents=True, exist_ok=True)
+    
+    # write combined extracted features data 
+    concatenated_df.to_csv(os.path.join(out_path,'combined_extracted_features_df.csv'), chunksize=50000, index=False)
+
+    return(concatenated_df)
