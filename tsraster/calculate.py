@@ -136,7 +136,7 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
         return extracted_features
 
 
-def calculateFeatures2(path, parameters, mask=None, reset_df=True, tiff_output=True, missing_value =-9999):
+def calculateFeatures2(path, parameters, mask=None, reset_df=True, tiff_output=True, missing_value =-9999,workers=2):
     '''
     Calculates features or the statistical characteristics of time-series raster data.
     It can also save features as a csv file (dataframe) and/or tiff file.
@@ -188,7 +188,7 @@ def calculateFeatures2(path, parameters, mask=None, reset_df=True, tiff_output=T
         return(df_long.groupby(['pixel_id','kind']).kind.count().all())
      
         
-    Distributor = MultiprocessingDistributor(n_workers=2,
+    Distributor = MultiprocessingDistributor(n_workers=workers,
                                              disable_progressbar=False,
                                              progressbar_title="Feature Extraction")
     #Distributor = LocalDaskDistributor(n_workers=2)
