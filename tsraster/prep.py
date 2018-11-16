@@ -110,29 +110,36 @@ def image_to_series2(path, mask=None,missing_value=None):
     rows, cols, num = image_to_array(path).shape
     data = image_to_array(path).reshape(rows*cols, num)
     
+
     # create index
     index = pd.RangeIndex(start=0, stop=len(data), step=1) 
     
+
     # create wide df with images as columns
     df_original = pd.DataFrame(data=data[0:,0:],
                       index=index, 
                       dtype=np.float32, 
                       columns=image_names(path))
- 
+
     # add row id
     df_original['pixel_id'] = index
     
+    # mask by raster mask to reduce overhead
     if mask == None:
         df_mask = df_original
     else:
         df_mask = mask_df(original_df=df_original,raster_mask=mask)
     
     # remove any more missing values 
-    #if missing_value != None:
-    #    df_mask = df_mask[df_mask['value'] != missing_value]
+    if missing_value != None:
+        df_mask = df_mask[df_mask.iloc[:,0] != missing_value]
     
     # convert to long format
-    df_long = pd.wide_to_long(df_mask, unique_variables, i="pixel_id", j="time",sep='-',)
+    df_long = pd.wide_to_long(df_mask, 
+                              unique_variables, 
+                              i="pixel_id", 
+                              j="time",
+                              sep='-')
     
     # set pixel_id and year multi-index as columns
     # stack to long format 

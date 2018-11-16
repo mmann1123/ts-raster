@@ -100,7 +100,7 @@ def RandomForestClass(X_train, y_train, X_test, y_test):
 
 
 # Not working correctly
-def GradientBoosting(X_train, y_train):
+def GradientBoosting(X_train, y_train, X_test, y_test):
     GBoost = GradientBoostingRegressor(n_estimators=3000,
                                        learning_rate=0.05,
                                        max_depth=4,
