@@ -174,7 +174,10 @@ def targetData(file):
     # create an index for each pixel
     index = pd.RangeIndex(start=0, stop=len(data), step=1)
     # convert N-dimension array to one dimension array
-    df = pd.Series(data=data, index=index, dtype=np.int8, name='Y')
+    df = pd.Series(data=data, 
+                   index=index, 
+                   dtype=np.int8, 
+                   name='Y')
 
     return df
 
@@ -185,8 +188,8 @@ def poly_rasterizer(poly,raster_ex, raster_path_prefix, buffer_poly_cells=0):
 
     :param poly: polygon to to convert to raster
     :param raster_ex: example tiff
-    :param raster_path_prefix: directory path to the output file
-    :param buffer_poly_cells: buffer size
+    :param raster_path_prefix: directory path to the output file example: 'F:/Boundary/StatePoly_buf'
+    :param buffer_poly_cells: buffer size in cell count example: 1 = buffer by one cell
     :return: a GeoTiff raster
     '''
 
@@ -197,7 +200,7 @@ def poly_rasterizer(poly,raster_ex, raster_path_prefix, buffer_poly_cells=0):
     else:
         poly = poly
 
-    # create column of ones to rasterize for presence (1) of fire
+    # create column of ones to rasterize for presence (1) 
     poly['ONES'] = 1
 
     # get example metadata
@@ -224,6 +227,64 @@ def poly_rasterizer(poly,raster_ex, raster_path_prefix, buffer_poly_cells=0):
         #rasterize shapes
         burned_value = features.rasterize(shapes=shapes, fill=0, out=out_arr, transform=dst.transform)
         dst.write(burned_value,1)
+
+
+        
+def poly_rasterizer_year_group(poly,raster_exmpl,raster_path_prefix,
+                               year_col_name='YEAR_',year_sub_list=range(1980,1990)):
+    '''
+    Rasterizes polygons by assigning a value 1 to pixel. Utilizes year column to create
+    an aggregated polygon across multiple year groups. 
+    
+
+    :param poly: polygon to to convert to raster
+    :param raster_ex: example tiff to base output on 
+    :param raster_path_prefix: directory path to the output file example: 'F:/Boundary/StatePoly_buf'
+    :param year_col_name: column storing year to compare year_sub_list to 
+    :param year_sub_list: an int year, range(), or list of start end dates [1951, 1955]
+    :return: a GeoTiff raster
+    '''
+    
+    # year or year groups must be forced into a list or range
+    if type(year_sub_list)==int:
+        year_sub_list = [year_sub_list]
+    elif type(year_sub_list) == range:
+        year_sub_list = year_sub_list
+    elif type(year_sub_list) == list:
+        # convert to range so all years are rasterized 
+        year_sub_list = range(year_sub_list[0],year_sub_list[1])
+        
+    # check if polygon is already geopandas dataframe if so, don't read again
+    if not('polys' in locals()):
+            polys = gpd.read_file(poly)
+    if ('polys' in locals()):
+        if not(isinstance(polys, gpd.geodataframe.GeoDataFrame)): 
+            polys = gpd.read_file(poly)
+    else:
+        polys = poly
+    
+    # subset to year and convert to integer
+    polys = polys[polys.loc[:,year_col_name].isin( [str(i) for i in year_sub_list] )]
+
+    # create column of ones to rasterize for presence (1) of fire
+    polys['ONES'] = 1
+   
+    # get example metadata
+    with rasterio.open(raster_exmpl) as src:
+        array = src.read()
+        profile = src.profile
+        profile.update(dtype=rasterio.float32, count=1, compress='lzw',nodata=0)
+        out_arr = src.read(1) # get data from first band, this gets updated in write
+
+    # Write to tif, using the same profile as the source
+    with rasterio.open(raster_path_prefix+str(year_sub_list[0])+'_'+str(year_sub_list[-1])+'.tif', 'w', **profile) as dst:
+
+        # generator of geom, value pairs to use in rasterizing
+        shapes = ((geom,value) for geom, value in zip(polys.geometry, polys.ONES))
+
+        #rasterize shapes 
+        rasterized_value = features.rasterize(shapes=shapes, fill=0, out=out_arr, transform=dst.transform)
+        dst.write(rasterized_value,1)
 
 
 def mask_df(raster_mask, original_df):
@@ -300,7 +361,7 @@ def check_mask(raster_mask, raster_input_ex):
     mask.close()
     ex.close()
 
-def combine_extracted_features(path):
+def combine_extracted_features(path, write_out=True,index_col=0):
     '''
     Combines multiple extracted_features.csv files and assigns year prefix
     based on subfolder names.
@@ -313,11 +374,13 @@ def combine_extracted_features(path):
                 monthly1996-2000>
                     extracted_features.csv
                     extracted_features.tif
-
+    
     :param path: path to parent directory holding folders containing extracted features. (Example: Test) 
+    :param write_out: Should combined df be written to csv
+    :param index_col: position of index in extracted_features.csv to be combined (default: 0, otherwise use None)
     :return: merged df containing all extracted_features.csv data with assigned year prefix
     '''
-  
+      
     
     # get paths of all extracted_features.csv files
     all_files = [os.path.join(root, name)
@@ -325,16 +388,12 @@ def combine_extracted_features(path):
                  for name in files
                  if name.endswith(( "features.csv"))]
     
-    # get parent directory names (assumed to hold year eg test1990/ or test1990-1995)
-    root, dirs, files = os.walk(path)
-    parent_folders = root[1]
-    
     # extract numeric values from parent folder name
-    parent_folder_years = [sub(r'\D', "", parent_folder) for parent_folder in parent_folders]
+    parent_folder_years = [sub(r'\D', "", parent_folder) for parent_folder in all_files]
     print('Combining folder year names',parent_folder_years)
-
-    # data generator add year prefix to all column names 
-    df_from_each_file = (pd.read_csv(all_files[i]).add_prefix(parent_folder_years[i]+'-') for i in range(len(all_files)))
+    
+    # data read generator add year prefix to all column names 
+    df_from_each_file = (pd.read_csv(all_files[i],index_col= index_col ).add_prefix(parent_folder_years[i]+'-') for i in range(len(all_files)))
     
     # create joined df with all extraced_features data
     concatenated_df   = pd.concat(df_from_each_file,
@@ -346,6 +405,7 @@ def combine_extracted_features(path):
     out_path.mkdir(parents=True, exist_ok=True)
     
     # write combined extracted features data 
-    concatenated_df.to_csv(os.path.join(out_path,'combined_extracted_features_df.csv'), chunksize=50000, index=False)
-
+    if write_out == True:
+        concatenated_df.to_csv(os.path.join(out_path,'combined_extracted_features_df.csv'), chunksize=50000, index=False)
+    
     return(concatenated_df)
