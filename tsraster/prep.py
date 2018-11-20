@@ -433,7 +433,7 @@ def combine_target_rasters(path, target_file_prefix, dep_var_name ='Y',write_out
     targets = glob.glob(("{}/**/"+target_file_prefix+"*.tif").format(path), recursive=True)
     targets_years = [sub(r'\D', "", i) for i in targets]
     
-    series_from_each_file = [tr.targetData(targets[i]).rename(targets_years[i]+'-Y') 
+    series_from_each_file = [ targetData(targets[i]).rename(targets_years[i]+'-Y') 
                                     for i in range(len(targets_years))]
     
     # create joined df with all target data
