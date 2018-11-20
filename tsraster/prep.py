@@ -409,3 +409,45 @@ def combine_extracted_features(path, write_out=True,index_col=0):
         concatenated_df.to_csv(os.path.join(out_path,'combined_extracted_features_df.csv'), chunksize=50000, index=False)
     
     return(concatenated_df)
+
+
+def combine_target_rasters(path, target_file_prefix, dep_var_name ='Y',write_out=True):
+    '''
+    Combines multiple extracted_features.csv files and assigns year prefix
+    based on subfolder names.
+    
+    Folder structure assumed as follows:
+         Path>
+                target_2000-2005.tif
+                target_2006-2010.tif
+                target_2011-2016.tif
+
+    
+    :param path: path to parent directory holding folders containing extracted features. (Example: Test) 
+    :param target_file_prefix: prefix to search for in path (ex above: "target_")
+    :param dep_var_name: column name to assign (default: "Y")
+    :param write_out: Should combined df be written to csv
+    :return: merged df containing all extracted_features.csv data with assigned year prefix
+    '''
+    
+    targets = glob.glob(("{}/**/"+target_file_prefix+"*.tif").format(path), recursive=True)
+    targets_years = [sub(r'\D', "", i) for i in targets]
+    
+    series_from_each_file = [tr.targetData(targets[i]).rename(targets_years[i]+'-Y') 
+                                    for i in range(len(targets_years))]
+    
+    # create joined df with all target data
+    concatenated_df   = pd.concat(series_from_each_file,
+                                  axis=1, 
+                                  ignore_index=False)
+
+     # deal with output location 
+    out_path = Path(path).parent.joinpath(Path(path).stem+"_target")
+    out_path.mkdir(parents=True, exist_ok=True)
+    print('writing file to ',out_path)
+    
+    # write combined extracted features data 
+    if write_out == True:
+        concatenated_df.to_csv(os.path.join(out_path,'combined_target_df.csv'), chunksize=50000, index=False)
+
+    return(concatenated_df)
