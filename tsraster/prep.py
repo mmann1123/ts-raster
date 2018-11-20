@@ -252,7 +252,7 @@ def poly_rasterizer_year_group(poly,raster_exmpl,raster_path_prefix,
         year_sub_list = year_sub_list
     elif type(year_sub_list) == list:
         # convert to range so all years are rasterized 
-        year_sub_list = range(year_sub_list[0],year_sub_list[1])
+        year_sub_list = range(year_sub_list[0],year_sub_list[1]+1)
         
     # check if polygon is already geopandas dataframe if so, don't read again
     if not('polys' in locals()):
