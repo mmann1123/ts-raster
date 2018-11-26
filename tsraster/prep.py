@@ -290,27 +290,41 @@ def poly_rasterizer_year_group(poly,raster_exmpl,raster_path_prefix,
 def mask_df(raster_mask, original_df):
     '''
     Reads in raster mask and subsets dataframe by mask index
-
+    
     :param raster_mask: tif containing (0,1) mask
-    :param original_df: a path to a pandas dataframe or series to mask
+    :param original_df: a path to a pandas dataframe, a series to mask, or a list of 2 dfs
     :return: masked tiff
     '''
-
+    
     # convert mask to pandas series
     index_mask = targetData(raster_mask)
     index_mask = index_mask[index_mask == 1]
+    
+    # if original_df is list concatenate by index
+    if type(original_df) == list:
+        list_flag = True
+        first_df_shape = original_df[0].shape
 
-         # check if polygon is already geopandas dataframe if so, don't read again
+        original_df = pd.concat(original_df,
+                                axis=1, 
+                                ignore_index=False)
+    
+    # check if polygon is already geopandas dataframe if so, don't read again
     if not(isinstance(original_df, pd.core.series.Series)) and \
             not(isinstance(original_df, pd.core.frame.DataFrame)):
         original_df = pd.read_csv(original_df)
-    else:
-        original_df = original_df
-
+    
     # limit to matching index from index_mask
     original_df = original_df[original_df.index.isin(index_mask.index)]
+    
+    if list_flag == True:
+        # split back out list elements 
+        return original_df.iloc[:,range(first_df_shape[1])], original_df.iloc[:,first_df_shape[1]:] 
+    else:
+        return original_df
 
-    return original_df
+
+
 
 def unmask_df(original_df, mask_df_output):
     '''
@@ -393,7 +407,7 @@ def combine_extracted_features(path, write_out=True,index_col=0):
     print('Combining folder year names',parent_folder_years)
     
     # data read generator add year prefix to all column names 
-    df_from_each_file = (pd.read_csv(all_files[i],index_col= index_col ).add_prefix(parent_folder_years[i]+'-') for i in range(len(all_files)))
+    df_from_each_file = (pd.read_csv(all_files[i],index_col= index_col ).add_suffix('-'+parent_folder_years[i]) for i in range(len(all_files)))
     
     # create joined df with all extraced_features data
     concatenated_df   = pd.concat(df_from_each_file,
@@ -433,7 +447,8 @@ def combine_target_rasters(path, target_file_prefix, dep_var_name ='Y',write_out
     targets = glob.glob(("{}/**/"+target_file_prefix+"*.tif").format(path), recursive=True)
     targets_years = [sub(r'\D', "", i) for i in targets]
     
-    series_from_each_file = [ targetData(targets[i]).rename(targets_years[i]+'-Y') 
+    # rename columns with Y- prefix
+    series_from_each_file = [ targetData(targets[i]).rename('Y-'+targets_years[i]) 
                                     for i in range(len(targets_years))]
     
     # create joined df with all target data
@@ -444,10 +459,11 @@ def combine_target_rasters(path, target_file_prefix, dep_var_name ='Y',write_out
      # deal with output location 
     out_path = Path(path).parent.joinpath(Path(path).stem+"_target")
     out_path.mkdir(parents=True, exist_ok=True)
-    print('writing file to ',out_path)
+    
     
     # write combined extracted features data 
     if write_out == True:
+        print('writing file to ',out_path)
         concatenated_df.to_csv(os.path.join(out_path,'combined_target_df.csv'), chunksize=50000, index=False)
 
     return(concatenated_df)
