@@ -467,3 +467,30 @@ def combine_target_rasters(path, target_file_prefix, dep_var_name ='Y',write_out
         concatenated_df.to_csv(os.path.join(out_path,'combined_target_df.csv'), chunksize=50000, index=False)
 
     return(concatenated_df)
+
+
+def wide_to_long_target_features(target,features,sep='-'):
+    '''
+    Reads in target and feature data in wide format and returns long format
+    
+    :param target: target (Y) data wide format multiple years
+    :param features: attribute (X) data wide format multiple years
+    :return: target, attribute both in long format
+    '''
+    # get variables to convert to long by removing dates at end of name
+    target_stubs  = list(set([sub(sep+r'\d+', "", i) for i in target.columns if i !='index' ])) 
+    features_stubs  = list(set([sub(sep+r'\d+', "", i) for i in features.columns if i !='index' ]))
+    
+    target['index'] = target.index
+    features['index'] = features.index
+    
+    target_ln = pd.wide_to_long(target,i='index',j="time", stubnames = target_stubs, sep=sep)
+    features_ln = pd.wide_to_long(features,i='index',j="time", stubnames = features_stubs, sep=sep)
+    
+    if target_ln.index.equals(features_ln.index):
+        print('converted to long, indexes match')
+    else:
+        print('index values did not match, make sure data is for same time period')
+        return 0
+    
+    return target_ln, features_ln
