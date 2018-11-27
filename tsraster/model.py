@@ -136,6 +136,18 @@ def ElasticNet(X_train, y_train):
 
     return enet, MSE, R_Squared
 
+
+def model_predict(model, new_X):
+    '''
+    Predicts model based on new data while maintaining the index
+
+    :param model: any fitted model object
+    :param new_X: observations to fit model to
+    :return: model predictions based on new_X values
+    '''
+    return  pd.Series(data = model.predict(X=new_X), index = new_X.index)
+
+
 #    def get_data(self):
 #        df = pd.read_csv(self)
 #        data = df.drop('Unnamed: 0', axis=1)
