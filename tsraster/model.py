@@ -156,7 +156,7 @@ def model_predict_prob(model, new_X):
     :param new_X: observations to fit model to
     :return: model class probability predictions based on new_X values
     '''
-    return  pd.Series(data = model.predict_proba(X=new_X), index = new_X.index)
+    return  pd.DataFrame(data = model.predict_proba(X=new_X), index = new_X.index)
 
 #    def get_data(self):
 #        df = pd.read_csv(self)
