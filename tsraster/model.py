@@ -148,6 +148,16 @@ def model_predict(model, new_X):
     return  pd.Series(data = model.predict(X=new_X), index = new_X.index)
 
 
+def model_predict_prob(model, new_X):
+    '''
+    Predicted class probabilities for model based on new data while maintaining the index
+
+    :param model: any fitted model object
+    :param new_X: observations to fit model to
+    :return: model class probability predictions based on new_X values
+    '''
+    return  pd.Series(data = model.predict_proba(X=new_X), index = new_X.index)
+
 #    def get_data(self):
 #        df = pd.read_csv(self)
 #        data = df.drop('Unnamed: 0', axis=1)
