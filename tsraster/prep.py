@@ -522,7 +522,7 @@ def if_series_to_df(obj):
 
 
 
-def panel_lag_1(original_df, col_names, group_by_index):
+def panel_lag_1(original_df, col_names, group_by_index='index'):
     '''
     Adding temporal lag to df for selected columns
     
@@ -532,9 +532,23 @@ def panel_lag_1(original_df, col_names, group_by_index):
     :return: original_df and lagged values with nans removed 
     '''
     
+    # sort by pixel id, time 
+    original_df.sort_index(inplace=True)
+    
+    # check if all groups have same # of observations
+    if not(original_df.count(level=group_by_index).all().all()):
+        raise('Data panel doesnt have balanced number of observations across groups')
+        return(0)
+        
+    # add lag 
     for col in col_names:
         original_df = pd.concat([original_df , 
                                  original_df.loc[:,col].groupby(by=[group_by_index]).shift(1).rename(col+'_1')],
         axis=1)
-    return original_df.dropna( inplace =True )
-
+    
+    # remove any columns that only have nan
+    original_df.dropna(axis=1, how='all', inplace=True) 
+    original_df.dropna( inplace =True )
+    
+    return original_df
+     
