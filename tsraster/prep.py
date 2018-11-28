@@ -337,7 +337,7 @@ def unmask_df(original_df, mask_df_output):
     '''
     Unmasks a dataframe with the raster file used for masking
     
-    :param original_df: tif containing (0,1) mask
+    :param original_df: a data frame with the correct unmasked index values
     :param mask_df_output: a path to a pandas dataframe or series to mask
     :return: unmasked output
     '''
@@ -520,4 +520,21 @@ def if_series_to_df(obj):
         
     return obj
 
+
+
+def panel_lag_1(original_df, col_names, group_by_index):
+    '''
+    Adding temporal lag to df for selected columns
+    
+    :param original_df: any dataframe
+    :param col_names: column names to add a lag to
+    :param group_by_index: 
+    :return: original_df and lagged values with nans removed 
+    '''
+    
+    for col in col_names:
+        original_df = pd.concat([original_df , 
+                                 original_df.loc[:,col].groupby(by=[group_by_index]).shift(1).rename(col+'_1')],
+        axis=1)
+    return original_df.dropna( inplace =True )
 
