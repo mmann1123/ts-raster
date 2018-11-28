@@ -158,22 +158,4 @@ def model_predict_prob(model, new_X):
     '''
     return  pd.DataFrame(data = model.predict_proba(X=new_X), index = new_X.index)
 
-
-
-def RandomForestClass(X_train, y_train, X_test, y_test):
-    RF = RandomForestClassifier(n_estimators=100,
-                               max_depth=10,
-                               min_samples_leaf=5,
-                               min_samples_split=5,
-                               random_state=42,
-                               oob_score = True)
-
-    model = RF.fit(X_train, y_train)
-    predict_test = model.predict(X=X_test)
-    
-    print("Train Accuracy :: ", accuracy_score(y_train, model.predict(X_train)))
-    print("Test Accuracy  :: ", accuracy_score(y_test, predict_test))
-    print("Test Confusion matrix ", confusion_matrix(y_test, predict_test))
-    
-    return RF  
-
+ 
