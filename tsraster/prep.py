@@ -511,3 +511,13 @@ def wide_to_long_target_features(target,features,sep='-'):
         return 0
     
     return target_ln, features_ln
+
+
+def if_series_to_df(obj):
+    # cover series to dataframes
+    if(isinstance(obj, pd.core.series.Series)):
+        obj = pd.DataFrame(data = obj, index = obj.index)
+        
+    return obj
+
+
