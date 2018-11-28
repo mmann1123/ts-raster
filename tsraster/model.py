@@ -25,7 +25,7 @@ def get_data(obj, test_size=0.33,scale=False,stratify=True):
         df = obj
     elif type(obj) == list and len(obj) == 2:
         print('reading in list')
-        df = pd.concat([obj[0],obj[1]],axis=1) # join Y and X
+        df = pd.concat([obj[0],obj[1]],axis=1, join='inner') # join Y and X
         df.iloc[:,~df.columns.duplicated()]  # remove any repeated columns, take first
     elif isfile(obj, ):
         df = pd.read_csv(obj)
