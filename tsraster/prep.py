@@ -287,7 +287,7 @@ def poly_rasterizer_year_group(poly,raster_exmpl,raster_path_prefix,
         dst.write(rasterized_value,1)
 
 
-def mask_df(raster_mask, original_df):
+def mask_df(raster_mask, original_df,missing_value = -9999):
     '''
     Reads in raster mask and subsets dataframe by mask index
     
@@ -317,6 +317,14 @@ def mask_df(raster_mask, original_df):
     # limit to matching index from index_mask
     original_df = original_df[original_df.index.isin(index_mask.index)]
     
+    
+    # remove any more missing values 
+    if missing_value != None:
+        # inserts nan in missing value locations 
+        original_df = original_df[original_df.iloc[:,:] != missing_value]
+        original_df.dropna(inplace=True)
+        
+        
     if list_flag == True:
         # split back out list elements 
         return original_df.iloc[:,range(first_df_shape[1])], original_df.iloc[:,first_df_shape[1]:] 
@@ -325,27 +333,36 @@ def mask_df(raster_mask, original_df):
 
 
 
-
 def unmask_df(original_df, mask_df_output):
     '''
     Unmasks a dataframe with the raster file used for masking
-
+    
     :param original_df: tif containing (0,1) mask
     :param mask_df_output: a path to a pandas dataframe or series to mask
     :return: unmasked output
     '''
-
-         # check if polygon is already geopandas dataframe if so, don't read again
+    
+    # check if polygon is already geopandas dataframe if so, don't read again
     if not(isinstance(original_df, pd.core.series.Series)) and \
             not(isinstance(original_df, pd.core.frame.DataFrame)):
         original_df = pd.read_csv(original_df)
     else:
         original_df = original_df
-
+    
+    # cover series to dataframes
+    original_df = if_series_to_df(original_df)
+    mask_df_output = if_series_to_df(mask_df_output)
+    
+    # limit original_df to col # of mask_df and change names to match 
+    original_df = original_df.iloc[:,:mask_df_output.shape[1]]
+    original_df.columns = mask_df_output.columns
+    
     # replace values based on masked values
     original_df.update(mask_df_output)
-
+    
     return original_df
+
+
 
 def check_mask(raster_mask, raster_input_ex):
     '''
