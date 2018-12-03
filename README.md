@@ -167,5 +167,7 @@ ts-raster also supports:
 
  ### Acknowledgements
  - The feature extraction follows the footsteps of approaches developed in the python package <a href="https://github.com/blue-yonder/tsfresh">tsfresh</a>.
- 
-- The designing of the package is guided by & developed with Prof. [Mike Mann](https://github.com/mmann1123) of the George Washington University.
+
+- All base functionality of this package was coded by [Adane Bedada](https://github.com/adbeda/). 
+
+- The package is guided by & developed with Prof. [Mike Mann](https://github.com/mmann1123) of the George Washington University.
