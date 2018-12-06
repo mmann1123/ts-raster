@@ -16,7 +16,7 @@ NAME = 'tsraster'
 DESCRIPTION = 'time series feature extraction from raster data'
 URL = 'https://github.com/adbeda/ts-raster'
 EMAIL = 'adbe@gwu.edu'
-AUTHOR = 'Adane Bedada'
+AUTHOR = 'Adane Bedada & Michael Mann'
 REQUIRES_PYTHON = '>=3.6.0'
 VERSION = 0.15
 
