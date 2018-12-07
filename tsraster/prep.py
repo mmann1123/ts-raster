@@ -68,36 +68,39 @@ def image_to_array(path):
 def image_to_series(path):
     '''
     Converts images to one dimensional  array with axis labels
-
+    
     :param path: directory path
     :return: pandas series
     '''
-
+    
     rows, cols, num = image_to_array(path).shape
     data = image_to_array(path).reshape(rows*cols, num)
-
+    
     # create index
-    index = pd.RangeIndex(start=0, stop=len(data), step=1)#[str(i)  for i in range(1, len(data) + 1)]
-
+    index = pd.RangeIndex(start=0, stop=len(data), step=1, name = 'index') 
+    
     # create wide df with images as columns
     df = pd.DataFrame(data=data[0:,0:],
                       index=index, 
                       dtype=np.float32, 
                       columns=image_names(path))
-
-    #reindex aand sort columns
+    
+    #reindex and sort columns
     df2 = df.reindex(sorted(df.columns), axis=1)
     # stack columns as 1d array
     df2 = df2.stack().reset_index()
     # create a time series column
     df2['time'] = df2['level_1'].str.split('-').str[1]
     df2['kind'] = df2['level_1'].str.split('-').str[0]
-
+    
+    # set multiindex 
+    df2.set_index(['index', 'time'], inplace=True)
+    
     #rename all columns
-    df2.columns =['id', 'level_1', 'value', 'time','kind']
-
+    df2.columns =[ 'level_1', 'value', 'kind']
+    
     return df2
-
+ 
 
 def targetData(file):
     '''
