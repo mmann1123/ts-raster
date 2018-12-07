@@ -19,14 +19,18 @@ from pathlib import Path
 def image_names(path):
     '''
     Reads raster files from multiple folders and returns their names
-
+    
     :param path: directory path
     :return: names of the raster files
     '''
     images = glob.glob("{}/**/*.tif".format(path), recursive=True)
     image_name = [os.path.basename(tif).split('.')[0]
                   for tif in images]
-
+    
+    # handle single tif case
+    if len(image_name) == 0:
+        image_name =  [os.path.basename(path).split('.')[0]]
+        
     return image_name
 
 def read_images(path):
@@ -48,7 +52,7 @@ def read_images(path):
 
 def image_to_array(path):
     '''
-    Converts images inside multople folders to stacked array
+    Converts images inside multiple folders to stacked array
 
     :param path: directory path
     :return: stacked numpy array
@@ -93,70 +97,6 @@ def image_to_series(path):
     df2.columns =['id', 'level_1', 'value', 'time','kind']
 
     return df2
-
-def image_to_series2(path, mask=None,missing_value=None):
-    '''
-    Converts images to one dimensional  array with axis labels
-    
-    :param path: directory path
-    :return: pandas series
-    '''
-    
-    # find all unique variables in path
-    unique_variables = list(set([os.path.basename(i).split('-')[0] 
-                 for i in glob.glob("{}/**/*.tif".format(path),
-                                    recursive=True) ]))
-    
-    # convert to array
-    rows, cols, num = image_to_array(path).shape
-    data = image_to_array(path).reshape(rows*cols, num)
-    
-
-    # create index
-    index = pd.RangeIndex(start=0, stop=len(data), step=1) 
-    
-
-    # create wide df with images as columns
-    df_original = pd.DataFrame(data=data[0:,0:],
-                      index=index, 
-                      dtype=np.float32, 
-                      columns=image_names(path))
-
-    # add row id
-    df_original['pixel_id'] = index
-    
-    # mask by raster mask to reduce overhead
-    if mask == None:
-        df_mask = df_original
-    else:
-        df_mask = mask_df(original_df=df_original,raster_mask=mask)
-    
-    # remove any more missing values 
-    if missing_value != None:
-        df_mask = df_mask[df_mask.iloc[:,0] != missing_value]
-    
-    # convert to long format
-    df_long = pd.wide_to_long(df_mask, 
-                              unique_variables, 
-                              i="pixel_id", 
-                              j="time",
-                              sep='-')
-    
-    # set pixel_id and year multi-index as columns
-    # stack to long format 
-    df_long = df_long.stack( ).reset_index()
-    df_long.columns = ["pixel_id","time", "kind", "value"]
-    
-    # sort into correct format for feature extraction
-    
-    df_long.sort_values(['pixel_id', 'kind','time'], 
-                   ascending=[True, True,True], 
-                   inplace=True)
-    
-    # create empty df to use an example for unmasking 
-    df_original = pd.DataFrame(index=df_original.index)
-    
-    return df_long, df_original 
 
 
 def targetData(file):
