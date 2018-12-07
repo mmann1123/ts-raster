@@ -90,21 +90,22 @@ def image_to_series(path):
     # stack columns as 1d array
     df2 = df2.stack().reset_index()
     # create a time series column
-    df2['time'] = df2['level_1'].str.split('-').str[1]
-    df2['kind'] = df2['level_1'].str.split('-').str[0]
+    df2['time'] = df2['level_1'].str.split('[- _]').str[1]
+    df2['kind'] = df2['level_1'].str.split('[- _]').str[0]
     
     # set multiindex 
     df2.set_index(['index', 'time'], inplace=True)
     
     #rename all columns
     df2.columns =[ 'level_1', 'value', 'kind']
+    df2.drop(['level_1'], axis=1, inplace = True)
     
     return df2
  
 
-def targetData(file):
+def image_to_series_simple(file):
     '''
-    Reads and prepares the target data for prediction.
+    Reads and prepares single raster file 
 
     :param file: raster file name
     :return: One-dimensional ndarray with axis
@@ -115,12 +116,11 @@ def targetData(file):
     data = image_to_array(file).reshape(rows * cols)
 
     # create an index for each pixel
-    index = pd.RangeIndex(start=0, stop=len(data), step=1)
+    index = pd.RangeIndex(start=0, stop=len(data), step=1, name = 'index')
     # convert N-dimension array to one dimension array
     df = pd.Series(data=data, 
                    index=index, 
-                   dtype=np.int8, 
-                   name='Y')
+                   dtype=np.int8)
 
     return df
 
@@ -306,23 +306,25 @@ def mask_df(raster_mask, original_df,missing_value = -9999):
     '''
     Reads in raster mask and subsets dataframe by mask index
     
-    :param raster_mask: tif containing (0,1) mask
+    :param raster_mask: tif containing (0,1) mask where 1's are retained
     :param original_df: a path to a pandas dataframe, a series to mask, or a list of 2 dfs
     :return: masked tiff
     '''
     
     # convert mask to pandas series
-    index_mask = targetData(raster_mask)
+    index_mask = image_to_series_simple(raster_mask)
     index_mask = index_mask[index_mask == 1]
     
     # if original_df is list concatenate by index
     if type(original_df) == list:
         list_flag = True
         first_df_shape = original_df[0].shape
-
+    
         original_df = pd.concat(original_df,
                                 axis=1, 
                                 ignore_index=False)
+    else:
+        list_flag = False
     
     # check if polygon is already geopandas dataframe if so, don't read again
     if not(isinstance(original_df, pd.core.series.Series)) and \
@@ -330,8 +332,7 @@ def mask_df(raster_mask, original_df,missing_value = -9999):
         original_df = pd.read_csv(original_df)
     
     # limit to matching index from index_mask
-    original_df = original_df[original_df.index.isin(index_mask.index)]
-    
+    original_df = original_df.iloc[original_df.index.get_level_values('index').isin(index_mask.index)]
     
     # remove any more missing values 
     if missing_value != None:
