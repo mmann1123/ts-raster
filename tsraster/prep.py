@@ -101,8 +101,9 @@ def image_to_series(path):
     df2.drop(['level_1'], axis=1, inplace = True)
     
     # add columns needed for tsfresh
-    df2['pixel_id'] = df2.index.get_level_values('pixel_id') 
-    df2['time'] = df2.index.get_level_values('time') 
+    df2.reset_index(inplace=True, level=['pixel_id','time'])
+    #    df2['pixel_id'] = df2.index.get_level_values('pixel_id') 
+    #    df2['time'] = df2.index.get_level_values('time') 
     return df2
  
 
