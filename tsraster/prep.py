@@ -77,7 +77,7 @@ def image_to_series(path):
     data = image_to_array(path).reshape(rows*cols, num)
     
     # create index
-    index = pd.RangeIndex(start=0, stop=len(data), step=1, name = 'index') 
+    index = pd.RangeIndex(start=0, stop=len(data), step=1, name = 'pixel_id') 
     
     # create wide df with images as columns
     df = pd.DataFrame(data=data[0:,0:],
@@ -94,12 +94,15 @@ def image_to_series(path):
     df2['kind'] = df2['level_1'].str.split('[- _]').str[0]
     
     # set multiindex 
-    df2.set_index(['index', 'time'], inplace=True)
+    df2.set_index(['pixel_id', 'time'], inplace=True)
     
     #rename all columns
     df2.columns =[ 'level_1', 'value', 'kind']
     df2.drop(['level_1'], axis=1, inplace = True)
     
+    # add columns needed for tsfresh
+    df2['pixel_id'] = df2.index.get_level_values('pixel_id') 
+    df2['time'] = df2.index.get_level_values('time') 
     return df2
  
 
@@ -108,6 +111,7 @@ def image_to_series_simple(file):
     Reads and prepares single raster file 
 
     :param file: raster file name
+    :param dtype: numpy data type to return (default:np.int8)
     :return: One-dimensional ndarray with axis
     '''
 
@@ -116,11 +120,12 @@ def image_to_series_simple(file):
     data = image_to_array(file).reshape(rows * cols)
 
     # create an index for each pixel
-    index = pd.RangeIndex(start=0, stop=len(data), step=1, name = 'index')
+    index = pd.RangeIndex(start=0, stop=len(data), step=1, name = 'pixel_id')
     # convert N-dimension array to one dimension array
     df = pd.Series(data=data, 
                    index=index, 
-                   dtype=np.int8)
+                   dtype=np.int8,
+                   name = 'value')
 
     return df
 
@@ -290,7 +295,7 @@ def poly_to_series(poly,raster_ex, field_name, nodata=-9999, plot_output=True):
     
     
     # create index
-    index = pd.RangeIndex(start=0, stop=len(data), step=1, name='index') 
+    index = pd.RangeIndex(start=0, stop=len(data), step=1, name='pixel_id') 
     
     
     # create wide df with images as columns
@@ -308,7 +313,7 @@ def mask_df(raster_mask, original_df,missing_value = -9999):
     
     :param raster_mask: tif containing (0,1) mask where 1's are retained
     :param original_df: a path to a pandas dataframe, a series to mask, or a list of 2 dfs
-    :return: masked tiff
+    :return: masked df
     '''
     
     # convert mask to pandas series
@@ -330,14 +335,19 @@ def mask_df(raster_mask, original_df,missing_value = -9999):
     if not(isinstance(original_df, pd.core.series.Series)) and \
             not(isinstance(original_df, pd.core.frame.DataFrame)):
         original_df = pd.read_csv(original_df)
-    
+        original_df.index.rename('pixel_id', inplace=True)
+        
     # limit to matching index from index_mask
-    original_df = original_df.iloc[original_df.index.get_level_values('index').isin(index_mask.index)]
+    original_df = original_df.iloc[original_df.index.get_level_values('pixel_id').isin(index_mask.index)]
     
     # remove any more missing values 
     if missing_value != None:
         # inserts nan in missing value locations 
-        original_df = original_df[original_df.iloc[:,:] != missing_value]
+        try: 
+            original_df = original_df[original_df.iloc[:,:] != missing_value]
+        except:
+            original_df = original_df[original_df.iloc[:] != missing_value]
+
         original_df.dropna(inplace=True)
         
         
@@ -346,7 +356,6 @@ def mask_df(raster_mask, original_df,missing_value = -9999):
         return original_df.iloc[:,range(first_df_shape[1])], original_df.iloc[:,first_df_shape[1]:] 
     else:
         return original_df
-
 
 
 def unmask_df(original_df, mask_df_output):
@@ -358,7 +367,7 @@ def unmask_df(original_df, mask_df_output):
     :return: unmasked output
     '''
     
-    # check if polygon is already geopandas dataframe if so, don't read again
+    # check if df is already dataframe if so, don't read again
     if not(isinstance(original_df, pd.core.series.Series)) and \
             not(isinstance(original_df, pd.core.frame.DataFrame)):
         original_df = pd.read_csv(original_df)
@@ -372,12 +381,17 @@ def unmask_df(original_df, mask_df_output):
     # limit original_df to col # of mask_df and change names to match 
     original_df = original_df.iloc[:,:mask_df_output.shape[1]]
     original_df.columns = mask_df_output.columns
+    original_df['value'] = -9999
     
-    # replace values based on masked values
-    original_df.update(mask_df_output)
-    
+    try:
+        # replace values based on masked values, iterate through kind if multiple features
+        for knd in mask_df_output['kind'].unique():
+            original_df.update(mask_df_output[mask_df_output['kind']==knd])
+    except:
+        # replace values based on masked values for non long form data types
+        original_df.update(mask_df_output)
+        
     return original_df
-
 
 
 def check_mask(raster_mask, raster_input_ex):
@@ -407,6 +421,7 @@ def check_mask(raster_mask, raster_input_ex):
     # close rasters
     mask.close()
     ex.close()
+
 
 def combine_extracted_features(path, write_out=True,index_col=0):
     '''
@@ -481,7 +496,7 @@ def combine_target_rasters(path, target_file_prefix, dep_var_name ='Y',write_out
     targets_years = [sub(r'\D', "", i) for i in targets]
     
     # rename columns with Y- prefix
-    series_from_each_file = [ targetData(targets[i]).rename('Y-'+targets_years[i]) 
+    series_from_each_file = [ image_to_series_simple(targets[i]).rename('Y-'+targets_years[i]) 
                                     for i in range(len(targets_years))]
     
     # create joined df with all target data
@@ -511,14 +526,14 @@ def wide_to_long_target_features(target,features,sep='-'):
     :return: target, attribute both in long format
     '''
     # get variables to convert to long by removing dates at end of name
-    target_stubs  = list(set([sub(sep+r'\d+', "", i) for i in target.columns if i !='index' ])) 
-    features_stubs  = list(set([sub(sep+r'\d+', "", i) for i in features.columns if i !='index' ]))
+    target_stubs  = list(set([sub(sep+r'\d+', "", i) for i in target.columns if i !='pixel_id' ])) 
+    features_stubs  = list(set([sub(sep+r'\d+', "", i) for i in features.columns if i !='pixel_id' ]))
     
-    target['index'] = target.index
-    features['index'] = features.index
+    target['pixel_id'] = target.index
+    features['pixel_id'] = features.index
     
-    target_ln = pd.wide_to_long(target,i='index',j="time", stubnames = target_stubs, sep=sep)
-    features_ln = pd.wide_to_long(features,i='index',j="time", stubnames = features_stubs, sep=sep)
+    target_ln = pd.wide_to_long(target,i='pixel_id',j="time", stubnames = target_stubs, sep=sep)
+    features_ln = pd.wide_to_long(features,i='pixel_id',j="time", stubnames = features_stubs, sep=sep)
     
     if target_ln.index.equals(features_ln.index):
         print('converted to long, indexes match')
@@ -533,12 +548,11 @@ def if_series_to_df(obj):
     # cover series to dataframes
     if(isinstance(obj, pd.core.series.Series)):
         obj = pd.DataFrame(data = obj, index = obj.index)
-        
     return obj
 
 
 
-def panel_lag_1(original_df, col_names, group_by_index='index'):
+def panel_lag_1(original_df, col_names, group_by_index='pixel_id'):
     '''
     Adding temporal lag to df for selected columns
     
