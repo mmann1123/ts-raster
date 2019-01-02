@@ -51,6 +51,7 @@ def CreateTiff(Name, Array, driver, NDV, GeoT, Proj, DataType, path):
     DataSet.FlushCache()
     return Name
 
+
 def calculateFeatures(path, parameters, reset_df,raster_mask=None ,tiff_output=True, workers = None):
     '''
     Calculates features or the statistical characteristics of time-series raster data.
@@ -74,7 +75,6 @@ def calculateFeatures(path, parameters, reset_df,raster_mask=None ,tiff_output=T
         print('df: '+os.path.join(path,'my_df.csv'))
         my_df.to_csv(os.path.join(path,'my_df.csv'), chunksize=10000, index=False)
     
-    
     # mask 
     if raster_mask is not None:
         my_df = tr.mask_df(raster_mask = raster_mask, 
@@ -94,6 +94,7 @@ def calculateFeatures(path, parameters, reset_df,raster_mask=None ,tiff_output=T
                                           column_sort = "time",
                                           column_value = "value",
                                           column_id = "pixel_id",
+                                          column_kind="kind", 
                                           #chunksize = 1000,
                                           distributor=Distributor
                                           )
@@ -114,13 +115,8 @@ def calculateFeatures(path, parameters, reset_df,raster_mask=None ,tiff_output=T
     out_path = Path(path).parent.joinpath(Path(path).stem+"_features")
     out_path.mkdir(parents=True, exist_ok=True)
     
-    # get file prefix
-    if os.path.isdir(path):
-        prefix = tr.path_to_var(path)+'-'
-        
     # write out features to csv file
     print("features:"+os.path.join(out_path,'extracted_features.csv'))
-    extracted_features.columns = [prefix + str(col) for col in extracted_features.columns]
     extracted_features.to_csv(os.path.join(out_path,'extracted_features.csv'), chunksize=10000)
     
     # write out feature names 
