@@ -16,6 +16,29 @@ import gdal
 from re import sub
 from pathlib import Path
 
+def set_df_mindex(df):
+    df.set_index(['pixel_id', 'time'], inplace=True) 
+    return df
+
+def reset_df_mindex(df):
+    df.reset_index(inplace=True, level=['pixel_id','time'])
+    return df
+
+def read_my_df(path):
+    my_df = pd.read_csv(os.path.join(path,'my_df.csv'))
+    my_df = set_df_mindex(my_df) #sort
+    # add columns needed for tsfresh
+    my_df = reset_df_mindex(my_df)
+    return(my_df)
+
+def path_to_var(path):
+    '''
+    Returns variable name from path to folder of tifs
+    '''
+    return([sub(r'[^a-zA-Z ]+', '', os.path.basename(x).split('.')[0]) for x in 
+         glob.glob("{}/**/*.tif".format(path), recursive=True) ][0])
+    
+    
 def image_names(path):
     '''
     Reads raster files from multiple folders and returns their names
@@ -107,7 +130,7 @@ def image_to_series(path):
     return df2
  
 
-def image_to_series_simple(file):
+def image_to_series_simple(file,dtype = np.int8):
     '''
     Reads and prepares single raster file 
 
@@ -123,10 +146,10 @@ def image_to_series_simple(file):
     # create an index for each pixel
     index = pd.RangeIndex(start=0, stop=len(data), step=1, name = 'pixel_id')
     # convert N-dimension array to one dimension array
-    df = pd.Series(data=data, 
-                   index=index, 
-                   dtype=np.int8,
-                   name = 'value')
+    df = pd.Series(data  = data, 
+                   index = index, 
+                   dtype = dtype,
+                   name  = 'value')
 
     return df
 
@@ -308,7 +331,7 @@ def poly_to_series(poly,raster_ex, field_name, nodata=-9999, plot_output=True):
     return df
 
 
-def mask_df(raster_mask, original_df,missing_value = -9999):
+def mask_df(raster_mask, original_df, missing_value = -9999):
     '''
     Reads in raster mask and subsets dataframe by mask index
     
@@ -325,22 +348,34 @@ def mask_df(raster_mask, original_df,missing_value = -9999):
     if type(original_df) == list:
         list_flag = True
         first_df_shape = original_df[0].shape
-    
-        original_df = pd.concat(original_df,
-                                axis=1, 
-                                ignore_index=False)
+        
+        try:
+            original_df = pd.concat(original_df,
+                                    axis=1, 
+                                    ignore_index=False)
+        except KeyError:
+            #assign correct multiindex to list elements CHECK!
+            original_df = [set_df_mindex(df) for df in original_df] 
+            original_df = pd.concat(original_df,
+                                    axis=1, 
+                                    ignore_index=False)
+            original_df = reset_df_mindex(original_df)
     else:
         list_flag = False
     
     # check if polygon is already geopandas dataframe if so, don't read again
     if not(isinstance(original_df, pd.core.series.Series)) and \
             not(isinstance(original_df, pd.core.frame.DataFrame)):
-        original_df = pd.read_csv(original_df)
-        original_df.index.rename('pixel_id', inplace=True)
+        original_df = read_my_df(original_df)
         
-    # limit to matching index from index_mask
-    original_df = original_df.iloc[original_df.index.get_level_values('pixel_id').isin(index_mask.index)]
-    
+    # limit to matching pixels in index from index_mask
+    try:
+        original_df = original_df.iloc[original_df.index.get_level_values('pixel_id').isin(index_mask.index)]
+    except KeyError:
+        # set multiindex 
+        original_df.set_index(['pixel_id', 'time'], inplace=True)
+        original_df = original_df.iloc[original_df.index.get_level_values('pixel_id').isin(index_mask.index)]
+
     # remove any more missing values 
     if missing_value != None:
         # inserts nan in missing value locations 
@@ -351,7 +386,9 @@ def mask_df(raster_mask, original_df,missing_value = -9999):
 
         original_df.dropna(inplace=True)
         
-        
+    # reset index as columns
+    original_df = reset_df_mindex(original_df)
+    
     if list_flag == True:
         # split back out list elements 
         return original_df.iloc[:,range(first_df_shape[1])], original_df.iloc[:,first_df_shape[1]:] 
@@ -371,7 +408,7 @@ def unmask_df(original_df, mask_df_output):
     # check if df is already dataframe if so, don't read again
     if not(isinstance(original_df, pd.core.series.Series)) and \
             not(isinstance(original_df, pd.core.frame.DataFrame)):
-        original_df = pd.read_csv(original_df)
+        original_df = read_my_df(original_df)
     else:
         original_df = original_df
     
@@ -393,6 +430,39 @@ def unmask_df(original_df, mask_df_output):
         original_df.update(mask_df_output)
         
     return original_df
+
+def unmask_from_mask(mask_df_output, raster_mask, missing_value = -9999):
+    '''
+    Unmasks a multiindex dataframe with the raster file used for masking
+    
+    :param mask_df_output: a path to a pandas dataframe or series to mask with matching (multi)index values
+    :param raster_mask: path to a rask max where 0 values are treated as missing
+    :param missing_value: value assigned to missing values generally used for writing raster tifs
+    :return: unmasked output
+    '''
+    
+    # set up df with correct index to unmask to
+    unmask_df = if_series_to_df(image_to_series_simple(raster_mask,dtype = np.float32))
+    unmask_df[unmask_df.value==0] = missing_value
+    unmask_df.reset_index(inplace=True)
+    time_index = mask_df_output.reset_index().time.unique()[0]
+    unmask_df['time'] = time_index
+    unmask_df = set_df_mindex(unmask_df)
+    
+    # add placeholders for unmasked values 
+    for name in mask_df_output.columns:
+        unmask_df[name] = unmask_df['value']
+    unmask_df.drop(columns=['value'],inplace=True)
+    
+    try:
+        # replace values based on masked values, iterate through kind if multiple features
+        for knd in mask_df_output['kind'].unique():
+            unmask_df.update(mask_df_output[mask_df_output['kind']==knd])
+    except:
+        # replace values based on masked values for non long form data types
+        unmask_df.update(mask_df_output)
+        
+    return unmask_df
 
 
 def check_mask(raster_mask, raster_input_ex):
@@ -430,7 +500,7 @@ def combine_extracted_features(path, write_out=True,index_col=0):
     based on subfolder names.
     
     Folder structure assumed as follows:
-         Test>
+         Precip>
                 monthly1990-1995>
                     extracted_features.csv
                     extracted_features.tif
@@ -455,7 +525,7 @@ def combine_extracted_features(path, write_out=True,index_col=0):
     parent_folder_years = [sub(r'\D', "", parent_folder) for parent_folder in all_files]
     print('Combining folder year names',parent_folder_years)
     
-    # data read generator add year prefix to all column names 
+    # data read generator add year prefix to all column names  REMOVE?
     df_from_each_file = (pd.read_csv(all_files[i],index_col= index_col ).add_suffix('-'+parent_folder_years[i]) for i in range(len(all_files)))
     
     # create joined df with all extraced_features data

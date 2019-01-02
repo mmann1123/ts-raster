@@ -13,7 +13,8 @@ from tsfresh import extract_features
 from tsfresh.utilities.distribution import MultiprocessingDistributor, LocalDaskDistributor
 from tsfresh.feature_selection.relevance import calculate_relevance_table as crt
 from tsraster.prep import image_to_series, image_to_array, read_images
-from tsfresh.utilities.distribution import LocalDaskDistributor
+import tsraster.prep  as tr
+#from tsfresh.utilities.distribution import LocalDaskDistributor
 
 
 def CreateTiff(Name, Array, driver, NDV, GeoT, Proj, DataType, path):
@@ -50,42 +51,64 @@ def CreateTiff(Name, Array, driver, NDV, GeoT, Proj, DataType, path):
     DataSet.FlushCache()
     return Name
 
-
-def calculateFeatures(path, parameters, reset_df, tiff_output=True):
+def calculateFeatures(path, parameters, reset_df,raster_mask=None ,tiff_output=True, workers = None):
     '''
     Calculates features or the statistical characteristics of time-series raster data.
     It can also save features as a csv file (dataframe) and/or tiff file.
-
+    
     :param path: directory path to the raster files
     :param parameters: a dictionary of features to be extracted
     :param reset_df: boolean option for existing raster inputs as dataframe
+    :param raster_mask: path to binary raster mask
     :param tiff_output: boolean option for exporting tiff file
     :return: extracted features as a dataframe and tiff file
     '''
-  
+    
     if reset_df == False:
         #if reset_df =F read in csv file holding saved version of my_df
-    	    my_df = pd.read_csv(os.path.join(path,'my_df.csv'))
+        my_df = tr.read_my_df(path)
+            
     else:
         #if reset_df =T calculate ts_series and save csv
         my_df = image_to_series(path)
         print('df: '+os.path.join(path,'my_df.csv'))
         my_df.to_csv(os.path.join(path,'my_df.csv'), chunksize=10000, index=False)
     
-    Distributor = MultiprocessingDistributor(n_workers=2,
-                                             disable_progressbar=False,
-                                             progressbar_title="Feature Extraction")
     
+    # mask 
+    if raster_mask is not None:
+        my_df = tr.mask_df(raster_mask = raster_mask, 
+                        original_df = my_df)
+    
+    
+    if workers is not None:
+        Distributor = MultiprocessingDistributor(n_workers=workers,
+                                                 disable_progressbar=False,
+                                                 progressbar_title="Feature Extraction")
+        #Distributor = LocalDaskDistributor(n_workers=workers)
+    else:
+        Distributor = None
     
     extracted_features = extract_features(my_df, 
-                                          default_fc_parameters=parameters,
-                                          column_sort="time",
-                                          column_value="value",
-                                          column_id="pixel_id",
+                                          default_fc_parameters = parameters,
+                                          column_sort = "time",
+                                          column_value = "value",
+                                          column_id = "pixel_id",
+                                          #chunksize = 1000,
                                           distributor=Distributor
                                           )
-    # change index name to match 
+    
+    # change index name to match pixel and time period
     extracted_features.index.rename('pixel_id',inplace=True)
+    extracted_features.reset_index(inplace=True, level=['pixel_id'])
+    
+    extracted_features['time'] = str(my_df.time.min())+"_"+str(my_df.time.max())
+    extracted_features.set_index(['pixel_id', 'time'], inplace=True) 
+     
+    # unmask extracted features
+    extracted_features = tr.unmask_from_mask(mask_df_output = extracted_features, 
+                                          missing_value = -9999,
+                                          raster_mask = raster_mask)
     
     # deal with output location 
     out_path = Path(path).parent.joinpath(Path(path).stem+"_features")
@@ -93,14 +116,14 @@ def calculateFeatures(path, parameters, reset_df, tiff_output=True):
     
     # get file prefix
     if os.path.isdir(path):
-        prefix = os.path.basename(glob.glob("{}/**/*.tif".format(path), recursive=True)[0])[0:4]
+        prefix = tr.path_to_var(path)+'-'
         
     # write out features to csv file
     print("features:"+os.path.join(out_path,'extracted_features.csv'))
     extracted_features.columns = [prefix + str(col) for col in extracted_features.columns]
     extracted_features.to_csv(os.path.join(out_path,'extracted_features.csv'), chunksize=10000)
     
-    # write data frame
+    # write out feature names 
     kr = pd.DataFrame(list(extracted_features.columns))
     kr.index += 1
     kr.index.names = ['band']
