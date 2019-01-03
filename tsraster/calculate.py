@@ -345,8 +345,11 @@ def checkRelevance(x, y, ml_task="auto", fdr_level=0.05):
     features = x
     target = y
 
-    # drop id column
-    features = features.drop(labels=["id",'index'], axis=1, errors ='ignore')
+    # remove non-matching indexes
+    if features.index.names==['pixel_id', 'time']:
+        features.index = features.index.droplevel(level='time')
+
+    features = features.drop(labels=["id",'index', 'pixel_id','time'], axis=1, errors ='ignore')
 
     # calculate relevance
     relevance_test = crt(features,
@@ -368,8 +371,13 @@ def checkRelevance2(x, y, ml_task="auto", fdr_level=0.05):
         features = x
         target = y
 
-        # drop id column
-        features = features.drop(labels=["id",'index'], axis=1,errors='ignore')
+        # remove non-matching indexes
+        if features.index.names==['pixel_id', 'time']:
+            features.index = features.index.droplevel(level='time')
+    
+        features = features.drop(labels=["id",'index', 'pixel_id','time'], 
+                                 axis=1, 
+                                 errors ='ignore')
 
         # calculate relevance
         relevance_test = crt(features,
