@@ -9,6 +9,7 @@ from sklearn.metrics import r2_score
 from sklearn import preprocessing
 import pandas as pd
 from os.path import isfile
+from tsraster.prep import set_common_index, set_df_index,set_df_mindex
 
 
 def get_data(obj, test_size=0.33,scale=False,stratify=None,groups=None):
@@ -16,7 +17,7 @@ def get_data(obj, test_size=0.33,scale=False,stratify=None,groups=None):
        :param obj: path to csv or name of pandas dataframe  with yX, or list holding dataframes [y,X]
        :param test_size: percentage to hold out for testing (default 0.33)
        :param scale: should data be centered and scaled True or False 
-       :param stratify: should the sample be stratified by the dependent valueTrue or False
+       :param stratify: should the sample be stratified by the dependent value True or False
        :param groups:  group information defining domain specific stratifications of the samples, ex pixel_id, df.index.get_level_values('index') (default None)
     
        :return: X_train, X_test, y_train, y_test splits
@@ -26,17 +27,24 @@ def get_data(obj, test_size=0.33,scale=False,stratify=None,groups=None):
     print("input should be csv or pandas dataframe with yX, or [y,X]")
     if str(type(obj)) == "<class 'pandas.core.frame.DataFrame'>":
         df = obj
+    
     elif type(obj) == list and len(obj) == 2:
-        print('reading in list')
+        print('reading in list concat on common index')
+        obj = set_common_index(obj[0], obj[1])
         df = pd.concat([obj[0],obj[1]],axis=1, join='inner') # join Y and X
-        df.iloc[:,~df.columns.duplicated()]  # remove any repeated columns, take first
-    elif isfile(obj, ):
+        df = df.iloc[:,~df.columns.duplicated()]  # remove any repeated columns, take first
+    
+    elif isfile(obj):
         df = pd.read_csv(obj)
+        try:
+            set_df_index(df)
+        except:
+            set_df_mindex(df)
     else:
         print("input format not dataframe, csv, or list")
     
-    
-    df = df.drop(['Unnamed: 0'], axis=1,errors ='ignore')  # clear out unknown columns
+    # remove potential index columns in data 
+    df = df.drop(['Unnamed: 0','pixel_id','time'], axis=1,errors ='ignore')  # clear out unknown columns
     
     # check if center and scale
     if scale == True:
@@ -47,7 +55,14 @@ def get_data(obj, test_size=0.33,scale=False,stratify=None,groups=None):
     y = df.iloc[:,0]
     X = df.iloc[:,1:]
     
+    # handle stratification by depedent variable
+    if stratify == True:
+        stratify = y
+    else:
+        stratify = None
+    
     if groups is not None: 
+        print('need to figure out groups with stratification by y')
         # test train accounting for independent groups
         train_inds, test_inds = next(GroupShuffleSplit().split(X, groups=groups)) 
         X_train, X_test, y_train, y_test = X.iloc[train_inds,:], X.iloc[test_inds,:], y.iloc[train_inds], y.iloc[test_inds]
@@ -59,8 +74,8 @@ def get_data(obj, test_size=0.33,scale=False,stratify=None,groups=None):
                                                stratify=stratify,
                                                random_state=42)
     
-    
     return X_train, X_test, y_train, y_test
+
 
 
 def RandomForestReg(X_train, y_train, X_test, y_test):

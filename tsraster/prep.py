@@ -20,15 +20,30 @@ def set_df_mindex(df):
     df.set_index(['pixel_id', 'time'], inplace=True) 
     return df
 
-def reset_df_mindex(df):
-    df.reset_index(inplace=True, level=['pixel_id','time'])
+
+def set_df_index(df):
+    df.set_index(['pixel_id'], inplace=True) 
     return df
+
+def reset_df_index(df):
+    df.reset_index(inplace=True)
+    return df
+
+def set_common_index(a, b):
+    a = reset_df_index(a)
+    b = reset_df_index(b)
+    index_value = a.columns.intersection(b.columns) \
+                    .intersection(['pixel_id','time']).tolist()
+    a.set_index(index_value, inplace=True)
+    b.set_index(index_value, inplace=True)
+    return a, b
+
 
 def read_my_df(path):
     my_df = pd.read_csv(os.path.join(path,'my_df.csv'))
     my_df = set_df_mindex(my_df) #sort
     # add columns needed for tsfresh
-    my_df = reset_df_mindex(my_df)
+    my_df = reset_df_index(my_df)
     return(my_df)
 
 def path_to_var(path):
@@ -330,38 +345,42 @@ def poly_to_series(poly,raster_ex, field_name, nodata=-9999, plot_output=True):
 
     return df
 
-
-def mask_df(raster_mask, original_df, missing_value = -9999):
+def mask_df(raster_mask, original_df, missing_value = -9999, reset_index = True):
     '''
     Reads in raster mask and subsets dataframe by mask index
     
     :param raster_mask: tif containing (0,1) mask where 1's are retained
     :param original_df: a path to a pandas dataframe, a series to mask, or a list of 2 dfs
+    :param missing_value: additional missing values to be masked out
+    :param reset_index: if true, any df index will be reset (added as columns to df)
+    
     :return: masked df
     '''
     
-    # convert mask to pandas series
+    # convert mask to pandas series keep only cells with value 1
     index_mask = image_to_series_simple(raster_mask)
     index_mask = index_mask[index_mask == 1]
     
     # if original_df is list concatenate by index
     if type(original_df) == list:
         list_flag = True
-        first_df_shape = original_df[0].shape
+        first_df_shape = if_series_to_df(original_df[0]).shape
         
         try:
             original_df = pd.concat(original_df,
                                     axis=1, 
                                     ignore_index=False)
-        except KeyError:
-            #assign correct multiindex to list elements CHECK!
-            original_df = [set_df_mindex(df) for df in original_df] 
+        except:
+            print('time index missing in one element, merging list elements using only pixel_id index')
+            original_df = [set_df_index(reset_df_index(if_series_to_df(df))) for df in original_df] 
             original_df = pd.concat(original_df,
                                     axis=1, 
                                     ignore_index=False)
-            original_df = reset_df_mindex(original_df)
+            original_df = reset_df_index(original_df)
     else:
         list_flag = False
+        
+
     
     # check if polygon is already geopandas dataframe if so, don't read again
     if not(isinstance(original_df, pd.core.series.Series)) and \
@@ -375,7 +394,7 @@ def mask_df(raster_mask, original_df, missing_value = -9999):
         # set multiindex 
         original_df.set_index(['pixel_id', 'time'], inplace=True)
         original_df = original_df.iloc[original_df.index.get_level_values('pixel_id').isin(index_mask.index)]
-
+    
     # remove any more missing values 
     if missing_value != None:
         # inserts nan in missing value locations 
@@ -383,16 +402,26 @@ def mask_df(raster_mask, original_df, missing_value = -9999):
             original_df = original_df[original_df.iloc[:,:] != missing_value]
         except:
             original_df = original_df[original_df.iloc[:] != missing_value]
-
+    
         original_df.dropna(inplace=True)
         
-    # reset index as columns
-    original_df = reset_df_mindex(original_df)
-    
+
+
+
     if list_flag == True:
         # split back out list elements 
-        return original_df.iloc[:,range(first_df_shape[1])], original_df.iloc[:,first_df_shape[1]:] 
+        a , b = original_df.iloc[:,range(first_df_shape[1])], original_df.iloc[:,first_df_shape[1]:] 
+        
+        # reset index as columns
+        if reset_index == True:
+            a = reset_df_index(if_series_to_df(a))
+            b = reset_df_index(if_series_to_df(b))
+        return a , b
+    
     else:
+        # reset index as columns
+        if reset_index == True:
+            original_df = reset_df_index(if_series_to_df(original_df))
         return original_df
 
 
@@ -493,7 +522,6 @@ def check_mask(raster_mask, raster_input_ex):
     mask.close()
     ex.close()
 
-
 def combine_extracted_features(path, write_out=True,index_col=0):
     '''
     Combines multiple extracted_features.csv files and assigns year prefix
@@ -533,6 +561,9 @@ def combine_extracted_features(path, write_out=True,index_col=0):
                                   axis=1, 
                                   ignore_index=False)
     
+    # set index to match others 
+    concatenated_df.index.names = ['pixel_id']
+    
     # deal with output location 
     out_path = Path(path).parent.joinpath(Path(path).stem+"_features")
     out_path.mkdir(parents=True, exist_ok=True)
@@ -542,6 +573,7 @@ def combine_extracted_features(path, write_out=True,index_col=0):
         concatenated_df.to_csv(os.path.join(out_path,'combined_extracted_features_df.csv'), chunksize=50000, index=False)
     
     return(concatenated_df)
+
 
 
 def combine_target_rasters(path, target_file_prefix, dep_var_name ='Y',write_out=True):
