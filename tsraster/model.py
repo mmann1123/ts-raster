@@ -29,7 +29,7 @@ def get_data(obj, test_size=0.33,scale=False,stratify=None,groups=None):
         df = obj
     
     elif type(obj) == list and len(obj) == 2:
-        print('reading in list concat on common index')
+        print('reading in list concat on common index, inner join')
         obj = set_common_index(obj[0], obj[1])
         df = pd.concat([obj[0],obj[1]],axis=1, join='inner') # join Y and X
         df = df.iloc[:,~df.columns.duplicated()]  # remove any repeated columns, take first
@@ -62,7 +62,7 @@ def get_data(obj, test_size=0.33,scale=False,stratify=None,groups=None):
         stratify = None
     
     if groups is not None: 
-        print('need to figure out groups with stratification by y')
+        print('ERROR: need to figure out groups with stratification by y')
         # test train accounting for independent groups
         train_inds, test_inds = next(GroupShuffleSplit().split(X, groups=groups)) 
         X_train, X_test, y_train, y_test = X.iloc[train_inds,:], X.iloc[test_inds,:], y.iloc[train_inds], y.iloc[test_inds]

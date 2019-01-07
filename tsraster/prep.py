@@ -30,8 +30,8 @@ def reset_df_index(df):
     return df
 
 def set_common_index(a, b):
-    a = reset_df_index(a)
-    b = reset_df_index(b)
+    a = reset_df_index(if_series_to_df(a))
+    b = reset_df_index(if_series_to_df(b))
     index_value = a.columns.intersection(b.columns) \
                     .intersection(['pixel_id','time']).tolist()
     a.set_index(index_value, inplace=True)
@@ -554,7 +554,12 @@ def combine_extracted_features(path, write_out=True,index_col=0):
     print('Combining folder year names',parent_folder_years)
     
     # data read generator add year prefix to all column names  REMOVE?
-    df_from_each_file = (pd.read_csv(all_files[i],index_col= index_col ).add_suffix('-'+parent_folder_years[i]) for i in range(len(all_files)))
+    df_from_each_file = (pd.read_csv(all_files[i],index_col= index_col )\
+                         .drop(['time'],errors='ignore', axis=1)\
+                         .add_suffix('-'+parent_folder_years[i]) \
+                         for i in range(len(all_files)))
+                         
+                         
     
     # create joined df with all extraced_features data
     concatenated_df   = pd.concat(df_from_each_file,
@@ -676,8 +681,7 @@ def panel_lag_1(original_df, col_names, group_by_index='pixel_id'):
     # add lag 
     for col in col_names:
         original_df = pd.concat([original_df , 
-                                 original_df.loc[:,col].groupby(by=[group_by_index]).shift(1).rename(col+'_1')],
-        axis=1)
+                                 original_df.loc[:,col].groupby(by=[group_by_index]).shift(1).rename(col+'_1')],axis=1)
     
     # remove any columns that only have nan
     original_df.dropna(axis=1, how='all', inplace=True) 

@@ -332,31 +332,30 @@ def exportFeatures(path, input_file, output_file,
    return export_features
 
 
+
 def checkRelevance(x, y, ml_task="auto", fdr_level=0.05):
     '''
     Checks the statistical relevance of features to the target data
-
+    
     :param x: pandas dataframe containing the features extracted
     :param y: pandas series
     :return: dataframe
     '''
-
-    # read files
-    features = x
-    target = y
-
+    
     # remove non-matching indexes
-    if features.index.names==['pixel_id', 'time']:
-        features.index = features.index.droplevel(level='time')
-
+    features, target = set_common_index(a=x, b=y)
+    
+    #if features.index.names==['pixel_id', 'time']:
+    #    features.index = features.index.droplevel(level='time')
+    
     features = features.drop(labels=["id",'index', 'pixel_id','time'], axis=1, errors ='ignore')
-
+    
     # calculate relevance
     relevance_test = crt(features,
-                         target,
-                         ml_task=ml_task,
-                         fdr_level=fdr_level)
-
+                     target.squeeze(),  # convert back from df to series
+                     ml_task=ml_task,
+                     fdr_level=fdr_level)
+    
     return relevance_test
 
 def checkRelevance2(x, y, ml_task="auto", fdr_level=0.05):
@@ -367,13 +366,11 @@ def checkRelevance2(x, y, ml_task="auto", fdr_level=0.05):
         :param y: pandas series
         :return: 2 dataframes relevance_test, relevant_features
         '''
-        # read files
-        features = x
-        target = y
 
         # remove non-matching indexes
-        if features.index.names==['pixel_id', 'time']:
-            features.index = features.index.droplevel(level='time')
+        features, target = set_common_index(a=x, b=y)
+        #if features.index.names==['pixel_id', 'time']:
+        #    features.index = features.index.droplevel(level='time')
     
         features = features.drop(labels=["id",'index', 'pixel_id','time'], 
                                  axis=1, 
@@ -381,7 +378,7 @@ def checkRelevance2(x, y, ml_task="auto", fdr_level=0.05):
 
         # calculate relevance
         relevance_test = crt(features,
-                             target,
+                             target.squeeze(),
                              ml_task=ml_task,
                              fdr_level=fdr_level)
 
