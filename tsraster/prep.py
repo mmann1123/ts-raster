@@ -670,6 +670,9 @@ def panel_lag_1(original_df, col_names, group_by_index='pixel_id'):
     :return: original_df and lagged values with nans removed 
     '''
     
+    # avoid duplicate column names 
+    col_names = list(set(col_names))
+    
     # sort by pixel id, time 
     original_df.sort_index(inplace=True)
     

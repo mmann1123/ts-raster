@@ -368,7 +368,7 @@ def checkRelevance2(x, y, ml_task="auto", fdr_level=0.05):
         '''
 
         # remove non-matching indexes
-        features, target = set_common_index(a=x, b=y)
+        features, target = tr.set_common_index(a=x, b=y)
         #if features.index.names==['pixel_id', 'time']:
         #    features.index = features.index.droplevel(level='time')
     
