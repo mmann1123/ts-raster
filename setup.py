@@ -27,9 +27,9 @@ REQUIRED = [
     'geopandas==0.4.0',
     'numpy>=1.14.0',
     'scikit-learn>=0.19.0',
-    'pandas==0.22.0',
+    'pandas==0.23.4',
     'geojson==2.4.0',
-    'rasterio>=1.0.2'
+    'rasterio>=1.0.8'
 ]
 
 
