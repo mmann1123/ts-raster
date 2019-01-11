@@ -17,6 +17,9 @@ from re import sub
 from pathlib import Path
 
 def set_df_mindex(df):
+    '''
+    Returns dataframe with pixel_id and time index
+    '''
     df.set_index(['pixel_id', 'time'], inplace=True) 
     return df
 
@@ -444,6 +447,10 @@ def unmask_df(original_df, mask_df_output):
     # cover series to dataframes
     original_df = if_series_to_df(original_df)
     mask_df_output = if_series_to_df(mask_df_output)
+    
+    # find common index and set
+    original_df, mask_df_output = set_common_index(a = original_df,
+                                                   b = mask_df_output)
     
     # limit original_df to col # of mask_df and change names to match 
     original_df = original_df.iloc[:,:mask_df_output.shape[1]]
