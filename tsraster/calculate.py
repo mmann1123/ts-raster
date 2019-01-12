@@ -342,6 +342,8 @@ def checkRelevance(x, y, ml_task="auto", fdr_level=0.05):
     :return: dataframe
     '''
     
+    from  tsraster.prep import set_common_index
+    
     # remove non-matching indexes
     features, target = set_common_index(a=x, b=y)
     
@@ -366,6 +368,8 @@ def checkRelevance2(x, y, ml_task="auto", fdr_level=0.05):
         :param y: pandas series
         :return: 2 dataframes relevance_test, relevant_features
         '''
+
+        from  tsraster.prep import set_common_index
 
         # remove non-matching indexes
         features, target = set_common_index(a=x, b=y)
