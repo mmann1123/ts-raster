@@ -19,6 +19,8 @@ from pathlib import Path
 def set_df_mindex(df):
     '''
     Returns dataframe with pixel_id and time index
+    :param input dataframe
+    :return: input dataframe with pixel_id and time index
     '''
     df.set_index(['pixel_id', 'time'], inplace=True) 
     return df
@@ -27,6 +29,8 @@ def set_df_mindex(df):
 def set_df_index(df):
     '''
     Returns dataframe with pixel_id index
+    :param input dataframe
+    :return: input dataframe with pixel_id index
     '''
     df.set_index(['pixel_id'], inplace=True) 
     return df
@@ -34,13 +38,18 @@ def set_df_index(df):
 def reset_df_index(df):
     '''
     resets dataframe index
+    :param input dataframe
+    :return: input dataframe with reset index
     '''
     df.reset_index(inplace=True)
     return df
 
 def set_common_index(a, b):
     '''
-    sets indices for both dataframes to pixel ID and time
+    sets indices for two dataframes to pixel ID and time
+    :param dataframe a
+    :param dataframe b
+    :return: input dataframes a and b with indices pixel ID and time
     '''
     a = reset_df_index(if_series_to_df(a))
     b = reset_df_index(if_series_to_df(b))
@@ -54,6 +63,8 @@ def set_common_index(a, b):
 def read_my_df(path):
     '''
     reads in my_df.csv using path
+    :param directory path
+    :return: my_df located in input directory
     '''
     my_df = pd.read_csv(os.path.join(path,'my_df.csv'))
     my_df = set_df_mindex(my_df) #sort
@@ -64,6 +75,8 @@ def read_my_df(path):
 def path_to_var(path):
     '''
     Returns variable name from path to folder of tifs
+    :param directory path (with filename)
+    :return: variable name from path to folder of tifs
     '''
     return([sub(r'[^a-zA-Z ]+', '', os.path.basename(x).split('.')[0]) for x in 
          glob.glob("{}/**/*.tif".format(path), recursive=True) ][0])
@@ -96,7 +109,7 @@ def read_images(path):
     '''
 
     if os.path.isdir(path):
-        images = glob.glob("{}/**/*.tif".format(path), recursive=True)
+        images = glob.glob("{}/**/*.tif".format(path), recursive=True)bg
         raster_files = [gdal.Open(f, gdal.GA_ReadOnly) for f in images]
     else:
         raster_files = [gdal.Open(path, gdal.GA_ReadOnly)]
@@ -300,7 +313,7 @@ def poly_to_series(poly,raster_ex, field_name, nodata=-9999, plot_output=True):
     :param raster_path_prefix: directory path to the output file example: 'F:/Boundary/StatePoly_buf'
     :param nodata: (int or float, optional) – Used as fill value for all areas not covered by input geometries.
     :param nodata: (True False, optional) – Plot rasterized polygon data? 
-    
+    :param plot_output: if true plot output, default=True
     :return: a pandas dataframe with a named column of rasterized data 
     '''
     
