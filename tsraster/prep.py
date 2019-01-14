@@ -32,6 +32,7 @@ def reset_df_index(df):
     df.reset_index(inplace=True)
     return df
 
+
 def set_common_index(a, b):
     a = reset_df_index(if_series_to_df(a))
     b = reset_df_index(if_series_to_df(b))
