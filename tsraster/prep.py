@@ -25,14 +25,23 @@ def set_df_mindex(df):
 
 
 def set_df_index(df):
+    '''
+    Returns dataframe with pixel_id index
+    '''
     df.set_index(['pixel_id'], inplace=True) 
     return df
 
 def reset_df_index(df):
+    '''
+    resets dataframe index
+    '''
     df.reset_index(inplace=True)
     return df
 
 def set_common_index(a, b):
+    '''
+    sets indices for both dataframes to pixel ID and time
+    '''
     a = reset_df_index(if_series_to_df(a))
     b = reset_df_index(if_series_to_df(b))
     index_value = a.columns.intersection(b.columns) \
@@ -43,6 +52,9 @@ def set_common_index(a, b):
 
 
 def read_my_df(path):
+    '''
+    reads in my_df.csv using path
+    '''
     my_df = pd.read_csv(os.path.join(path,'my_df.csv'))
     my_df = set_df_mindex(my_df) #sort
     # add columns needed for tsfresh
@@ -660,7 +672,7 @@ def wide_to_long_target_features(target,features,sep='-'):
 
 
 def if_series_to_df(obj):
-    # cover series to dataframes
+    # convert series to dataframes
     if(isinstance(obj, pd.core.series.Series)):
         obj = pd.DataFrame(data = obj, index = obj.index)
     return obj
