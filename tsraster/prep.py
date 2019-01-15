@@ -19,7 +19,7 @@ from pathlib import Path
 def set_df_mindex(df):
     '''
     Returns dataframe with pixel_id and time index
-    :param input dataframe
+    :param: input dataframe
     :return: input dataframe with pixel_id and time index
     '''
     df.set_index(['pixel_id', 'time'], inplace=True) 
@@ -38,7 +38,7 @@ def set_df_index(df):
 def reset_df_index(df):
     '''
     resets dataframe index
-    :param input dataframe
+    :param: input dataframe
     :return: input dataframe with reset index
     '''
     df.reset_index(inplace=True)
@@ -47,8 +47,8 @@ def reset_df_index(df):
 def set_common_index(a, b):
     '''
     sets indices for two dataframes to pixel ID and time
-    :param dataframe a
-    :param dataframe b
+    :param a: dataframe a
+    :param b: dataframe b
     :return: input dataframes a and b with indices pixel ID and time
     '''
     a = reset_df_index(if_series_to_df(a))
@@ -63,7 +63,7 @@ def set_common_index(a, b):
 def read_my_df(path):
     '''
     reads in my_df.csv using path
-    :param directory path
+    :param path: directory path
     :return: my_df located in input directory
     '''
     my_df = pd.read_csv(os.path.join(path,'my_df.csv'))
@@ -75,7 +75,7 @@ def read_my_df(path):
 def path_to_var(path):
     '''
     Returns variable name from path to folder of tifs
-    :param directory path (with filename)
+    :param path: directory path (with filename)
     :return: variable name from path to folder of tifs
     '''
     return([sub(r'[^a-zA-Z ]+', '', os.path.basename(x).split('.')[0]) for x in 
@@ -628,7 +628,7 @@ def combine_target_rasters(path, target_file_prefix, dep_var_name ='Y',write_out
     :param path: path to parent directory holding folders containing extracted features. (Example: Test) 
     :param target_file_prefix: prefix to search for in path (ex above: "target_")
     :param dep_var_name: column name to assign (default: "Y")
-    :param write_out: Should combined df be written to csv
+    :param write_out: Should combined df be written to csv (default: True)
     :return: merged df containing all extracted_features.csv data with assigned year prefix
     '''
     
@@ -663,6 +663,7 @@ def wide_to_long_target_features(target,features,sep='-'):
     
     :param target: target (Y) data wide format multiple years
     :param features: attribute (X) data wide format multiple years
+    param sep: A character indicating the separation of the variable names in the wide format, to be stripped from the names in the long format. (default '_')
     :return: target, attribute both in long format
     '''
     # get variables to convert to long by removing dates at end of name
@@ -698,7 +699,7 @@ def panel_lag_1(original_df, col_names, group_by_index='pixel_id'):
     
     :param original_df: any dataframe
     :param col_names: column names to add a lag to
-    :param group_by_index: 
+    :param group_by_index: index to group rows by (default 'pixel_id')
     :return: original_df and lagged values with nans removed 
     '''
     
