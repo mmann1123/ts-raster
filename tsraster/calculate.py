@@ -341,6 +341,8 @@ def checkRelevance(x, y, ml_task="auto", fdr_level=0.05):
     
     :param x: pandas dataframe containing the features extracted
     :param y: pandas series
+    :param ml_task: string indicating intended machine learning task.  May be set to "regression", "classification", or "auto", in which case the task is inferred from y (default "auto")
+    :param fdr_Level: float indicating theoretical expected percentage of irrelevant features among all created features (default 0.05)
     :return: dataframe
     '''
     
@@ -352,7 +354,8 @@ def checkRelevance(x, y, ml_task="auto", fdr_level=0.05):
     #if features.index.names==['pixel_id', 'time']:
     #    features.index = features.index.droplevel(level='time')
     
-    features = features.drop(labels=["id",'index', 'pixel_id','time'], axis=1, errors ='ignore')
+    #drop specified labels from features dataframe
+    features = features.drop(labels=["id",'index', 'pixel_id','time'], axis=1, errors ='ignore') 
     
     # calculate relevance
     relevance_test = crt(features,
@@ -378,6 +381,7 @@ def checkRelevance2(x, y, ml_task="auto", fdr_level=0.05):
         #if features.index.names==['pixel_id', 'time']:
         #    features.index = features.index.droplevel(level='time')
     
+        #drop specified labels from features dataframe
         features = features.drop(labels=["id",'index', 'pixel_id','time'], 
                                  axis=1, 
                                  errors ='ignore')
