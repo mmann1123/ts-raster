@@ -19,7 +19,7 @@ import tsraster.prep  as tr
 
 def CreateTiff(Name, Array, driver, NDV, GeoT, Proj, DataType, path):
     '''
-    Converts array to a single or multi band raster file
+    Converts array to a single or multi band raster file in GeoTiff format
 
     :param Name: name of the output tiff file
     :param Array: numpy array to be converted to
@@ -28,6 +28,7 @@ def CreateTiff(Name, Array, driver, NDV, GeoT, Proj, DataType, path):
     :param GeoT: geographic transformation
     :param Proj: projection
     :param DataType: array data format
+    :param path: file directory
     :return: GeoTiff
     '''
 
@@ -52,7 +53,7 @@ def CreateTiff(Name, Array, driver, NDV, GeoT, Proj, DataType, path):
     return Name
 
 
-def calculateFeatures(path, parameters, reset_df,raster_mask=None ,tiff_output=True, workers = None):
+def calculateFeatures(path, parameters, reset_df ,raster_mask=None ,tiff_output=True, workers = None):
     '''
     Calculates features or the statistical characteristics of time-series raster data.
     It can also save features as a csv file (dataframe) and/or tiff file.
@@ -60,8 +61,9 @@ def calculateFeatures(path, parameters, reset_df,raster_mask=None ,tiff_output=T
     :param path: directory path to the raster files
     :param parameters: a dictionary of features to be extracted
     :param reset_df: boolean option for existing raster inputs as dataframe
-    :param raster_mask: path to binary raster mask
-    :param tiff_output: boolean option for exporting tiff file
+    :param raster_mask: path to binary raster mask (default None)
+    :param tiff_output: boolean option for exporting tiff file (default True)
+    :param workers: number of parallel workers in multiprocessing pool (default None)
     :return: extracted features as a dataframe and tiff file
     '''
     
@@ -75,12 +77,12 @@ def calculateFeatures(path, parameters, reset_df,raster_mask=None ,tiff_output=T
         print('df: '+os.path.join(path,'my_df.csv'))
         my_df.to_csv(os.path.join(path,'my_df.csv'), chunksize=10000, index=False)
     
-    # mask 
+    # mask rasters based on desired mask, if present
     if raster_mask is not None:
         my_df = tr.mask_df(raster_mask = raster_mask, 
                         original_df = my_df)
     
-    
+    #distribute processing across multiprocessing pool, if multiple workers are present
     if workers is not None:
         Distributor = MultiprocessingDistributor(n_workers=workers,
                                                  disable_progressbar=False,
@@ -317,9 +319,9 @@ def exportFeatures(path, input_file, output_file,
    :param path: directory path to the raster files
    :param input_file: the features stored in pandas data frame
    :param output_file: the name of the output_file
-   :param driver: data format of the output file
-   :param noData: no data value
-   :param DataType: array data format
+   :param driver: data format of the output file (default gdal.GetDriverByName('GTiff'))
+   :param noData: no data value (default -9999)
+   :param DataType: array data format (default gdal.GDT_Float32)
    :return: tiff file of the exported features
    '''
    output_file = output_file
