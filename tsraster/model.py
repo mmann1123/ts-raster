@@ -144,6 +144,15 @@ def RandomForestClass(X_train, y_train, X_test, y_test):
 
 # Not working correctly
 def GradientBoosting(X_train, y_train, X_test, y_test):
+  '''
+    Conduct random gradient boosting regression on training data and test predictive power against test data
+
+    :param X_train: dataframe containing training data features
+    :param y_train: dataframe containing training data responses
+    :param X_test: dataframe containing test data features
+    :param X_train: dataframe containing test data features
+    :return: gradient boosted regression Model, mse of model on test data, r2 of model on test data
+    '''
     GBoost = GradientBoostingRegressor(n_estimators=3000,
                                        learning_rate=0.05,
                                        max_depth=4,
