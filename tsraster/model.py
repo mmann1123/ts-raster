@@ -174,6 +174,14 @@ def GradientBoosting(X_train, y_train, X_test, y_test):
 
 
 def ElasticNet(X_train, y_train):
+    '''
+    Conduct elastic net regression on training data and test predictive power against test data
+
+    :param X_train: dataframe containing training data features
+    :param y_train: dataframe containing training data responses
+    :return: elastic net model, MSE, R-squared
+    '''
+
     enet = ElasticNet(alpha=0.5,
                       l1_ratio=0.7)
 
