@@ -19,20 +19,38 @@ from pathlib import Path
 def set_df_mindex(df):
     '''
     Returns dataframe with pixel_id and time index
+    :param: input dataframe
+    :return: input dataframe with pixel_id and time index
     '''
     df.set_index(['pixel_id', 'time'], inplace=True) 
     return df
 
 
 def set_df_index(df):
+    '''
+    Returns dataframe with pixel_id index
+    :param input dataframe
+    :return: input dataframe with pixel_id index
+    '''
     df.set_index(['pixel_id'], inplace=True) 
     return df
 
 def reset_df_index(df):
+    '''
+    resets dataframe index
+    :param: input dataframe
+    :return: input dataframe with reset index
+    '''
     df.reset_index(inplace=True)
     return df
 
 def set_common_index(a, b):
+    '''
+    sets indices for two dataframes to pixel ID and time
+    :param a: dataframe a
+    :param b: dataframe b
+    :return: input dataframes a and b with indices pixel ID and time
+    '''
     a = reset_df_index(if_series_to_df(a))
     b = reset_df_index(if_series_to_df(b))
     index_value = a.columns.intersection(b.columns) \
@@ -43,6 +61,11 @@ def set_common_index(a, b):
 
 
 def read_my_df(path):
+    '''
+    reads in my_df.csv using path
+    :param path: directory path
+    :return: my_df located in input directory
+    '''
     my_df = pd.read_csv(os.path.join(path,'my_df.csv'))
     my_df = set_df_mindex(my_df) #sort
     # add columns needed for tsfresh
@@ -52,6 +75,8 @@ def read_my_df(path):
 def path_to_var(path):
     '''
     Returns variable name from path to folder of tifs
+    :param path: directory path (with filename)
+    :return: variable name from path to folder of tifs
     '''
     return([sub(r'[^a-zA-Z ]+', '', os.path.basename(x).split('.')[0]) for x in 
          glob.glob("{}/**/*.tif".format(path), recursive=True) ][0])
@@ -84,7 +109,7 @@ def read_images(path):
     '''
 
     if os.path.isdir(path):
-        images = glob.glob("{}/**/*.tif".format(path), recursive=True)
+        images = glob.glob("{}/**/*.tif".format(path), recursive=True)bg
         raster_files = [gdal.Open(f, gdal.GA_ReadOnly) for f in images]
     else:
         raster_files = [gdal.Open(path, gdal.GA_ReadOnly)]
@@ -288,7 +313,7 @@ def poly_to_series(poly,raster_ex, field_name, nodata=-9999, plot_output=True):
     :param raster_path_prefix: directory path to the output file example: 'F:/Boundary/StatePoly_buf'
     :param nodata: (int or float, optional) – Used as fill value for all areas not covered by input geometries.
     :param nodata: (True False, optional) – Plot rasterized polygon data? 
-    
+    :param plot_output: if true plot output, default=True
     :return: a pandas dataframe with a named column of rasterized data 
     '''
     
@@ -603,7 +628,7 @@ def combine_target_rasters(path, target_file_prefix, dep_var_name ='Y',write_out
     :param path: path to parent directory holding folders containing extracted features. (Example: Test) 
     :param target_file_prefix: prefix to search for in path (ex above: "target_")
     :param dep_var_name: column name to assign (default: "Y")
-    :param write_out: Should combined df be written to csv
+    :param write_out: Should combined df be written to csv (default: True)
     :return: merged df containing all extracted_features.csv data with assigned year prefix
     '''
     
@@ -638,6 +663,7 @@ def wide_to_long_target_features(target,features,sep='-'):
     
     :param target: target (Y) data wide format multiple years
     :param features: attribute (X) data wide format multiple years
+    param sep: A character indicating the separation of the variable names in the wide format, to be stripped from the names in the long format. (default '_')
     :return: target, attribute both in long format
     '''
     # get variables to convert to long by removing dates at end of name
@@ -660,7 +686,7 @@ def wide_to_long_target_features(target,features,sep='-'):
 
 
 def if_series_to_df(obj):
-    # cover series to dataframes
+    # convert series to dataframes
     if(isinstance(obj, pd.core.series.Series)):
         obj = pd.DataFrame(data = obj, index = obj.index)
     return obj
@@ -673,7 +699,7 @@ def panel_lag_1(original_df, col_names, group_by_index='pixel_id'):
     
     :param original_df: any dataframe
     :param col_names: column names to add a lag to
-    :param group_by_index: 
+    :param group_by_index: index to group rows by (default 'pixel_id')
     :return: original_df and lagged values with nans removed 
     '''
     

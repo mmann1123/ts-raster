@@ -16,8 +16,8 @@ def get_data(obj, test_size=0.33,scale=False,stratify=None,groups=None):
     '''
        :param obj: path to csv or name of pandas dataframe  with yX, or list holding dataframes [y,X]
        :param test_size: percentage to hold out for testing (default 0.33)
-       :param scale: should data be centered and scaled True or False 
-       :param stratify: should the sample be stratified by the dependent value True or False
+       :param scale: should data be centered and scaled True or False (default False)
+       :param stratify: should the sample be stratified by the dependent value True or False (default None)
        :param groups:  group information defining domain specific stratifications of the samples, ex pixel_id, df.index.get_level_values('index') (default None)
     
        :return: X_train, X_test, y_train, y_test splits
@@ -55,7 +55,7 @@ def get_data(obj, test_size=0.33,scale=False,stratify=None,groups=None):
     y = df.iloc[:,0]
     X = df.iloc[:,1:]
     
-    # handle stratification by depedent variable
+    # handle stratification by dependent variable
     if stratify == True:
         stratify = y
     else:
@@ -79,6 +79,17 @@ def get_data(obj, test_size=0.33,scale=False,stratify=None,groups=None):
 
 
 def RandomForestReg(X_train, y_train, X_test, y_test):
+    '''
+    Conduct random forest regression on training data and test predictive power against test data
+
+    :param X_train: dataframe containing training data features
+    :param y_train: dataframe containing training data responses
+    :param X_test: dataframe containing test data features
+    :param X_train: dataframe containing test data features
+    :return: Random Forest Model, dataframe of predicted responses for test dataset, mse of model on test data, r2 of model on test data
+
+    '''
+
     RF = RandomForestRegressor(n_estimators=100,
                                criterion="mse",
                                max_depth=10,
@@ -97,6 +108,16 @@ def RandomForestReg(X_train, y_train, X_test, y_test):
     return RF, predict_test, MSE, R_Squared
 
 def RandomForestClass(X_train, y_train, X_test, y_test):
+    '''
+    Conduct random forest classification on training data and test predictive power against test data
+
+    :param X_train: dataframe containing training data features
+    :param y_train: dataframe containing training data responses
+    :param X_test: dataframe containing test data features
+    :param X_train: dataframe containing test data features
+    :return: Random Forest Model, accuracy of model in predicting test data, mse of model on test data, kappa coefficient, confusion matrix (array)
+    '''
+
     RF = RandomForestClassifier(n_estimators=100,
                                max_depth=10,
                                min_samples_leaf=5,
@@ -123,6 +144,15 @@ def RandomForestClass(X_train, y_train, X_test, y_test):
 
 # Not working correctly
 def GradientBoosting(X_train, y_train, X_test, y_test):
+  '''
+    Conduct random gradient boosting regression on training data and test predictive power against test data
+
+    :param X_train: dataframe containing training data features
+    :param y_train: dataframe containing training data responses
+    :param X_test: dataframe containing test data features
+    :param X_train: dataframe containing test data features
+    :return: gradient boosted regression Model, mse of model on test data, r2 of model on test data
+    '''
     GBoost = GradientBoostingRegressor(n_estimators=3000,
                                        learning_rate=0.05,
                                        max_depth=4,
@@ -144,6 +174,14 @@ def GradientBoosting(X_train, y_train, X_test, y_test):
 
 
 def ElasticNet(X_train, y_train):
+    '''
+    Conduct elastic net regression on training data and test predictive power against test data
+
+    :param X_train: dataframe containing training data features
+    :param y_train: dataframe containing training data responses
+    :return: elastic net model, MSE, R-squared
+    '''
+
     enet = ElasticNet(alpha=0.5,
                       l1_ratio=0.7)
 
