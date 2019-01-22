@@ -44,6 +44,7 @@ def reset_df_index(df):
     df.reset_index(inplace=True)
     return df
 
+
 def set_common_index(a, b):
     '''
     sets indices for two dataframes to pixel ID and time
