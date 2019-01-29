@@ -117,6 +117,28 @@ def read_images(path):
 
     return raster_files
 
+
+def read_images_window(path, length = 3, baseYear, offset = 1):
+    '''
+    Reads a set of associated raster bands from a file.
+    Can read one or multiple files stored in different folders.
+
+    :param path: file name or directory path
+    :param length: number of prior years to evaluate (default 3)
+    :param baseYear: year of interest
+    :param offset: number of years by which to offset parameters from year of interest (default 1)
+    :return: raster files opened as GDALDataset
+    '''
+
+    if os.path.isdir(path):
+        images = []
+        for x in xrange(length):
+            images = images +  glob.glob(path+ '/*/*-' + str(baseYear - (x+ offset) + '??.tif'), recursive=True)
+        raster_files = [gdal.Open(f, gdal.GA_ReadOnly) for f in images]
+    else:
+        raster_files = [gdal.Open(path, gdal.GA_ReadOnly)]
+    return raster_files
+
 def image_to_array(path):
     '''
     Converts images inside multiple folders to stacked array
