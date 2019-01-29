@@ -154,6 +154,23 @@ def image_to_array(path):
 
     return raster_array
 
+    def image_to_array_window(path, baseYear, length = 3, offset = 1):
+    '''
+    Converts images inside multiple folders to stacked array
+
+    :param path: directory path
+    :param length: number of prior years to evaluate (default 3)
+    :param baseYear: year of interest
+    :param offset: number of years by which to offset parameters from year of interest (default 1)
+    :return: stacked numpy array
+    '''
+
+    raster_array = np.stack([raster.ReadAsArray()
+                             for raster in read_images_window(path, baseYear, length, offset)],
+                             axis=-1)
+
+    return raster_array
+
 
 def image_to_series(path):
     '''
@@ -196,6 +213,50 @@ def image_to_series(path):
     #    df2['time'] = df2.index.get_level_values('time') 
     return df2
  
+def image_to_series_window(path, baseYear, length = 3, offset = 1):
+    '''
+    Converts images to one dimensional  array with axis labels
+    
+    :param path: directory path
+    :param length: number of prior years to evaluate (default 3)
+    :param baseYear: year of interest
+    :param offset: number of years by which to offset parameters from year of interest (default 1)
+    :return: pandas series
+    '''
+    
+    rows, cols, num = image_to_array_window(path, baseYear, length, offset).shape
+    data = image_to_array(path).reshape(rows*cols, num)
+    
+    # create index
+    index = pd.RangeIndex(start=0, stop=len(data), step=1, name = 'pixel_id') 
+    
+    # create wide df with images as columns
+    df = pd.DataFrame(data=data[0:,0:],
+                      index=index, 
+                      dtype=np.float32, 
+                      columns=image_names(path))
+    
+    #reindex and sort columns
+    df2 = df.reindex(sorted(df.columns), axis=1)
+    # stack columns as 1d array
+    df2 = df2.stack().reset_index()
+    # create a time series column
+    df2['time'] = df2['level_1'].str.split('[- _]').str[1]
+    df2['kind'] = df2['level_1'].str.split('[- _]').str[0]
+    
+    # set multiindex 
+    df2.set_index(['pixel_id', 'time'], inplace=True)
+    
+    #rename all columns
+    df2.columns =[ 'level_1', 'value', 'kind']
+    df2.drop(['level_1'], axis=1, inplace = True)
+    
+    # add columns needed for tsfresh
+    df2.reset_index(inplace=True, level=['pixel_id','time'])
+    #    df2['pixel_id'] = df2.index.get_level_values('pixel_id') 
+    #    df2['time'] = df2.index.get_level_values('time') 
+    return df2
+
 
 def image_to_series_simple(file,dtype = np.int8):
     '''
