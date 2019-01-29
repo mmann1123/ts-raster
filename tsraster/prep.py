@@ -110,7 +110,7 @@ def read_images(path):
     '''
 
     if os.path.isdir(path):
-        images = glob.glob("{}/**/*.tif".format(path), recursive=True)bg
+        images = glob.glob("{}/**/*.tif".format(path), recursive=True)
         raster_files = [gdal.Open(f, gdal.GA_ReadOnly) for f in images]
     else:
         raster_files = [gdal.Open(path, gdal.GA_ReadOnly)]
