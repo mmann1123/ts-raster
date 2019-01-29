@@ -154,7 +154,7 @@ def image_to_array(path):
 
     return raster_array
 
-    def image_to_array_window(path, baseYear, length = 3, offset = 1):
+def image_to_array_window(path, baseYear, length = 3, offset = 1):
     '''
     Converts images inside multiple folders to stacked array
 
