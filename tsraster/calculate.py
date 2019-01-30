@@ -229,14 +229,14 @@ def calculateFeatures_window(path, parameters, baseYear, reset_df ,length = 3, o
     
     # write out features to csv file
     print("features:"+os.path.join(out_path,'extracted_features.csv'))
-    extracted_features.to_csv(os.path.join(out_path,'extracted_features' + str(iterYear) + '_' + str(length) + '_prev_offset' + str(offset) +  '.csv'), chunksize=10000)
+    extracted_features.to_csv(os.path.join(out_path,'extracted_features' + str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  '.csv'), chunksize=10000)
     
     # write out feature names 
     kr = pd.DataFrame(list(extracted_features.columns))
     kr.index += 1
     kr.index.names = ['band']
     kr.columns = ['feature_name']
-    kr.to_csv(os.path.join(out_path,"features_names" + str(iterYear) + '_' + str(length) + '_prev_offset' + str(offset) +  ".csv"))
+    kr.to_csv(os.path.join(out_path,"features_names" + str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  ".csv"))
     
     # write out features to tiff file
     if tiff_output == False:
@@ -250,7 +250,7 @@ def calculateFeatures_window(path, parameters, baseYear, reset_df ,length = 3, o
         
         #reshape the dimension of features extracted
         f2Array = matrix_features.reshape(rows, cols, num_of_layers)
-        output_file = 'extracted_features'+ str(iterYear) + '_' + str(length) + '_prev_offset' + str(offset) +  '.tiff'  
+        output_file = 'extracted_features'+ str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  '.tiff'  
         
         #Get Meta Data from raw data
         raw_data = read_images(path)
