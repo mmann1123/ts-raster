@@ -174,7 +174,7 @@ def GradientBoosting(X_train, y_train, X_test, y_test):
     return GBoost, MSE, R_Squared
 
 
-def ElasticNet(X_train, y_train):
+def ElasticNetModel(X_train, y_train):
     '''
     Conduct elastic net regression on training data and test predictive power against test data
 
@@ -195,6 +195,31 @@ def ElasticNet(X_train, y_train):
     R_Squared = ("R-Squared = {}".format(r_squared))
 
     return enet, MSE, R_Squared
+
+    def ElasticNetCVModel(X_train, y_train):
+    '''
+    Conduct elastic net regression on training data and test predictive power against test data
+
+    :param X_train: dataframe containing training data features
+    :param y_train: dataframe containing training data responses
+    :return: elastic net model, MSE, R-squared
+    '''
+    alpha_array = [0.01, 0.025, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.7, 0.75, 0.8, 0.85, 0.90 0.95, 0.975, 0.99]
+    enet = ElasticNetCV(l1_ratio = alpha_array,
+                      n_alphas = 50, 
+                      precompute = 'auto',
+                      cv = crossValNum,
+                      fit_intercept = True)
+
+    model = enet.fit(X_train, y_train)
+    predict_test = model.predict(X=X_test)
+
+    mse_accuracy = model.score(X_test, y_test)
+    r_squared = r2_score(predict_test, y_test)
+    MSE = ("MSE = {}".format(mse_accuracy))
+    R_Squared = ("R-Squared = {}".format(r_squared))
+
+    return enet, MSE, R_Squared, clf.alpha, clf.l1_ratio
 
 
 def model_predict(model, new_X):
