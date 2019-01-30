@@ -204,7 +204,7 @@ def ElasticNetCVModel(X_train, y_train):
     :param y_train: dataframe containing training data responses
     :return: elastic net model, MSE, R-squared
     '''
-    alpha_array = [0.01, 0.025, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.7, 0.75, 0.8, 0.85, 0.90 0.95, 0.975, 0.99]
+    alpha_array = [0.01, 0.025, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.7, 0.75, 0.8, 0.85, 0.90, 0.95, 0.975, 0.99]
     enet = ElasticNetCV(l1_ratio = alpha_array,
                       n_alphas = 50, 
                       precompute = 'auto',
