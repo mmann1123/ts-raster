@@ -12,9 +12,8 @@ from pathlib import Path
 from tsfresh import extract_features
 from tsfresh.utilities.distribution import MultiprocessingDistributor, LocalDaskDistributor
 from tsfresh.feature_selection.relevance import calculate_relevance_table as crt
-from tsraster.prep import image_to_series, image_to_array, read_images
+from tsraster.prep import image_to_series, image_to_array, read_images, image_to_series_window, image_to_array_window, read_images_window
 import tsraster.prep  as tr
-import copy
 #from tsfresh.utilities.distribution import LocalDaskDistributor
 
 
