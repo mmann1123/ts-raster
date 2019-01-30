@@ -240,7 +240,7 @@ def calculateFeatures_window(path, parameters, baseYear, reset_df ,length = 3, o
     
     # write out features to tiff file
     if tiff_output == False:
-        return extracted_features_allYears
+        return extracted_features
     else:
         # get image dimension from raw data
         rows, cols, num = image_to_array(path).shape
@@ -264,7 +264,7 @@ def calculateFeatures_window(path, parameters, baseYear, reset_df ,length = 3, o
         
         #export tiff
         CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType, path=out_path)
-        return extracted_features_allYears
+        return extracted_features
 
 #def calculateFeatures2(path, parameters, mask=None, reset_df=True, tiff_output=True, 
 #                           missing_value =-9999,workers=2):
