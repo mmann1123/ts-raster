@@ -196,7 +196,7 @@ def ElasticNetModel(X_train, y_train):
 
     return enet, MSE, R_Squared
 
-    def ElasticNetCVModel(X_train, y_train):
+def ElasticNetCVModel(X_train, y_train):
     '''
     Conduct elastic net regression on training data and test predictive power against test data
 
