@@ -2,7 +2,7 @@ from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, R
 from sklearn.model_selection import train_test_split as tts
 from sklearn.model_selection import GroupShuffleSplit
 
-from sklearn.linear_model import ElasticNet
+from sklearn.linear_model import ElasticNet, ElasticNetCV
 from sklearn.metrics import  accuracy_score,confusion_matrix,cohen_kappa_score
 #from sklearn.preprocessing import StandardScaler as scaler
 from sklearn.metrics import r2_score
