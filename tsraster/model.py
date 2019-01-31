@@ -208,7 +208,7 @@ def ElasticNetCVModel(X_train, y_train, X_test, y_test):
     enet = ElasticNetCV(l1_ratio = alpha_array,
                       n_alphas = 50, 
                       precompute = 'auto',
-                      cv = crossValNum,
+                      cv = 5,
                       fit_intercept = True)
 
     model = enet.fit(X_train, y_train)
