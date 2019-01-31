@@ -219,7 +219,7 @@ def ElasticNetCVModel(X_train, y_train, X_test, y_test):
     MSE = ("MSE = {}".format(mse_accuracy))
     R_Squared = ("R-Squared = {}".format(r_squared))
 
-    return enet, MSE, R_Squared, enet.alpha, enet.l1_ratio
+    return enet, MSE, R_Squared, enet.alphas, enet.l1_ratio
 
 
 def model_predict(model, new_X):
