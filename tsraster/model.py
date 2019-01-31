@@ -174,7 +174,7 @@ def GradientBoosting(X_train, y_train, X_test, y_test):
     return GBoost, MSE, R_Squared
 
 
-def ElasticNetModel(X_train, y_train):
+def ElasticNetModel(X_train, y_train, X_test, y_test):
     '''
     Conduct elastic net regression on training data and test predictive power against test data
 
@@ -196,7 +196,7 @@ def ElasticNetModel(X_train, y_train):
 
     return enet, MSE, R_Squared
 
-def ElasticNetCVModel(X_train, y_train):
+def ElasticNetCVModel(X_train, y_train, X_test, y_test):
     '''
     Conduct elastic net regression on training data and test predictive power against test data
 
