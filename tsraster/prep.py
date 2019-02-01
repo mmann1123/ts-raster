@@ -133,7 +133,6 @@ def read_images_window(path, baseYear, length = 3, offset = 1):
     if os.path.isdir(path):
         images = []
         for x in range(length):
-            print(x)
             images = images +  glob.glob((path+ '/*/*-' + str(baseYear - x + offset) + '??.tif'), recursive=True)
         raster_files = [gdal.Open(f, gdal.GA_ReadOnly) for f in images]
     else:
