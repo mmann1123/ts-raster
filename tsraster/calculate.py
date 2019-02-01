@@ -12,7 +12,7 @@ from pathlib import Path
 from tsfresh import extract_features
 from tsfresh.utilities.distribution import MultiprocessingDistributor, LocalDaskDistributor
 from tsfresh.feature_selection.relevance import calculate_relevance_table as crt
-from tsraster.prep import image_to_series, image_to_array, read_images
+from tsraster.prep import image_to_series, image_to_array, read_images, image_to_series_window, image_to_array_window, read_images_window
 import tsraster.prep  as tr
 #from tsfresh.utilities.distribution import LocalDaskDistributor
 
@@ -156,6 +156,115 @@ def calculateFeatures(path, parameters, reset_df ,raster_mask=None ,tiff_output=
         CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType, path=out_path)
         return extracted_features
 
+
+def calculateFeatures_window(path, parameters, baseYear, reset_df ,length = 3, offset = 1,raster_mask=None ,tiff_output=True, workers = None):
+    
+    '''
+    Calculates features or the statistical characteristics of time-series raster data.
+    It can also save features as a csv file (dataframe) and/or tiff file.
+    
+    :param path: directory path to the raster files
+    :param parameters: a dictionary of features to be extracted
+    :param length: number of prior years to evaluate (default 3)
+    :param startYear: first year of interest
+    :param lastYear: last year of interest
+    :param offset: number of years by which to offset parameters from year of interest (default 1)
+    :param reset_df: boolean option for existing raster inputs as dataframe
+    :param raster_mask: path to binary raster mask (default None)
+    :param tiff_output: boolean option for exporting tiff file (default True)
+    :param workers: number of parallel workers in multiprocessing pool (default None)
+    :return: extracted features as a dataframe and tiff file
+    '''
+    
+  
+    if reset_df == False:
+        #if reset_df =F read in csv file holding saved version of my_df
+        my_df = tr.read_my_df(path)
+            
+    else:
+        #if reset_df =T calculate ts_series and save csv
+        my_df = image_to_series_window(path, baseYear, length, offset)
+        print('df: '+os.path.join(path,'my_df.csv'))
+        my_df.to_csv(os.path.join(path,'my_df.csv'), chunksize=10000, index=False)
+    
+    # mask rasters based on desired mask, if present
+    if raster_mask is not None:
+        my_df = tr.mask_df(raster_mask = raster_mask, 
+                        original_df = my_df)
+    
+    #distribute processing across multiprocessing pool, if multiple workers are present
+    if workers is not None:
+        Distributor = MultiprocessingDistributor(n_workers=workers,
+                                                 disable_progressbar=False,
+                                                 progressbar_title="Feature Extraction")
+        #Distributor = LocalDaskDistributor(n_workers=workers)
+    else:
+        Distributor = None
+    
+    extracted_features = extract_features(my_df, 
+                                          default_fc_parameters = parameters,
+                                          column_sort = "time",
+                                          column_value = "value",
+                                          column_id = "pixel_id",
+                                          column_kind="kind", 
+                                          #chunksize = 1000,
+                                          distributor=Distributor
+                                          )
+    
+    # change index name to match pixel and time period
+    extracted_features.index.rename('pixel_id',inplace=True)
+    extracted_features.reset_index(inplace=True, level=['pixel_id'])
+    
+    extracted_features['time'] = str(my_df.time.min())+"_"+str(my_df.time.max())
+    extracted_features.set_index(['pixel_id', 'time'], inplace=True) 
+     
+    # unmask extracted features
+    extracted_features = tr.unmask_from_mask(mask_df_output = extracted_features, 
+                                          missing_value = -9999,
+                                          raster_mask = raster_mask)
+    
+    # deal with output location 
+    out_path = Path(path).parent.joinpath(Path(path).stem+"_features")
+    out_path.mkdir(parents=True, exist_ok=True)
+    
+    # write out features to csv file
+    print("features:"+os.path.join(out_path,'extracted_features.csv'))
+    extracted_features.to_csv(os.path.join(out_path,'extracted_features' + str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  '.csv'), chunksize=10000)
+    
+    # write out feature names 
+    kr = pd.DataFrame(list(extracted_features.columns))
+    kr.index += 1
+    kr.index.names = ['band']
+    kr.columns = ['feature_name']
+    kr.to_csv(os.path.join(out_path,"features_names" + str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  ".csv"))
+    
+    # write out features to tiff file
+    if tiff_output == False:
+        return extracted_features
+    else:
+        # get image dimension from raw data
+        rows, cols, num = image_to_array(path).shape
+        # get the total number of features extracted
+        matrix_features = extracted_features.values
+        num_of_layers = matrix_features.shape[1]
+        
+        #reshape the dimension of features extracted
+        f2Array = matrix_features.reshape(rows, cols, num_of_layers)
+        output_file = 'extracted_features'+ str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  '.tiff'  
+        
+        #Get Meta Data from raw data
+        raw_data = read_images(path)
+        GeoTransform = raw_data[0].GetGeoTransform()
+        driver = gdal.GetDriverByName('GTiff')
+        
+        noData = -9999
+        
+        Projection = raw_data[0].GetProjectionRef()
+        DataType = gdal.GDT_Float32
+        
+        #export tiff
+        CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType, path=out_path)
+        return extracted_features
 
 #def calculateFeatures2(path, parameters, mask=None, reset_df=True, tiff_output=True, 
 #                           missing_value =-9999,workers=2):
