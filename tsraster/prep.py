@@ -208,7 +208,7 @@ def image_to_series(path):
     df = pd.DataFrame(data=data[0:,0:],
                       index=index, 
                       dtype=np.float32, 
-                      columns=(path, baseYear, length, offset))
+                      columns=image_names(path))
     
     #reindex and sort columns
     df2 = df.reindex(sorted(df.columns), axis=1)
@@ -252,7 +252,7 @@ def image_to_series_window(path, baseYear, length = 3, offset = 1):
     df = pd.DataFrame(data=data[0:,0:],
                       index=index, 
                       dtype=np.float32, 
-                      columns=image_names_window(path))
+                      columns=image_names_window(path, baseYear, length, offset))
     
     #reindex and sort columns
     df2 = df.reindex(sorted(df.columns), axis=1)
