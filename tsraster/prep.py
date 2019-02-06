@@ -208,7 +208,7 @@ def image_to_series(path):
     df = pd.DataFrame(data=data[0:,0:],
                       index=index, 
                       dtype=np.float32, 
-                      columns=image_names(path))
+                      columns=(path, baseYear, length, offset))
     
     #reindex and sort columns
     df2 = df.reindex(sorted(df.columns), axis=1)
