@@ -100,6 +100,25 @@ def image_names(path):
         
     return image_name
 
+
+def image_names_window(path, baseYear, length = 3, offset = 1):
+    '''
+    Reads raster files from multiple folders and returns their names
+    
+    :param path: directory path
+    :return: names of the raster files
+    '''
+
+    image_name = []
+    for x in range(length):
+        iterImages = glob.glob((path+ '/*/*-' + str(baseYear - x + offset) + '??.tif'), recursive=True)
+        iterImages = [os.path.basename(tif).split('.')[0]
+                  for tif in iterImages]
+        image_name = image_name +  iterImages
+    
+    return image_name
+
+
 def read_images(path):
     '''
     Reads a set of associated raster bands from a file.
@@ -233,7 +252,7 @@ def image_to_series_window(path, baseYear, length = 3, offset = 1):
     df = pd.DataFrame(data=data[0:,0:],
                       index=index, 
                       dtype=np.float32, 
-                      columns=image_names(path))
+                      columns=image_names_window(path))
     
     #reindex and sort columns
     df2 = df.reindex(sorted(df.columns), axis=1)
