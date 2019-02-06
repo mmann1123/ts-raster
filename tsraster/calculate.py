@@ -231,16 +231,21 @@ def calculateFeatures_window(path, parameters, baseYear, reset_df ,length = 3, o
       # write out features to csv file
       print("features:"+os.path.join(out_path,'extracted_features' + str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  '.csv'))
       extracted_features.to_csv(os.path.join(out_path,'extracted_features' + str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  '.csv'), chunksize=10000)
+       # write out feature names 
+      kr = pd.DataFrame(list(extracted_features.columns))
+      kr.index += 1
+      kr.index.names = ['band']
+      kr.columns = ['feature_name']
+      kr.to_csv(os.path.join(out_path,"features_names" + str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  ".csv"))
     elif outPath != "None":
       print("features:"+os.path.join(outPath,'extracted_features' + str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  '.csv'))
       extracted_features.to_csv(os.path.join(outPath,'extracted_features' + str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  '.csv'), chunksize=10000)
-  
-    # write out feature names 
-    kr = pd.DataFrame(list(extracted_features.columns))
-    kr.index += 1
-    kr.index.names = ['band']
-    kr.columns = ['feature_name']
-    kr.to_csv(os.path.join(out_path,"features_names" + str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  ".csv"))
+      kr = pd.DataFrame(list(extracted_features.columns))
+      kr.index += 1
+      kr.index.names = ['band']
+      kr.columns = ['feature_name']
+      kr.to_csv(os.path.join(outPath,"features_names" + str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  ".csv"))
+   
     
     # write out features to tiff file
     if tiff_output == False:
