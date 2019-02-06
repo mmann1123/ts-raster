@@ -224,7 +224,7 @@ def calculateFeatures_window(path, parameters, baseYear, reset_df ,length = 3, o
                                           raster_mask = raster_mask)
     
     # deal with output location 
-    if outPath = "None":
+    if outPath == "None":
       out_path = Path(path).parent.joinpath(Path(path).stem+"_features")
       out_path.mkdir(parents=True, exist_ok=True)
       
