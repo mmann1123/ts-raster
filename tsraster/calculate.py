@@ -157,7 +157,7 @@ def calculateFeatures(path, parameters, reset_df ,raster_mask=None ,tiff_output=
         return extracted_features
 
 
-def calculateFeatures_window(path, parameters, baseYear, reset_df ,length = 3, offset = 1,raster_mask=None ,tiff_output=True, workers = None):
+def calculateFeatures_window(path, parameters, baseYear, reset_df ,length = 3, offset = 1,raster_mask=None ,tiff_output=True, workers = None, outPath= "None"):
     
     '''
     Calculates features or the statistical characteristics of time-series raster data.
@@ -224,13 +224,17 @@ def calculateFeatures_window(path, parameters, baseYear, reset_df ,length = 3, o
                                           raster_mask = raster_mask)
     
     # deal with output location 
-    out_path = Path(path).parent.joinpath(Path(path).stem+"_features")
-    out_path.mkdir(parents=True, exist_ok=True)
-    
-    # write out features to csv file
-    print("features:"+os.path.join(out_path,'extracted_features' + str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  '.csv'))
-    extracted_features.to_csv(os.path.join(out_path,'extracted_features' + str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  '.csv'), chunksize=10000)
-    
+    if outPath = "None":
+      out_path = Path(path).parent.joinpath(Path(path).stem+"_features")
+      out_path.mkdir(parents=True, exist_ok=True)
+      
+      # write out features to csv file
+      print("features:"+os.path.join(out_path,'extracted_features' + str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  '.csv'))
+      extracted_features.to_csv(os.path.join(out_path,'extracted_features' + str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  '.csv'), chunksize=10000)
+    elif outPath != "None":
+      print("features:"+os.path.join(outPath,'extracted_features' + str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  '.csv'))
+      extracted_features.to_csv(os.path.join(outPath,'extracted_features' + str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  '.csv'), chunksize=10000)
+  
     # write out feature names 
     kr = pd.DataFrame(list(extracted_features.columns))
     kr.index += 1
