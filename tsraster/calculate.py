@@ -272,7 +272,10 @@ def calculateFeatures_window(path, parameters, baseYear, reset_df ,length = 3, o
         DataType = gdal.GDT_Float32
         
         #export tiff
-        CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType, path=out_path)
+        if outPath == "None":
+          CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType, path=out_path)
+        elif outPath != "None":
+          CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType, path=outPath)
         return extracted_features
 
 #def calculateFeatures2(path, parameters, mask=None, reset_df=True, tiff_output=True, 
