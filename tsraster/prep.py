@@ -224,7 +224,7 @@ def image_to_series_window(path, baseYear, length = 3, offset = 1):
     '''
     
     rows, cols, num = image_to_array_window(path, baseYear, length, offset).shape
-    data = image_to_array(path).reshape(rows*cols, num)
+    data = image_to_array_window(path,baseYear, length, offset).reshape(rows*cols, num)
     
     # create index
     index = pd.RangeIndex(start=0, stop=len(data), step=1, name = 'pixel_id') 
