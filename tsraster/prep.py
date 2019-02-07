@@ -401,7 +401,7 @@ def poly_rasterizer_year_group(poly,raster_exmpl,raster_path_prefix,
         shapes = ((geom,value) for geom, value in zip(polys.geometry, polys.ONES))
 
         #rasterize shapes 
-        rasterized_value = features.rasterize(shapes=shapes, fill=0, out=out_arr, transform=dst.transform)
+        rasterized_value = features.rasterize(shapes=shapes, fill=0, out=np.zeros(out_arr.shape, dtype = "Float32"), transform=dst.transform)
         dst.write(rasterized_value,1)
 
 
