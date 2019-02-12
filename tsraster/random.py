@@ -89,6 +89,7 @@ file.close()
 import numpy as np
 import matplotlib.pyplot as plt
 from tsraster.prep import image_to_array
+import rasterio
 
 
 
