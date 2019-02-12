@@ -100,6 +100,25 @@ def image_names(path):
         
     return image_name
 
+
+def image_names_window(path, baseYear, length = 3, offset = 1):
+    '''
+    Reads raster files from multiple folders and returns their names
+    
+    :param path: directory path
+    :return: names of the raster files
+    '''
+
+    image_name = []
+    for x in range(length):
+        iterImages = glob.glob((path+ '/*/*-' + str(baseYear - x + offset) + '??.tif'), recursive=True)
+        iterImages = [os.path.basename(tif).split('.')[0]
+                  for tif in iterImages]
+        image_name = image_name +  iterImages
+    
+    return image_name
+
+
 def read_images(path):
     '''
     Reads a set of associated raster bands from a file.
@@ -224,7 +243,7 @@ def image_to_series_window(path, baseYear, length = 3, offset = 1):
     '''
     
     rows, cols, num = image_to_array_window(path, baseYear, length, offset).shape
-    data = image_to_array(path).reshape(rows*cols, num)
+    data = image_to_array_window(path,baseYear, length, offset).reshape(rows*cols, num)
     
     # create index
     index = pd.RangeIndex(start=0, stop=len(data), step=1, name = 'pixel_id') 
@@ -233,7 +252,7 @@ def image_to_series_window(path, baseYear, length = 3, offset = 1):
     df = pd.DataFrame(data=data[0:,0:],
                       index=index, 
                       dtype=np.float32, 
-                      columns=image_names(path))
+                      columns=image_names_window(path, baseYear, length, offset))
     
     #reindex and sort columns
     df2 = df.reindex(sorted(df.columns), axis=1)
@@ -382,7 +401,7 @@ def poly_rasterizer_year_group(poly,raster_exmpl,raster_path_prefix,
         shapes = ((geom,value) for geom, value in zip(polys.geometry, polys.ONES))
 
         #rasterize shapes 
-        rasterized_value = features.rasterize(shapes=shapes, fill=0, out=out_arr, transform=dst.transform)
+        rasterized_value = features.rasterize(shapes=shapes, fill=0, out=np.zeros(out_arr.shape, dtype = "Float32"), transform=dst.transform)
         dst.write(rasterized_value,1)
 
 
