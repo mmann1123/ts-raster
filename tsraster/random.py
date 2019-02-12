@@ -242,7 +242,7 @@ def get_initial(mask_Array, cells, samples, k, r):
     return False
 
 
-def Poisson_Subsample(raster_mask, k = 50, r = 50):
+def Poisson_Subsample(raster_mask, outFile, k = 50, r = 50):
     '''
     Create raster of cells to be selected (populated as ones) in a raster of background value zero
 
@@ -308,4 +308,7 @@ def Poisson_Subsample(raster_mask, k = 50, r = 50):
             # We had to give up looking for valid points near refpt, so remove it
             # from the list of "active" points.
             active.remove(idx)
+    with rasterio.open(outFile, 'w', **profile) as subSample:
+        subSample.write(outRaster, 1)
+
     return outRaster, cells
