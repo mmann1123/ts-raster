@@ -308,6 +308,8 @@ def Poisson_Subsample(raster_mask, outFile, k = 50, r = 50):
             # We had to give up looking for valid points near refpt, so remove it
             # from the list of "active" points.
             active.remove(idx)
+    
+    outRaster = np.float32(outRaster)
     with rasterio.open(outFile, 'w', **profile) as subSample:
         subSample.write(outRaster, 1)
 
