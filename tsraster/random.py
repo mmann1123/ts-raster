@@ -5,7 +5,7 @@ random.py:- Generates random points from a vector file
 
 '''
 
-
+'''
 import numpy as np
 import pandas as pd
 import json
@@ -79,7 +79,7 @@ spatialRef.MorphToESRI()
 file = open('points.prj', 'w')
 file.write(spatialRef.ExportToWkt())
 file.close()
-
+'''
 
 
 
