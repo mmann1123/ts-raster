@@ -93,13 +93,17 @@ import rasterio
 
 
 
-def get_cell_coords(pt):
-    """Get the coordinates of the cell that pt = (x,y) falls in."""
+def get_cell_coords(pt, a):
+    """Get the coordinates of the cell that pt = (x,y) falls in.
+
+    :param pt: tuple of selected point coordinates (as floats, not as integers) 
+    :param a: width of meta-cell (not raster array cell)
+    """
 
     return int(pt[0] // a), int(pt[1] // a)
 
 
-def get_neighbours(coords):
+def get_neighbours(coords, mask_Array, cells, a):
     """Return the indexes of points in cells neighbouring cell at coords.
 
     For the cell at coords = (x,y), return the indexes of points in the cells
@@ -112,11 +116,22 @@ def get_neighbours(coords):
                                     ooooo
                                      ooo
 
+    :param coords: coordinates of meta-cell in which point is located
+    :param mask_array: numpy array derived from raster_mask file
+    :param cells: dictionary of tuples contasining coordinates for each point
+    :param a: width of meta-cell (not raster array cell)
+    
+
     """
 
     dxdy = [(-1,-2),(0,-2),(1,-2),(-2,-1),(-1,-1),(0,-1),(1,-1),(2,-1),
             (-2,0),(-1,0),(1,0),(2,0),(-2,1),(-1,1),(0,1),(1,1),(2,1),
             (-1,2),(0,2),(1,2),(0,0)]
+   
+    # Number of meta-cells in the x- and y-directions of the grid
+    height, width = mask_Array.shape
+    ny, nx = int(height / a) + 1, int(width / a) + 1
+    
     neighbours = []
     for dx, dy in dxdy:
         neighbour_coords = coords[0] + dx, coords[1] + dy
@@ -130,37 +145,60 @@ def get_neighbours(coords):
             neighbours.append(neighbour_cell)
     return neighbours
 
-def point_valid(pt, mask_Array):
+def point_valid(pt, mask_Array, samples, cells, r):
     """Is pt a valid point to emit as a sample?
 
     It must be no closer than r from any other point: check the cells in its
     immediate neighbourhood.
 
+    :param pt: tuple of selected point coordinates (as floats, not as integers)
+    :param mask_array: numpy array derived from raster_mask file
+    :param cells: dictionary of tuples contasining coordinates for each point
+    :param r: minimum distance (in raster cells) between selected points 
+    :param a: width of meta-cell (not raster array cell)
     """
 
-    cell_coords = get_cell_coords(pt)
-    for idx in get_neighbours(cell_coords):
-        nearby_pt = samples[idx]
-        # Squared distance between or candidate point, pt, and this nearby_pt.
-        distance2 = (nearby_pt[0]-pt[0])**2 + (nearby_pt[1]-pt[1])**2
-        if distance2 < r**2:
-            # The points are too close, so pt is not a candidate.
-            return False
-    #test if point falls within mask
-    if mask_Array[[int(pt[1]), int(pt[0])]]:
-        return False
-    # All points tested: if we're here, pt is valid
-    else: return True
+     # Cell side length
+    a = r/np.sqrt(2)
 
-def get_point(k, refpt, mask_Array):
+    
+    
+    if len(samples) >0:
+        cell_coords = get_cell_coords(pt, a)
+        for idx in get_neighbours(cell_coords, mask_Array, cells, a):
+            nearby_pt = samples[idx]
+            # Squared distance between or candidate point, pt, and this nearby_pt.
+            distance2 = (nearby_pt[0]-pt[0])**2 + (nearby_pt[1]-pt[1])**2
+            if distance2 < r**2:
+                # The points are too close, so pt is not a candidate.
+                return False
+    #test if point falls within mask
+    if mask_Array[int(pt[1]), int(pt[0])]:
+        return True
+    # All points tested: if we're here, pt is valid
+    else: return False
+
+def get_point(k, r, refpt, mask_Array, samples, cells):
     """Try to find a candidate point relative to refpt to emit in the sample.
 
     We draw up to k points from the annulus of inner radius r, outer radius 2r
     around the reference point, refpt. If none of them are suitable (because
     they're too close to existing points in the sample), return False.
     Otherwise, return the pt.
+    
+    :param k: number of attempts to select a point around each reference point before marking it as inactive
+    :param r: minimum distance (in raster cells) between selected points 
+    :param mask_array: numpy array derived from raster_mask file
+    :param samples: list of tuples representing points that have already been selected and validated
+    :param cells: dictionary of tuples contasining coordinates for each point
+    
 
     """
+    height, width = mask_Array.shape
+
+    # Cell side length
+    a = r/np.sqrt(2)
+
     i = 0
     while i < k:
         rho, theta = np.random.uniform(r, 2*r), np.random.uniform(0, 2*np.pi)
@@ -168,22 +206,37 @@ def get_point(k, refpt, mask_Array):
         if not (0 <= pt[0] < width and 0 <= pt[1] < height):
             # This point falls outside the domain, so try again.
             continue
-        if point_valid(pt, Mask_Array):
+        if point_valid(pt, mask_Array, samples, cells,r):
             return pt
         i += 1
     # We failed to find a suitable point in the vicinity of refpt.
     return False
 
-def get_inital(raster_mask, mask_Array):
+def get_initial(mask_Array, cells, samples, k, r):
     '''Select a point completely at random from within potential array space (barring masked areas)
+
+    :param mask_array: numpy array derived from raster_mask file
+    :param samples: list of tuples representing points that have already been selected and validated
+    :param cells: dictionary of tuples contasining coordinates for each point
+    :param height: height of param_mask array
+    :param width: width of param_mask array
+    :param k: number of attempts to select a point around each reference point before marking it as inactive
+    :param r: minimum distance (in raster cells) between selected points 
+    :param a: width of meta-cell (not raster array cell)
     '''
+   
+    height, width = mask_Array.shape
+
+    # Cell side length
+    a = r/np.sqrt(2)
+
     i = 0
     while i < k:
         pt = (np.random.uniform(0, width), np.random.uniform(0, height))
         if not (0 <= pt[0] < width and 0 <= pt[1] < height):
             # This point falls outside the domain, so try again.
             continue
-        if point_valid(pt, mask_Array):
+        if point_valid(pt, mask_Array, samples, cells, r):
             return pt
         i += 1
     return False
@@ -198,13 +251,16 @@ def Poisson_Subsample(raster_mask, k = 50, r = 50):
     :param r: minimum distance (in raster cells) between selected points 
     '''
 
-    with rasterio.open("../Data/Examples/3month/aet-198401.tif") as exampleRast:
+    with rasterio.open(raster_mask) as exampleRast:
         mask_Array = exampleRast.read()
         profile = exampleRast.profile
         profile.update(dtype=rasterio.float32, count=1, compress='lzw',nodata=0)
 
+    #convert to 2-dimensional numpy array, instead of 3 dimensional array with depth 1
+    mask_Array = mask_Array[0]
+    
     #open raster mask, get rectangular dimensions of potential subsampling area
-    height, width =  rasterio.open(raster_ex).shape
+    height, width =  rasterio.open(raster_mask).shape
     outRaster = np.zeros((height, width))
     
     # Cell side length
@@ -220,10 +276,14 @@ def Poisson_Subsample(raster_mask, k = 50, r = 50):
     # samples list (or None if the cell is empty).
     cells = {coords: None for coords in coords_list}
 
-    # Pick a random point to start with.
-    pt = get_initial(raster_mask)
+    #create blank list to populate with pt values as they are created
+    samples = []
 
-    samples = [pt]
+    # Pick a random point to start with.
+    pt = get_initial(mask_Array, cells, samples, k, r)
+
+    #add in initial point to samples list
+    samples += [pt]
     
     # ... and it is active, in the sense that we're going to look for more points
     # in its neighbourhood.
@@ -236,13 +296,13 @@ def Poisson_Subsample(raster_mask, k = 50, r = 50):
         idx = np.random.choice(active)
         refpt = samples[idx]
         # Try to pick a new point relative to the reference point.
-        pt = get_point(k, refpt, mask_Array)
+        pt = get_point(k, r, refpt, mask_Array, samples, cells)
         if pt:
             # Point pt is valid: add it to the samples list and mark it as active
             samples.append(pt)
             nsamples += 1
             active.append(len(samples)-1)
-            cells[get_cell_coords(pt)] = len(samples) - 1
+            cells[get_cell_coords(pt, a)] = len(samples) - 1
             outRaster[int(pt[1]), int(pt[0])] = 1
         else:
             # We had to give up looking for valid points near refpt, so remove it
