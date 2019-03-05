@@ -263,7 +263,7 @@ def Poisson_Subsample(raster_mask, outFile, k = 50, r = 50):
     height, width =  rasterio.open(raster_mask).shape
     outRaster = np.zeros((height, width))
     
-    # Cell side length
+    # meta-Cell side length
     a = r/np.sqrt(2)
 
     # Number of meta-cells in the x- and y-directions of the grid
