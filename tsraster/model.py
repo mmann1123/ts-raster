@@ -144,7 +144,7 @@ def RandomForestClass(X_train, y_train, X_test, y_test):
 
 
 # Not working correctly
-def GradientBoosting(X_train, y_train, X_test, y_test):
+def GradientBoosting(X_train, y_train, X_test, y_test, string_output = False):
     '''
     Conduct random gradient boosting regression on training data and test predictive power against test data
 
@@ -168,8 +168,13 @@ def GradientBoosting(X_train, y_train, X_test, y_test):
 
     mse_accuracy = model.score(X_test, y_test)
     r_squared = r2_score(predict_test, y_test)
-    MSE = ("MSE = {}".format(mse_accuracy))
-    R_Squared = ("R-Squared = {}".format(r_squared))
+    
+    if string_output == True:
+      MSE = ("MSE = {}".format(mse_accuracy))
+      R_Squared = ("R-Squared = {}".format(r_squared))
+    else if string_output == False:
+      MSE = mse_accuracy
+      R_Squared = r_squared
 
     return GBoost, MSE, R_Squared
 
