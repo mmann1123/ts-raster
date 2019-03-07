@@ -172,7 +172,7 @@ def GradientBoosting(X_train, y_train, X_test, y_test, string_output = False):
     if string_output == True:
       MSE = ("MSE = {}".format(mse_accuracy))
       R_Squared = ("R-Squared = {}".format(r_squared))
-    else if string_output == False:
+    elif string_output == False:
       MSE = mse_accuracy
       R_Squared = r_squared
 
