@@ -518,3 +518,41 @@ def checkRelevance2(x, y, ml_task="auto", fdr_level=0.05):
         X_relevant_features = features[relevant_feature_names]
          
         return relevance_test, X_relevant_features 
+
+def Temporal_Interpolation(input_path, outPath, startYear, endYear, interval, nullValues = [255, 12, 13], exampleRaster = "../Data/Examples/3month_ts/aet/aet-201201.tif"):
+    Years = np.arange(startYear, endYear, interval)
+    #param input_path: filepath to input files
+    #param output_path: filepath to location where output files will be created
+    #param startYear: first year to include in interpolation
+    #param endYear: last year to include in interpolation
+    #param interval: interval (in years) between subsequent files
+    #param nullValues: values that should be treated as null or 0 (as list)
+    #param exampleRast: raster to use for acquiring projection and extent
+    
+    with rasterio.open("../Data/Examples/3month_ts/aet/aet-201201.tif") as exampleRast:
+        array = exampleRast.read()
+        profile = exampleRast.profile
+        profile.update(dtype=rasterio.float32, count=1, compress='lzw',nodata=0)
+    
+    for x in range(len(Years)):
+        earlyYear = Years[x]
+        lateYear = Years[x]+ interval
+        for y in range(0, interval):
+            iterYear = earlyYear + y
+
+            earlyRaster = tr.read_images(input_path + "bhc" + str(earlyYear) + "_Clip.tif")
+            earlyRaster = earlyRaster[0].ReadAsArray()
+            for y in nullValues:
+                    earlyRaster[earlyRaster == y] = 0
+
+            lateRaster = tr.read_images(input_path + "bhc" + str(lateYear) + "_Clip.tif")
+            lateRaster = lateRaster[0].ReadAsArray()
+            for y in nullValues:
+                    lateRaster[lateRaster == y] = 0
+
+            #calculate annual raster by weighting between prior and successive raster
+            iterRaster = ((earlyRaster * (interval-y)) + (lateRaster * (0+y)))/interval
+            iterRaster = np.float32(iterRaster)
+
+            with rasterio.open(outPath + "bhc" + str(iterYear) + "linreg.tif", 'w', **profile) as exampleRast:
+                exampleRast.write(iterRaster, 1)
