@@ -205,7 +205,7 @@ def ElasticNetModel(X_train, y_train, X_test, y_test, string_output = False):
 
     return enet, MSE, R_Squared
 
-def ElasticNetCVModel(X_train, y_train, X_test, y_test):
+def ElasticNetCVModel(X_train, y_train, X_test, y_test, string_output = False):
     '''
     Conduct elastic net regression on training data and test predictive power against test data
 
@@ -225,8 +225,12 @@ def ElasticNetCVModel(X_train, y_train, X_test, y_test):
 
     mse_accuracy = model.score(X_test, y_test)
     r_squared = r2_score(predict_test, y_test)
-    MSE = ("MSE = {}".format(mse_accuracy))
-    R_Squared = ("R-Squared = {}".format(r_squared))
+    if string_output == True:
+      MSE = ("MSE = {}".format(mse_accuracy))
+      R_Squared = ("R-Squared = {}".format(r_squared))
+    elif string_output == False:
+      MSE = mse_accuracy
+      R_Squared = r_squared
 
     return enet, MSE, R_Squared, enet.alphas, enet.l1_ratio
 

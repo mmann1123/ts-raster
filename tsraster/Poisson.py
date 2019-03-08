@@ -2,6 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from tsraster.prep import image_to_array
+import rasterio
 
 
 
@@ -60,7 +61,7 @@ def point_valid(pt, mask_Array):
             return False
     #test if point falls within mask
     if mask_Array[[int(pt[1]), int(pt[0])]]:
-    	return False
+        return False
     # All points tested: if we're here, pt is valid
     else: return True
 
@@ -87,22 +88,21 @@ def get_point(k, refpt, mask_Array):
     return False
 
 def get_inital(raster_mask, mask_Array):
-	'''Select a point completely at random from within potential array space (barring masked areas)
-	'''
-	i = 0
+    '''Select a point completely at random from within potential array space (barring masked areas)'''
+    i = 0
     while i < k:
-		pt = (np.random.uniform(0, width), np.random.uniform(0, height))
-		if not (0 <= pt[0] < width and 0 <= pt[1] < height):
+        pt = (np.random.uniform(0, width), np.random.uniform(0, height))
+        if not (0 <= pt[0] < width and 0 <= pt[1] < height):
             # This point falls outside the domain, so try again.
             continue
-		if point_valid(pt, mask_Array):
-			return pt
-		i += 1
-	return False
+        if point_valid(pt, mask_Array):
+            return pt
+        i += 1
+    return False
 
 
 def Poisson_Subsample(raster_mask, k = 50, r = 50):
-	'''
+    '''
     Create raster of cells to be selected (populated as ones) in a raster of background value zero
 
     :param raster_mask: name of raster mask - provides dimensions for subsample, and also masks unusable areas - IS ASSUMED TO BE CONTIGUOUS
@@ -110,54 +110,54 @@ def Poisson_Subsample(raster_mask, k = 50, r = 50):
     :param r: minimum distance (in raster cells) between selected points 
     '''
 
-	with rasterio.open("../Data/Examples/3month/aet-198401.tif") as exampleRast:
+    with rasterio.open(raster_mask) as exampleRast:
         mask_Array = exampleRast.read()
         profile = exampleRast.profile
         profile.update(dtype=rasterio.float32, count=1, compress='lzw',nodata=0)
 
     #open raster mask, get rectangular dimensions of potential subsampling area
-	height, width =  rasterio.open(raster_ex).shape
-	outRaster = np.zeros((height, width))
-	
-	# Cell side length
-	a = r/np.sqrt(2)
+    height, width =  rasterio.open(raster_mask).shape
+    outRaster = np.zeros((height, width))
+    
+    # Cell side length
+    a = r/np.sqrt(2)
 
-	# Number of meta-cells in the x- and y-directions of the grid
-	nx, ny = int(width / a) + 1, int(height / a) + 1
+    # Number of meta-cells in the x- and y-directions of the grid
+    nx, ny = int(width / a) + 1, int(height / a) + 1
 
-	# A list of coordinates in the grid of cells
-	coords_list = [(ix, iy) for ix in range(nx) for iy in range(ny)]
-	# Initialize the dictionary of cells: each key is a cell's coordinates, the
-	# corresponding value is the index of that cell's point's coordinates in the
-	# samples list (or None if the cell is empty).
-	cells = {coords: None for coords in coords_list}
+    # A list of coordinates in the grid of cells
+    coords_list = [(ix, iy) for ix in range(nx) for iy in range(ny)]
+    # Initialize the dictionary of cells: each key is a cell's coordinates, the
+    # corresponding value is the index of that cell's point's coordinates in the
+    # samples list (or None if the cell is empty).
+    cells = {coords: None for coords in coords_list}
 
-	# Pick a random point to start with.
-	pt = get_initial(raster_mask)
+    # Pick a random point to start with.
+    pt = get_initial(raster_mask)
 
-	samples = [pt]
-	
-	# ... and it is active, in the sense that we're going to look for more points
-	# in its neighbourhood.
-	active = [0]
+    samples = [pt]
+    
+    # ... and it is active, in the sense that we're going to look for more points
+    # in its neighbourhood.
+    active = [0]
 
-	nsamples = 1
-	# As long as there are points in the active list, keep trying to find samples.
-	while active:
-	    # choose a random "reference" point from the active list.
-	    idx = np.random.choice(active)
-	    refpt = samples[idx]
-	    # Try to pick a new point relative to the reference point.
-	    pt = get_point(k, refpt, mask_Array)
-	    if pt:
-	        # Point pt is valid: add it to the samples list and mark it as active
-	        samples.append(pt)
-	        nsamples += 1
-	        active.append(len(samples)-1)
-	        cells[get_cell_coords(pt)] = len(samples) - 1
-	        outRaster[int(pt[1]), int(pt[0])] = 1
-	    else:
-	        # We had to give up looking for valid points near refpt, so remove it
-	        # from the list of "active" points.
-	        active.remove(idx)
-	return outRaster, cells
+    nsamples = 1
+    # As long as there are points in the active list, keep trying to find samples.
+    while active:
+        # choose a random "reference" point from the active list.
+        idx = np.random.choice(active)
+        refpt = samples[idx]
+        # Try to pick a new point relative to the reference point.
+        pt = get_point(k, refpt, mask_Array)
+        if pt:
+            # Point pt is valid: add it to the samples list and mark it as active
+            samples.append(pt)
+            nsamples += 1
+            active.append(len(samples)-1)
+            cells[get_cell_coords(pt)] = len(samples) - 1
+            outRaster[int(pt[1]), int(pt[0])] = 1
+        else:
+            # We had to give up looking for valid points near refpt, so remove it
+            # from the list of "active" points.
+            active.remove(idx)
+    return outRaster, cells
