@@ -314,3 +314,66 @@ def Poisson_Subsample(raster_mask, outFile, k = 50, r = 50):
         subSample.write(outRaster, 1)
 
     return outRaster, cells
+
+
+
+
+#### test_train
+def TestTrain_GroupMaker(combined_Data, target_Data, varToGroupBy, groupVar, testGroups = [10]):
+    #creates randonly assigned, equally sized groups of a desired number for each of any number of parameters in the data
+    #these groups can subsequently be used for iterative multifold testing and training, potentially across multiple data dimensions
+
+    #param combined_Data:  multivariate data for explaining target data - may be filename or csv
+    #param combined_Data: target data - may be filename or csv
+    #param varToGroupBy: variable(s) on which to build groups for testing/training
+    #param groupVar: variable(s) to name those groups
+    #param tesGroups: number of randomly assigned groups to provide for each variable
+    
+    if type(varToGroupBy) is str:
+        varToGroupBy = [varToGroupBy]
+    if type(groupVar) is str:
+        groupVar is [groupVar]
+    if type(testGroups) is not list:
+        testGroups = [testGroups]
+        
+        
+    if type(combined_Data) is str:
+            combined_Data = pd.read_csv(combined_Data)
+        
+    if type(target_Data) is str:
+        target_Data = pd.read_csv(target_Data)
+
+    if combined_Data.index.name == varToGroupBy:
+        combined_Data.reset_index(inplace = True)
+
+    if target_Data.index.name == varToGroupBy:
+        target_Data.reset_index(inplace = True)
+
+    
+    for x in range(len(varToGroupBy)):
+        
+        #get single copy of unique values to group by 
+        groupSelector = combined_Data.loc[:, [varToGroupBy[x]]]
+        groupSelector = groupSelector.drop_duplicates()
+        groupSelector.reset_index(inplace = True, drop = True)
+
+        #create random values
+        groupSelector['random_values'] = np.random.randint(0,99999999, size=len(groupSelector))
+        groupSelector["random_order"] = groupSelector.random_values.rank()
+
+
+        groupSelector[groupVar[x]] = groupSelector.random_order.apply(lambda y: y / len(groupSelector) * testGroups[x])
+        groupSelector[groupVar[x]] = groupSelector[groupVar[x]].map(int)
+        groupSelector.reset_index(inplace = True)
+
+        groupSelector = groupSelector.loc[:, [varToGroupBy[x], groupVar[x]]]
+
+
+
+        combined_Data = pd.merge(combined_Data, groupSelector, on = [varToGroupBy[x]], how = "left")
+        test= combined_Data.dropna()
+
+        target_Data = pd.merge(target_Data, groupSelector, on = [varToGroupBy[x]], how = "left")
+
+    return combined_Data, target_Data
+ 
