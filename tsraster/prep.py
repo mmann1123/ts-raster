@@ -299,6 +299,25 @@ def image_to_series_simple(file,dtype = np.int8):
 
     return df
 
+def multi_image_to_dataframe(csvPath, outPath):
+    #param csvPath: path to csv of filepaths (in column "FilePath") and desired label names for values in each raster (in column "DataName")
+    #param outPath: path to ouput file name and location
+    
+    fileFrame = pd.read_csv(csvPath)
+    filePath_List = fileFrame['FilePath'].tolist()
+    DataName_List = fileFrame['DataName'].tolist()
+    
+    for x in range(len(fileFrame)):
+        iter_Data = tr.image_to_series_simple(filePath_List[x])
+        iter_Data.rename(DataName_List[x], inplace = True)
+        
+        if x==0:
+            out_Data = iter_Data
+        elif x>0:
+            out_Data = pd.concat([out_Data, iter_Data], axis = 1)
+    out_Data.to_csv(outPath)
+    return out_Data
+
 def poly_rasterizer(poly,raster_ex, raster_path_prefix, buffer_poly_cells=0):
     '''
     Rasterizes polygons by assigning a value 1.
