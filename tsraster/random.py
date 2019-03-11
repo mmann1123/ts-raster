@@ -90,6 +90,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tsraster.prep import image_to_array
 import rasterio
+import pandas as pd
 
 
 
@@ -320,9 +321,6 @@ def Poisson_Subsample(raster_mask, outFile, k = 50, r = 50):
 
 #### test_train
 def TestTrain_GroupMaker(combined_Data, target_Data, varToGroupBy, groupVar, testGroups = [10]):
-    #creates randonly assigned, equally sized groups of a desired number for each of any number of parameters in the data
-    #these groups can subsequently be used for iterative multifold testing and training, potentially across multiple data dimensions
-
     #param combined_Data:  multivariate data for explaining target data - may be filename or csv
     #param combined_Data: target data - may be filename or csv
     #param varToGroupBy: variable(s) on which to build groups for testing/training
@@ -342,15 +340,15 @@ def TestTrain_GroupMaker(combined_Data, target_Data, varToGroupBy, groupVar, tes
         
     if type(target_Data) is str:
         target_Data = pd.read_csv(target_Data)
-
-    if combined_Data.index.name == varToGroupBy:
-        combined_Data.reset_index(inplace = True)
-
-    if target_Data.index.name == varToGroupBy:
-        target_Data.reset_index(inplace = True)
-
     
     for x in range(len(varToGroupBy)):
+        
+        if combined_Data.index.name == varToGroupBy[x]:
+            combined_Data.reset_index(inplace = True)
+
+        if target_Data.index.name == varToGroupBy[x]:
+            target_Data.reset_index(inplace = True)
+
         
         #get single copy of unique values to group by 
         groupSelector = combined_Data.loc[:, [varToGroupBy[x]]]
