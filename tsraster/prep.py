@@ -574,6 +574,50 @@ def mask_df(raster_mask, original_df, missing_value = -9999, reset_index = True)
             original_df = reset_df_index(if_series_to_df(original_df))
         return original_df
 
+def multiYear_Mask(startYear, endYear, DataLists, maskFile, outPath):
+    #mask multiple years of data, export the resulting files annually and as multiyar csvs
+
+    #param startYear: year on which to begin
+    #param endYear: year on which to end
+    #param DataLists: csv of files to pull, with the year is the index, 
+    #       "combined_Data_Filepaths" as the column of combined data filepaths, and
+    #       "target_Data_filePaths" as the column of the target data(i.e. fire) filepaths.
+    #param maskFile: filepath to data file used for masking
+    #outPath: filepath for folder in which the output will be placed
+
+
+    import copy
+    
+    for x in range(startYear, endYear+1):
+        combined_Data_iter = pd.read_csv(DataLists["combined_Data_Filepaths"][x], index_col = ["pixel_id"])
+        #combined_Data_iter.set_index(['pixel_id'], inplace = True)
+
+        target_Data_iter = pd.read_csv(DataLists["target_Data_Filepaths"][x], names = ['pixel_id', 'value'], index_col = ["pixel_id"])
+        #print(target_Data_iter)
+        #target_Data_iter.set_index(['pixel_id'], inplace = True)
+
+        #read in mask data generated using poisson disk regression as mask
+        target_Data_iter,  combined_Data_iter  = mask_df(maskFile,
+                                       original_df=[target_Data_iter, combined_Data_iter],
+                                       reset_index = False)
+                                                        
+        combined_Data_iter['year'] = x
+        combined_Data_iter.to_csv(outPath + "CD_" + str(x) + ".csv")
+
+        target_Data_iter['year'] = x
+        target_Data_iter.to_csv(outPath + "TD_" + str(x) + ".csv")
+
+        if x == startYear:
+            combined_Data = copy.deepcopy(combined_Data_iter)
+            target_Data = copy.deepcopy(target_Data_iter)
+        elif x > startYear:
+            combined_Data = pd.concat([combined_Data, combined_Data_iter])
+            target_Data = pd.concat([target_Data, target_Data_iter]) 
+                                                        
+    combined_Data.to_csv(outPath + "CD_" + str(startYear) + "_" + str(endYear) + ".csv")
+    target_Data.to_csv(outPath + "TD_" +  str(startYear) + "_" + str(endYear) + ".csv")
+    return combined_Data, target_Data
+
 
 def unmask_df(original_df, mask_df_output):
     '''
