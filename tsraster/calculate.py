@@ -407,6 +407,43 @@ def calculateFeatures_window(path, parameters, baseYear, reset_df ,length = 3, o
 #        CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType, path=out_path)
 #        return extracted_features
 
+def multiYear_Window_Extraction(startYear, endYear, featureData_Path, feature_params, invar_Data, out_Path, mask, window_length = 3, window_offset = 0):
+    #Extract summary statistics(features) from multiYear datasets within moving window, across years
+    #param startYear: year on which to start feature extraction
+    #param endYear: year on which to end feature extraction
+    #param featureData_Path: file path to data from which to extract features
+    #param feature_params: summary statistics(features) to extract from data within each window
+    #param invar_Data: year-invariate data to join with extracted feature data on an annual scale
+    #param out_Path: file path to location at which extracted features should be output as a csv
+    #param window_length: length of window within which to extract features
+    #param window_offset: number of years by which features pertaining to each year are offset from that year
+    #param mask:  mask to apply to data prior to feature extraction
+    
+    
+    # read in variables that are time variant, extract summary features, and concatenate output
+    for x in range(startYear, endYear+1):
+
+        #get climate parameters for desired window relative to iterated year
+        extracted_features_iter = calculateFeatures_window(path = featureData_Path, 
+                                                  parameters = feature_params, 
+                                                  baseYear = x,
+                                                  length = window_length,
+                                                  offset = window_offset,
+                                                  reset_df=True,
+                                                  raster_mask =  mask,
+                                                  tiff_output=True,
+                                                  workers = 1,
+                                                  outPath = out_Path)
+
+
+        #reset index of extracted features to combine with other datasets based on pixel ids
+        extracted_features_iter.reset_index(inplace = True)
+        combined_Data_iter = pd.concat([extracted_features_iter, invar_Data], axis = 1)
+
+
+       
+
+        combined_Data_iter.to_csv(out_Path + "FD_Window_" + str(x) + ".csv")
 
 def features_to_array(path, input_file):
     '''

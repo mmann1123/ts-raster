@@ -318,6 +318,41 @@ def multi_image_to_dataframe(csvPath, outPath):
     out_Data.to_csv(outPath)
     return out_Data
 
+def annual_Data_Merge(startYear, endYear, feature_path, other_Data_prefixList, other_Data_suffixList, dataNameList, outPath):
+    #merge additional annually repeating data into feature data
+    
+    #param startYear: year on which to start feature extraction
+    #param endYear: year on which to end feature extraction
+    #param other_Data_prefixList: list of file path and portion of filename preceding year for additional Data
+    #param feature_Data_suffixList: portion of feature data file name that follows year for additional data
+    #param dataNameList: list of intended data names for additional data
+    #param outPath: filepath for folder in which the output will be placed
+    
+    for x in range(startYear, endYear+1):
+        feature_Data_Iter = pd.read_csv(feature_path + "FD_Window_" + str(x) + ".csv")
+        for y in range(len(other_Data_prefixList)):
+            other_Data_iter = image_to_series_simple(other_Data_prefixList[y] + str(x) + other_Data_suffixList[y])
+            other_Data_iter.rename(dataNameList[y], inplace = True)
+            feature_Data_iter = pd.concat([feature_Data_Iter, other_Data_iter], axis = 1)
+        
+        feature_Data_iter.to_csv(outPath + "CD_" + str(x) + ".csv")
+    
+    
+def target_Data_to_csv_multiYear(startYear, endYear, file_Path, outPath):
+    #convert annual fire data rasters into dataFrames, export as .CSV files
+    
+    #param startYear: year on which to start feature extraction
+    #param endYear: year on which to end feature extraction
+    #param file_Path: path to target data files (fire data)
+    #outPath: filepath for folder in which the output will be placed: 
+    
+    for x in range(startYear, endYear+1):
+        # read target data (Fires in iterated Year)
+        target_variable_iter = file_Path + "fire_" + str(x) + "_" + str(x) + ".tif"
+        target_Data_iter = image_to_series_simple(target_variable_iter)
+        target_Data_iter = target_Data_iter.to_frame(name = "value")
+        target_Data_iter.to_csv(outPath + "TD_" + str(x) + ".csv")
+
 def poly_rasterizer(poly,raster_ex, raster_path_prefix, buffer_poly_cells=0):
     '''
     Rasterizes polygons by assigning a value 1.
@@ -574,8 +609,56 @@ def mask_df(raster_mask, original_df, missing_value = -9999, reset_index = True)
             original_df = reset_df_index(if_series_to_df(original_df))
         return original_df
 
-def multiYear_Mask(startYear, endYear, DataLists, maskFile, outPath):
+def multiYear_Mask(startYear, endYear, filePath, maskFile, outPath):
     #mask multiple years of data, export the resulting files annually and as multiyar csvs
+
+    #param startYear: year on which to begin
+    #param endYear: year on which to end
+    #param DataLists: csv of files to pull, with the year is the index, 
+    #       "combined_Data_Filepaths" as the column of combined data filepaths, and
+    #       "target_Data_filePaths" as the column of the target data(i.e. fire) filepaths.
+    #param maskFile: filepath to data file used for masking
+    #outPath: filepath for folder in which the output will be placed
+
+
+    import copy
+    
+    for x in range(startYear, endYear+1):
+        
+        combined_Data_iter = pd.read_csv(filePath + "CD_" + str(x) + ".csv", index_col = ["pixel_id"])
+        
+
+        target_Data_iter = pd.read_csv(filePath + "TD_" + str(x) + ".csv", index_col = ["pixel_id"])
+        
+
+        #read in mask data generated using poisson disk regression as mask
+        target_Data_iter,  combined_Data_iter  = mask_df(maskFile,
+                                       original_df=[target_Data_iter, combined_Data_iter],
+                                       reset_index = False)
+                                                        
+        combined_Data_iter['year'] = x
+        combined_Data_iter.to_csv(outPath + "CD_" + str(x) + "_Masked.csv")
+
+        target_Data_iter['year'] = x
+        target_Data_iter.to_csv(outPath + "TD_" + str(x) + "_Masked.csv")
+
+        
+        if x == startYear:
+            combined_Data = copy.deepcopy(combined_Data_iter)
+            target_Data = copy.deepcopy(target_Data_iter)
+        elif int(x) > int(startYear):
+            combined_Data = pd.concat([combined_Data, combined_Data_iter])
+            target_Data = pd.concat([target_Data, target_Data_iter]) 
+                                                        
+    combined_Data.to_csv(outPath + "CD_" + str(startYear) + "_Masked_" + str(endYear) + ".csv")
+    target_Data.to_csv(outPath + "TD_" +  str(startYear) + "_Masked_" + str(endYear) + ".csv")
+
+    return combined_Data, target_Data
+
+
+def multiYear_Mask_fileControl(startYear, endYear, DataLists, maskFile, outPath):
+    #mask multiple years of data, export the resulting files annually and as multiyar csvs
+    #controlled by csv - allows different names for combined and target data
 
     #param startYear: year on which to begin
     #param endYear: year on which to end
