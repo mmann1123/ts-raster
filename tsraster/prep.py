@@ -315,10 +315,11 @@ def multi_image_to_dataframe(csvPath, outPath):
             out_Data = iter_Data
         elif x>0:
             out_Data = pd.concat([out_Data, iter_Data], axis = 1)
-    out_Data.to_csv(outPath)
+    out_Data.reset_index(inplace = True)
+    out_Data.to_csv(outPath + "invarData.csv")
     return out_Data
 
-def annual_Data_Merge(startYear, endYear, feature_path, other_Data_prefixList, other_Data_suffixList, dataNameList, outPath):
+def annual_Data_Merge(startYear, endYear, feature_path, invarData_csvPath, other_Data_prefixList, other_Data_suffixList, dataNameList, outPath):
     #merge additional annually repeating data into feature data
     
     #param startYear: year on which to start feature extraction
@@ -328,8 +329,13 @@ def annual_Data_Merge(startYear, endYear, feature_path, other_Data_prefixList, o
     #param dataNameList: list of intended data names for additional data
     #param outPath: filepath for folder in which the output will be placed
     
+    invar_Data = multi_image_to_dataframe(invarData_csvPath, outPath)
+
     for x in range(startYear, endYear+1):
         feature_Data_Iter = pd.read_csv(feature_path + "FD_Window_" + str(x) + ".csv")
+
+        feature_Data_Iter = pd.merge(feature_Data_Iter, invar_Data, on = ['pixel_id'])
+
         for y in range(len(other_Data_prefixList)):
             other_Data_iter = image_to_series_simple(other_Data_prefixList[y] + str(x) + other_Data_suffixList[y])
             other_Data_iter.rename(dataNameList[y], inplace = True)

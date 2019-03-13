@@ -438,12 +438,9 @@ def multiYear_Window_Extraction(startYear, endYear, featureData_Path, feature_pa
 
         #reset index of extracted features to combine with other datasets based on pixel ids
         extracted_features_iter.reset_index(inplace = True)
-        combined_Data_iter = pd.concat([extracted_features_iter, invar_Data], axis = 1)
+        
 
-
-       
-
-        combined_Data_iter.to_csv(out_Path + "FD_Window_" + str(x) + ".csv")
+        extracted_features_iter.to_csv(out_Path + "FD_Window_" + str(x) + ".csv")
 
 def features_to_array(path, input_file):
     '''
