@@ -10,6 +10,7 @@ from sklearn import preprocessing
 import pandas as pd
 from os.path import isfile
 from tsraster.prep import set_common_index, set_df_index,set_df_mindex
+from tsraster import random
 
 
 
@@ -257,3 +258,125 @@ def model_predict_prob(model, new_X):
     return  pd.DataFrame(data = model.predict_proba(X=new_X), index = new_X.index)
 
  
+def elasticNet_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups):
+  '''Conduct elastic net regressions on data, with k-fold cross-validation conducted independently 
+      across both years and pixels. 
+      Returns mean model MSE and R2 when predicting fire risk at 
+      A) locations outside of the training dataset
+      B) years outside of the training dataset
+      C) locations and years outside of the training dataset
+  '''
+  #param combined_Data: explanatory factors to be used in predicting fire risk
+  #param target_Data: observed fire occurrences
+  #param varsToGroupBy: list of (2) column names from combined_Data & target_Data to be used in creating randomized groups
+  #param groupVars: list of (2) desired column names for the resulting randomized groups
+  #param testGroups: number of distinct groups into which data sets should be divided (for each of two variables) 
+  
+  
+  #Create randomly assigned groups of equal size by which to separate out subsets of data 
+  #by years and by pixels for training and testing to (test against 
+  #A) temporally alien, B) spatially alien, and C) completely alien conditions)
+  combined_Data, target_Data = random.TestTrain_GroupMaker(combined_Data, target_Data, 
+                                                             varsToGroupBy, 
+                                                             groupVars, 
+                                                             testGroups)
+
+
+
+  #get list of group ids, since in cases where group # <10, may not begin at zero
+  pixel_testVals = list(set(combined_Data[groupVars[0]].tolist()))
+  year_testVals = list(set(combined_Data[groupVars[1]].tolist()))
+  
+  Models_Summary = pd.DataFrame([], columns = ['Pixels_Years_MSE', 'Pixels_MSE', 'Years_MSE', 
+                                             'Pixels_Years_R2', 'Pixels_R2', 'Years_R2'])
+  
+  pixels_years_Models = []
+  pixels_Models = []
+  years_Models = []
+  
+  pixels_years_MSEList = []
+  pixels_MSEList = []
+  years_MSEList = []
+
+  
+  pixels_years_R2List = []
+  pixels_R2List = []
+  years_R2List = []
+
+  for x in pixel_testVals:
+
+
+      for y in year_testVals:
+          trainData_X = combined_Data[combined_Data[groupVars[0]] != x]
+          trainData_X = trainData_X[trainData_X[groupVars[1]] != y]
+
+          trainData_y = target_Data[target_Data[groupVars[0]] != x]
+          trainData_y = trainData_y[trainData_y[groupVars[1]] != y]
+
+
+          testData_X_pixels_years = combined_Data[combined_Data[groupVars[0]] == x]
+          testData_X_pixels_years = testData_X_pixels_years[testData_X_pixels_years[groupVars[1]] == y]
+
+          testData_X_pixels = combined_Data[combined_Data[groupVars[0]] == x]
+          testData_X_pixels = testData_X_pixels[testData_X_pixels[groupVars[1]] != y]
+
+          testData_X_years = combined_Data[combined_Data[groupVars[0]] != x]
+          testData_X_years = testData_X_years[testData_X_years[groupVars[1]] == y]
+
+
+
+          testData_y_pixels_years = target_Data[target_Data[groupVars[0]] == x]
+          testData_y_pixels_years = testData_y_pixels_years[testData_y_pixels_years[groupVars[1]] == y]
+
+          testData_y_pixels = target_Data[target_Data[groupVars[0]] == x]
+          testData_y_pixels = testData_y_pixels[testData_y_pixels[groupVars[1]] != y]
+
+          testData_y_years = target_Data[target_Data[groupVars[0]] != x]
+          testData_y_years = testData_y_years[testData_y_years[groupVars[1]] == y]
+
+
+          pixels_years_iterOutput = ElasticNetModel(trainData_X, trainData_y['value'], testData_X_pixels_years, testData_y_pixels_years['value'])
+          pixels_iterOutput = ElasticNetModel(trainData_X, trainData_y['value'], testData_X_pixels, testData_y_pixels['value'])
+          years_iterOutput = ElasticNetModel(trainData_X, trainData_y['value'], testData_X_years, testData_y_years['value'])
+
+          
+          pixels_years_Models.append(pixels_years_iterOutput)
+          pixels_Models.append(pixels_years_iterOutput)
+          years_Models.append(pixels_years_iterOutput)
+
+          pixels_years_MSEList.append(pixels_years_iterOutput[1])
+          pixels_MSEList.append(pixels_iterOutput[1])
+          years_MSEList.append(years_iterOutput[1])
+
+          pixels_years_R2List.append(pixels_years_iterOutput[2])
+          pixels_R2List.append(pixels_iterOutput[2])
+          years_R2List.append(years_iterOutput[2])
+
+  
+  
+  #combine MSE and R2 Lists into single DataFrame
+  Models_Summary['Pixels_Years_MSE'] = pixels_years_MSEList
+  Models_Summary['Pixels_MSE'] = pixels_MSEList
+  Models_Summary['Years_MSE'] = years_MSEList
+  
+  Models_Summary['Pixels_Years_R2'] = pixels_years_MSEList
+  Models_Summary['Pixels_R2'] = pixels_MSEList
+  Models_Summary['Years_R2'] = years_MSEList
+  
+  
+  print("pixels_Years MSE Overall: ", sum(pixels_years_MSEList)/len(pixels_years_MSEList))
+  print("pixels_Years R2 Overall: ", sum(pixels_years_R2List)/len(pixels_years_R2List))
+  #print("pixels_Years R2 iterations: ", pixels_years_R2List)
+  print("\n")
+  print("pixels MSE Overall: ", sum(pixels_MSEList)/len(pixels_MSEList))
+  print("pixels R2 Overall: ", sum(pixels_R2List)/len(pixels_R2List))
+  #print("pixels R2 iterations: ", pixels_R2List)
+  print("\n")
+  print("years MSE Overall: ", sum(years_MSEList)/len(years_MSEList))
+  print("years R2 Overall: ", sum(years_R2List)/len(years_R2List))
+  #print("years R2 iterations: ", years_R2List)
+  print("\n")
+  
+  return combined_Data, target_Data, Models_Summary, pixels_years_Models, pixels_Models, years_Models
+
+          #select out test/training data for each iteration by years
