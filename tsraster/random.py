@@ -320,17 +320,17 @@ def Poisson_Subsample(raster_mask, outFile, k = 50, r = 50):
 
 
 #### test_train
-def TestTrain_GroupMaker(combined_Data, target_Data, varToGroupBy, groupVar, testGroups = [10]):
+def TestTrain_GroupMaker(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups = [10]):
     #param combined_Data:  multivariate data for explaining target data - may be filename or csv
     #param combined_Data: target data - may be filename or csv
-    #param varToGroupBy: variable(s) on which to build groups for testing/training
-    #param groupVar: variable(s) to name those groups
+    #param varsToGroupBy: variable(s) on which to build groups for testing/training
+    #param groupVars: variable(s) to name those groups
     #param tesGroups: number of randomly assigned groups to provide for each variable
     
-    if type(varToGroupBy) is str:
-        varToGroupBy = [varToGroupBy]
-    if type(groupVar) is str:
-        groupVar is [groupVar]
+    if type(varsToGroupBy) is str:
+        varsToGroupBy = [varsToGroupBy]
+    if type(groupVars) is str:
+        groupVars is [groupVars]
     if type(testGroups) is not list:
         testGroups = [testGroups]
         
@@ -341,17 +341,17 @@ def TestTrain_GroupMaker(combined_Data, target_Data, varToGroupBy, groupVar, tes
     if type(target_Data) is str:
         target_Data = pd.read_csv(target_Data)
     
-    for x in range(len(varToGroupBy)):
+    for x in range(len(varsToGroupBy)):
         
-        if combined_Data.index.name == varToGroupBy[x]:
+        if combined_Data.index.name == varsToGroupBy[x]:
             combined_Data.reset_index(inplace = True)
 
-        if target_Data.index.name == varToGroupBy[x]:
+        if target_Data.index.name == varsToGroupBy[x]:
             target_Data.reset_index(inplace = True)
 
         
         #get single copy of unique values to group by 
-        groupSelector = combined_Data.loc[:, [varToGroupBy[x]]]
+        groupSelector = combined_Data.loc[:, [varsToGroupBy[x]]]
         groupSelector = groupSelector.drop_duplicates()
         groupSelector.reset_index(inplace = True, drop = True)
 
@@ -360,18 +360,20 @@ def TestTrain_GroupMaker(combined_Data, target_Data, varToGroupBy, groupVar, tes
         groupSelector["random_order"] = groupSelector.random_values.rank()
 
 
-        groupSelector[groupVar[x]] = groupSelector.random_order.apply(lambda y: y / len(groupSelector) * testGroups[x])
-        groupSelector[groupVar[x]] = groupSelector[groupVar[x]].map(int)
+        #randomly order all values, place them into equally sized groups 
+        #(in cases of a number of groups that cannot be divided evenly, the last group will include one extra value)
+        groupSelector[groupVars[x]] = groupSelector.random_order.apply(lambda y: y / len(groupSelector) * testGroups[x]* 0.9999999) # the 0.999 is to prevent the top-ranked value from being placed in its own class
+        groupSelector[groupVars[x]] = groupSelector[groupVars[x]].map(int)
         groupSelector.reset_index(inplace = True)
 
-        groupSelector = groupSelector.loc[:, [varToGroupBy[x], groupVar[x]]]
+        groupSelector = groupSelector.loc[:, [varsToGroupBy[x], groupVars[x]]]
 
 
 
-        combined_Data = pd.merge(combined_Data, groupSelector, on = [varToGroupBy[x]], how = "left")
+        combined_Data = pd.merge(combined_Data, groupSelector, on = [varsToGroupBy[x]], how = "left")
         test= combined_Data.dropna()
 
-        target_Data = pd.merge(target_Data, groupSelector, on = [varToGroupBy[x]], how = "left")
+        target_Data = pd.merge(target_Data, groupSelector, on = [varsToGroupBy[x]], how = "left")
 
     return combined_Data, target_Data
  

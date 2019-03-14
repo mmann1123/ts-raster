@@ -265,7 +265,16 @@ def elasticNet_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, te
       A) locations outside of the training dataset
       B) years outside of the training dataset
       C) locations and years outside of the training dataset
+
+    Returns a list of objects, consisting of:
+      0: Combined_Data file with testing/training groups labeled
+      1: Target Data file with testing/training groups labeled
+      2: summary dataFrame of MSE and R2 for each model run
+          (against holdout data representing either novel locations, novel years, or both)
+      3: list of elastic net models for use in predicting Fires in further locations/years
+      4: list of list of years not used in model training for each run
   '''
+
   #param combined_Data: explanatory factors to be used in predicting fire risk
   #param target_Data: observed fire occurrences
   #param varsToGroupBy: list of (2) column names from combined_Data & target_Data to be used in creating randomized groups
@@ -290,18 +299,19 @@ def elasticNet_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, te
   Models_Summary = pd.DataFrame([], columns = ['Pixels_Years_MSE', 'Pixels_MSE', 'Years_MSE', 
                                              'Pixels_Years_R2', 'Pixels_R2', 'Years_R2'])
   
-  pixels_years_Models = []
-  pixels_Models = []
-  years_Models = []
+  #used to create list of model runs
+  Models = []
   
+  #used to create data for entry as columns into summary DataFrame
   pixels_years_MSEList = []
   pixels_MSEList = []
   years_MSEList = []
-
-  
   pixels_years_R2List = []
   pixels_R2List = []
   years_R2List = []
+
+  #used to create a list of lists of years that are excluded within each model run
+  excluded_Years = []
 
   for x in pixel_testVals:
 
@@ -334,15 +344,15 @@ def elasticNet_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, te
           testData_y_years = target_Data[target_Data[groupVars[0]] != x]
           testData_y_years = testData_y_years[testData_y_years[groupVars[1]] == y]
 
+          excluded_Years.append(list(set(testData_y_years[varsToGroupBy[1]].tolist())))
 
           pixels_years_iterOutput = ElasticNetModel(trainData_X, trainData_y['value'], testData_X_pixels_years, testData_y_pixels_years['value'])
           pixels_iterOutput = ElasticNetModel(trainData_X, trainData_y['value'], testData_X_pixels, testData_y_pixels['value'])
           years_iterOutput = ElasticNetModel(trainData_X, trainData_y['value'], testData_X_years, testData_y_years['value'])
 
           
-          pixels_years_Models.append(pixels_years_iterOutput)
-          pixels_Models.append(pixels_years_iterOutput)
-          years_Models.append(pixels_years_iterOutput)
+          Models.append(pixels_years_iterOutput)
+          
 
           pixels_years_MSEList.append(pixels_years_iterOutput[1])
           pixels_MSEList.append(pixels_iterOutput[1])
@@ -359,9 +369,9 @@ def elasticNet_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, te
   Models_Summary['Pixels_MSE'] = pixels_MSEList
   Models_Summary['Years_MSE'] = years_MSEList
   
-  Models_Summary['Pixels_Years_R2'] = pixels_years_MSEList
-  Models_Summary['Pixels_R2'] = pixels_MSEList
-  Models_Summary['Years_R2'] = years_MSEList
+  Models_Summary['Pixels_Years_R2'] = pixels_years_R2List
+  Models_Summary['Pixels_R2'] = pixels_R2List
+  Models_Summary['Years_R2'] = years_R2List
   
   
   print("pixels_Years MSE Overall: ", sum(pixels_years_MSEList)/len(pixels_years_MSEList))
@@ -377,6 +387,4 @@ def elasticNet_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, te
   #print("years R2 iterations: ", years_R2List)
   print("\n")
   
-  return combined_Data, target_Data, Models_Summary, pixels_years_Models, pixels_Models, years_Models
-
-          #select out test/training data for each iteration by years
+  return combined_Data, target_Data, Models_Summary, Models, excluded_Years
