@@ -300,8 +300,13 @@ def image_to_series_simple(file,dtype = np.int8):
     return df
 
 def multi_image_to_dataframe(csvPath, outPath):
-    #param csvPath: path to csv of filepaths (in column "FilePath") and desired label names for values in each raster (in column "DataName")
-    #param outPath: path to ouput file name and location
+    '''Combines set of rasters to single dataFrame based on csv that lists all desired files 
+    and column names to use in dataframe for data corresponding to each raster
+    
+    :param csvPath: path to csv of filepaths (in column "FilePath") and desired label names for values in each raster (in column "DataName")
+    :param outPath: path to ouput file name and location
+    :return: dataFrame consisting of all desired data with previously selected labels.
+ '''
     
     fileFrame = pd.read_csv(csvPath)
     filePath_List = fileFrame['FilePath'].tolist()
@@ -320,14 +325,21 @@ def multi_image_to_dataframe(csvPath, outPath):
     return out_Data
 
 def annual_Data_Merge(startYear, endYear, feature_path, invarData_csvPath, other_Data_prefixList, other_Data_suffixList, dataNameList, outPath):
-    #merge additional annually repeating data into feature data
-    
-    #param startYear: year on which to start feature extraction
-    #param endYear: year on which to end feature extraction
-    #param other_Data_prefixList: list of file path and portion of filename preceding year for additional Data
-    #param feature_Data_suffixList: portion of feature data file name that follows year for additional data
-    #param dataNameList: list of intended data names for additional data
-    #param outPath: filepath for folder in which the output will be placed
+    '''merge additional annually repeating data into feature data, as well as time-invariant data
+    Produces annual dataFrames consisting of all explanatory variables that may be incorporated into model
+        (Consisting of features extracted from climate data in preceding years, 
+        annually repeating data such as estimated housing density,
+        and time-invariant data such as rate of lightning strikes or local elevation)
+        
+    param startYear: year on which to start feature extraction
+    param endYear: year on which to end feature extraction
+    param other_Data_prefixList: list of file path and portion of filename preceding year for additional Data
+    param feature_Data_suffixList: portion of feature data file name that follows year for additional data
+    param dataNameList: list of intended data names for additional data
+    param outPath: filepath for folder in which the output will be placed
+    return: no objects returned.  Instead, each annual dataFrame will be saved as a .csv file in the outPath folder
+            with filename CD_XXXX.csv 
+'''
     
     invar_Data = multi_image_to_dataframe(invarData_csvPath, outPath)
 
@@ -345,12 +357,19 @@ def annual_Data_Merge(startYear, endYear, feature_path, invarData_csvPath, other
     
     
 def target_Data_to_csv_multiYear(startYear, endYear, file_Path, outPath):
-    #convert annual fire data rasters into dataFrames, export as .CSV files
+    '''convert annual fire data rasters into annual dataFrames, export as .CSV files
+    also does some minor reformatting to prevent problems with downstream processing
+
     
-    #param startYear: year on which to start feature extraction
-    #param endYear: year on which to end feature extraction
-    #param file_Path: path to target data files (fire data)
-    #outPath: filepath for folder in which the output will be placed: 
+    :param startYear: year on which to start feature extraction
+    :param endYear: year on which to end feature extraction
+    :param file_Path: path to target data files (fire data)
+    :outPath: filepath for folder in which the output will be placed:
+    :return: no objects returned.  Instead, annual dataFrames will be saved at location outPath
+            using the filname TD_XXXX.csv
+
+'''
+
     
     for x in range(startYear, endYear+1):
         # read target data (Fires in iterated Year)
@@ -655,7 +674,17 @@ def multiYear_Mask(startYear, endYear, filePath, maskFile, outPath):
         elif int(x) > int(startYear):
             combined_Data = pd.concat([combined_Data, combined_Data_iter])
             target_Data = pd.concat([target_Data, target_Data_iter]) 
-                                                        
+    
+    try: 
+        combined_Data.drop(['pixel_id.1', 'time']) 
+    except: 
+        pass
+
+    try: 
+        combined_Data.drop(['Unnamed: 0'])
+    except: 
+        pass
+
     combined_Data.to_csv(outPath + "CD_" + str(startYear) + "_Masked_" + str(endYear) + ".csv")
     target_Data.to_csv(outPath + "TD_" +  str(startYear) + "_Masked_" + str(endYear) + ".csv")
 

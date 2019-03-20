@@ -408,17 +408,22 @@ def calculateFeatures_window(path, parameters, baseYear, reset_df ,length = 3, o
 #        return extracted_features
 
 def multiYear_Window_Extraction(startYear, endYear, featureData_Path, feature_params, invar_Data, out_Path, mask, window_length = 3, window_offset = 0):
-    #Extract summary statistics(features) from multiYear datasets within moving window, across years
-    #param startYear: year on which to start feature extraction
-    #param endYear: year on which to end feature extraction
-    #param featureData_Path: file path to data from which to extract features
-    #param feature_params: summary statistics(features) to extract from data within each window
-    #param invar_Data: year-invariate data to join with extracted feature data on an annual scale
-    #param out_Path: file path to location at which extracted features should be output as a csv
-    #param window_length: length of window within which to extract features
-    #param window_offset: number of years by which features pertaining to each year are offset from that year
-    #param mask:  mask to apply to data prior to feature extraction
+    '''
+    Extracts summary statistics(features) from multiYear datasets within moving window, across years
+    Outputs a series of annual dataFrames as CSV files
     
+    :param startYear: year on which to start feature extraction
+    :param endYear: year on which to end feature extraction
+    :param featureData_Path: file path to data from which to extract features
+    :param feature_params: summary statistics(features) to extract from data within each window
+    :param invar_Data: year-invariate data to join with extracted feature data on an annual scale
+    :param out_Path: file path to location at which extracted features should be output as a csv
+    :param window_length: length of window within which to extract features
+    :param window_offset: number of years by which features pertaining to each year are offset from that year
+    :param mask:  mask to apply to data prior to feature extraction
+    :return: no return.  instead, feature data relative to each year of interest is saved as a .csv file at the out_Path location
+              under the filename FD_Window_XXXX.csv 
+    '''
     
     # read in variables that are time variant, extract summary features, and concatenate output
     for x in range(startYear, endYear+1):

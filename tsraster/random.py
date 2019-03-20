@@ -245,12 +245,18 @@ def get_initial(mask_Array, cells, samples, k, r):
 
 def Poisson_Subsample(raster_mask, outFile, k = 50, r = 50):
     '''
-    Create raster of cells to be selected (populated as ones) in a raster of background value zero
+Create raster of cells to be selected (populated as ones) in a raster of background value zero
 
-    :param raster_mask: name of raster mask - provides dimensions for subsample, and also masks unusable areas - IS ASSUMED TO BE CONTIGUOUS
-    :param k: number of attempts to select a point around each reference point before marking it as inactive
-    :param r: minimum distance (in raster cells) between selected points 
-    '''
+:param raster_mask: name of raster mask - provides dimensions for subsample, and also masks unusable areas - 
+        Remaining sample area is assumed to be contiguous
+:param outFile: path and name of output mask consisting of a rater image with values of 1 for selected pixels, 
+        and 0 for all other pixels
+:param k: number of attempts to select a point around each reference point before marking it as inactive
+:param r: minimum distance (in raster cells) between selected points 
+:return:  list which includes an array of all masked & unnmasked cells, and a dictionary of all selected points.
+            Also saves the a raster consisting of 0s for all non-selected points, and 1s for all selected points
+            to the outFile location.
+'''
 
     with rasterio.open(raster_mask) as exampleRast:
         mask_Array = exampleRast.read()
@@ -321,12 +327,16 @@ def Poisson_Subsample(raster_mask, outFile, k = 50, r = 50):
 
 #### test_train
 def TestTrain_GroupMaker(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups = [10]):
-    #param combined_Data:  multivariate data for explaining target data - may be filename or csv
-    #param combined_Data: target data - may be filename or csv
-    #param varsToGroupBy: variable(s) on which to build groups for testing/training
-    #param groupVars: variable(s) to name those groups
-    #param tesGroups: number of randomly assigned groups to provide for each variable
-    
+    '''
+    :param combined_Data:  multivariate data for explaining target data - may be filename or csv
+    :param combined_Data: target data - may be filename or csv
+    :param varsToGroupBy: variable(s) on which to build groups for testing/training
+    :param groupVars: variable(s) to name those groups
+    :param tesGroups: number of randomly assigned groups to provide for each variable
+    :return: modified forms of combined_Data and target_Data that include the randomly allocated groups
+            (labeled according to groupVars)
+    ''' 
+
     if type(varsToGroupBy) is str:
         varsToGroupBy = [varsToGroupBy]
     if type(groupVars) is str:

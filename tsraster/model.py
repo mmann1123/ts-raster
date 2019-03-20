@@ -319,32 +319,41 @@ def elasticNet_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, te
       for y in year_testVals:
           trainData_X = combined_Data[combined_Data[groupVars[0]] != x]
           trainData_X = trainData_X[trainData_X[groupVars[1]] != y]
+          trainData_X = trainData_X.drop([groupvars + varsToGroupBy], inplace = True)
+
 
           trainData_y = target_Data[target_Data[groupVars[0]] != x]
           trainData_y = trainData_y[trainData_y[groupVars[1]] != y]
+          trainData_y = trainData_y.drop([groupvars + varsToGroupBy], inplace = True)
 
 
           testData_X_pixels_years = combined_Data[combined_Data[groupVars[0]] == x]
           testData_X_pixels_years = testData_X_pixels_years[testData_X_pixels_years[groupVars[1]] == y]
+          testData_X_pixels_years = testData_X_pixels_years.drop([groupvars + varsToGroupBy], inplace = True)
 
           testData_X_pixels = combined_Data[combined_Data[groupVars[0]] == x]
           testData_X_pixels = testData_X_pixels[testData_X_pixels[groupVars[1]] != y]
+          testData_X_pixels = testData_X_pixels.drop([groupvars + varsToGroupBy], inplace = True)
 
           testData_X_years = combined_Data[combined_Data[groupVars[0]] != x]
           testData_X_years = testData_X_years[testData_X_years[groupVars[1]] == y]
+          testData_X_years = testData_X_years.drop([groupvars + varsToGroupBy], inplace = True)
 
 
 
           testData_y_pixels_years = target_Data[target_Data[groupVars[0]] == x]
           testData_y_pixels_years = testData_y_pixels_years[testData_y_pixels_years[groupVars[1]] == y]
+          testData_y_pixels_years = testData_y_pixels_years.drop([groupvars + varsToGroupBy], inplace = True)
 
           testData_y_pixels = target_Data[target_Data[groupVars[0]] == x]
           testData_y_pixels = testData_y_pixels[testData_y_pixels[groupVars[1]] != y]
+          testData_y_pixels = testData_y_pixels.drop([groupvars + varsToGroupBy], inplace = True)
 
           testData_y_years = target_Data[target_Data[groupVars[0]] != x]
           testData_y_years = testData_y_years[testData_y_years[groupVars[1]] == y]
-
           excluded_Years.append(list(set(testData_y_years[varsToGroupBy[1]].tolist())))
+          testData_y_years = testData_y_years.drop([groupvars + varsToGroupBy], inplace = True)
+
 
           pixels_years_iterOutput = ElasticNetModel(trainData_X, trainData_y['value'], testData_X_pixels_years, testData_y_pixels_years['value'])
           pixels_iterOutput = ElasticNetModel(trainData_X, trainData_y['value'], testData_X_pixels, testData_y_pixels['value'])
