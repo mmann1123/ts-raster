@@ -7,6 +7,7 @@ authors: m.mann & a.bedada
 
 import numpy as np
 import glob
+import rasterio
 import os.path
 import pandas as pd
 import geopandas as gpd
@@ -15,6 +16,7 @@ from rasterio import features
 import gdal
 from re import sub
 from pathlib import Path
+from numpy import reshape
 
 def set_df_mindex(df):
     '''
@@ -1009,3 +1011,57 @@ def panel_lag_1(original_df, col_names, group_by_index='pixel_id'):
     
     return original_df
      
+def seriesToRaster(in_Series, templateRasterPath, outPath):
+    '''convert series to raster, output to location 'outPath'
+    
+    :param in_Series: input series to be rasterized
+    :param templateRasterPath: path to existing raster to be used as template
+    :param outPath: outpath (including filename) for raster
+    :return: nothing - saves in_Series to raster
+    '''
+    
+    ex_row, ex_cols =  rasterio.open(templateRasterPath).shape
+
+    f2Array = reshape(in_Series.values, (ex_row, ex_cols))
+    
+    with rasterio.open(templateRasterPath) as exampleRast:
+        array = exampleRast.read()
+        profile = exampleRast.profile
+        profile.update(dtype=rasterio.float32, count=1, compress='lzw',nodata=0)
+
+        
+        
+    f2Array = np.float32(f2Array)      
+
+    with rasterio.open(outPath, 'w', **profile) as prob_iter:
+        prob_iter.write(f2Array, 1)
+
+
+def arrayToRaster(in_Array, templateRasterPath, outPath):
+    '''convert array to raster, output to location 'outPath'
+    
+    :param in_Array: input series to be rasterized
+    :param templateRasterPath: path to existing raster to be used as template
+    :param outPath: outpath (including filename) for raster
+    :return: nothing - saves in_Array to raster
+    '''
+    
+    
+    import rasterio
+    from numpy import reshape
+    
+    ex_row, ex_cols =  rasterio.open(templateRasterPath).shape
+
+    f2Array = reshape(in_Array, (ex_row, ex_cols))
+    
+    with rasterio.open(templateRasterPath) as exampleRast:
+        array = exampleRast.read()
+        profile = exampleRast.profile
+        profile.update(dtype=rasterio.float32, count=1, compress='lzw',nodata=0)
+
+        
+        
+    f2Array = np.float32(f2Array)      
+
+    with rasterio.open(outPath, 'w', **profile) as prob_iter:
+        prob_iter.write(f2Array, 1)

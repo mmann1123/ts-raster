@@ -9,9 +9,9 @@ from sklearn.metrics import r2_score
 from sklearn import preprocessing
 import pandas as pd
 from os.path import isfile
-from tsraster.prep import set_common_index, set_df_index,set_df_mindex
+from tsraster.prep import set_common_index, set_df_index,set_df_mindex, image_to_series_simple, seriesToRaster
 from tsraster import random
-
+import pickle
 
 
 def get_data(obj, test_size=0.33,scale=False,stratify=None,groups=None):
@@ -258,7 +258,7 @@ def model_predict_prob(model, new_X):
     return  pd.DataFrame(data = model.predict_proba(X=new_X), index = new_X.index)
 
  
-def elasticNet_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups):
+def elasticNet_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups, DataFields, outPath):
   '''Conduct elastic net regressions on data, with k-fold cross-validation conducted independently 
       across both years and pixels. 
       Returns mean model MSE and R2 when predicting fire risk at 
@@ -319,40 +319,39 @@ def elasticNet_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, te
       for y in year_testVals:
           trainData_X = combined_Data[combined_Data[groupVars[0]] != x]
           trainData_X = trainData_X[trainData_X[groupVars[1]] != y]
-          trainData_X = trainData_X.drop([groupvars + varsToGroupBy], inplace = True)
+          trainData_X = trainData_X.loc[:, DataFields]
 
 
           trainData_y = target_Data[target_Data[groupVars[0]] != x]
           trainData_y = trainData_y[trainData_y[groupVars[1]] != y]
-          trainData_y = trainData_y.drop([groupvars + varsToGroupBy], inplace = True)
 
 
           testData_X_pixels_years = combined_Data[combined_Data[groupVars[0]] == x]
           testData_X_pixels_years = testData_X_pixels_years[testData_X_pixels_years[groupVars[1]] == y]
-          testData_X_pixels_years = testData_X_pixels_years.drop([groupvars + varsToGroupBy], inplace = True)
+          testData_X_pixels_years = testData_X_pixels_years.loc[:, DataFields]
 
           testData_X_pixels = combined_Data[combined_Data[groupVars[0]] == x]
           testData_X_pixels = testData_X_pixels[testData_X_pixels[groupVars[1]] != y]
-          testData_X_pixels = testData_X_pixels.drop([groupvars + varsToGroupBy], inplace = True)
+          testData_X_pixels = testData_X_pixels.loc[:, DataFields]
 
           testData_X_years = combined_Data[combined_Data[groupVars[0]] != x]
           testData_X_years = testData_X_years[testData_X_years[groupVars[1]] == y]
-          testData_X_years = testData_X_years.drop([groupvars + varsToGroupBy], inplace = True)
+          testData_X_years = testData_X_years.loc[:, DataFields]
 
 
 
           testData_y_pixels_years = target_Data[target_Data[groupVars[0]] == x]
           testData_y_pixels_years = testData_y_pixels_years[testData_y_pixels_years[groupVars[1]] == y]
-          testData_y_pixels_years = testData_y_pixels_years.drop([groupvars + varsToGroupBy], inplace = True)
+          
 
           testData_y_pixels = target_Data[target_Data[groupVars[0]] == x]
           testData_y_pixels = testData_y_pixels[testData_y_pixels[groupVars[1]] != y]
-          testData_y_pixels = testData_y_pixels.drop([groupvars + varsToGroupBy], inplace = True)
+          
 
           testData_y_years = target_Data[target_Data[groupVars[0]] != x]
           testData_y_years = testData_y_years[testData_y_years[groupVars[1]] == y]
           excluded_Years.append(list(set(testData_y_years[varsToGroupBy[1]].tolist())))
-          testData_y_years = testData_y_years.drop([groupvars + varsToGroupBy], inplace = True)
+          
 
 
           pixels_years_iterOutput = ElasticNetModel(trainData_X, trainData_y['value'], testData_X_pixels_years, testData_y_pixels_years['value'])
@@ -396,4 +395,81 @@ def elasticNet_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, te
   #print("years R2 iterations: ", years_R2List)
   print("\n")
   
+  pickling_on = open(outPath + "elasticNet_2dim.pickle", "wb")
+  pickle.dump([combined_Data, target_Data, Models_Summary, Models, excluded_Years], pickling_on)
+  pickling_on.close
+
+  Models_Summary.to_csv(outPath + "Model_Summary.csv")
+
   return combined_Data, target_Data, Models_Summary, Models, excluded_Years
+
+
+def zeroMasker(row):
+    ''' used as apply statement for masking in elastic_YearPredictor
+    :return: 0 if cell is masked out, PredRisk otherwise
+    '''
+    if row['mask'] == 0:
+        return 0
+    else:
+        return row['PredRisk']
+
+def elastic_YearPredictor(combined_Data_Training, target_Data_Training, preMasked_Data_Path, outPath, year_List, DataFields, mask):
+    '''annually predict fire risk- train model on combined_Data across all available years except year of interest
+    save resulting predictions as csv and as tif to location 'outPath'
+    
+    :param combined_Data_Training: dataFrame including all desired explanatory factors 
+            across all locations & years to be used in training model
+    :param target_Data_Training: dataFrame including observed fire occurrences 
+            across all locations & years to be used in training model
+    :param preMasked_Data_Path: file path to location of files to use in predicting fire risk 
+                    (note - these files should not have undergone Poisson disk masking)
+    :param outPath: desired output location for predicted fire risk files (csv, pickle, and tif)
+    :param year_List: list of years for which predictions are desired
+    :param Datafields: list of explanatory factors to be intered into model
+    :param mask: filepath of raster mask to be used in masking output predictions, 
+            and as an example raster for choosing array shape and projections for .tif output files
+    :return:  returns a list of all models, accompanied by a list of years being predicted 
+            - note - return output is equivalent to data exported as models.pickle
+    '''
+    
+    model_List = []
+    
+    for iterYear in year_List:
+        combined_Data_iter_train = combined_Data_Training[combined_Data_Training['year'] != iterYear]
+        combined_Data_iter_train = combined_Data_iter_train.loc[:, DataFields]
+        
+        target_Data_iter_train = target_Data_Training[target_Data_Training['year'] != iterYear]
+        
+        
+        elastic_iter_Model = ElasticNet(alpha=0.5,
+                      l1_ratio=0.7)
+        
+        elastic_iter_Fit = elastic_iter_Model.fit(combined_Data_iter_train, target_Data_iter_train['value'])
+        
+        
+        
+        #seriesToRaster(predict_iter, templateRasterPath, outPath + "Pred_FireRisk_" + str(iterYear) + ".tif")
+
+        full_X = pd.read_csv(preMasked_Data_Path + "CD_" + str(iterYear) + ".csv")
+        full_X = full_X.loc[:, DataFields]
+        
+        data = elastic_iter_Fit.predict(X=full_X)
+        
+        data = pd.DataFrame(data, columns = ['PredRisk'])
+        index_mask = image_to_series_simple(mask)
+        data['mask'] = index_mask
+        data['PredRisk_Masked'] = data.apply(zeroMasker, axis =1)
+        
+        data.to_csv(outPath + "Pred_" + str(iterYear) + ".csv")
+        
+        #output predicted risk as tiff
+        seriesToRaster(data['PredRisk_Masked'], mask, outPath + "Pred_" + str(iterYear) + ".tif")
+        
+        model_List.append([elastic_iter_Fit])
+        
+    pickling_on = open(outPath + "models.pickle", "wb")
+    pickle.dump([model_List, year_List], pickling_on)
+    pickling_on.close
+        
+        
+    return model_List, year_List
