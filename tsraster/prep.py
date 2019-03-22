@@ -17,6 +17,7 @@ import gdal
 from re import sub
 from pathlib import Path
 from numpy import reshape
+import string
 
 def set_df_mindex(df):
     '''
@@ -326,7 +327,7 @@ def multi_image_to_dataframe(csvPath, outPath):
     out_Data.to_csv(outPath + "invarData.csv")
     return out_Data
 
-def annual_Data_Merge(startYear, endYear, feature_path, invarData_csvPath, other_Data_prefixList, other_Data_suffixList, dataNameList, outPath):
+def annual_Data_Merge(startYear, endYear, feature_path, invarData_csvPath, other_Data_path, dataNameList, outPath):
     '''merge additional annually repeating data into feature data, as well as time-invariant data
     Produces annual dataFrames consisting of all explanatory variables that may be incorporated into model
         (Consisting of features extracted from climate data in preceding years, 
@@ -335,7 +336,8 @@ def annual_Data_Merge(startYear, endYear, feature_path, invarData_csvPath, other
         
     param startYear: year on which to start feature extraction
     param endYear: year on which to end feature extraction
-    param other_Data_prefixList: list of file path and portion of filename preceding year for additional Data
+    param other_Data_path: filepath (including filename) of example file for each annually repeating parameter to be added
+                         - replace the 4-digit year within each filename with XXXX in each filePath (i.e. tr_XXXX.csv rather than tr.1981.csv)
     param feature_Data_suffixList: portion of feature data file name that follows year for additional data
     param dataNameList: list of intended data names for additional data
     param outPath: filepath for folder in which the output will be placed
@@ -350,8 +352,9 @@ def annual_Data_Merge(startYear, endYear, feature_path, invarData_csvPath, other
 
         feature_Data_Iter = pd.merge(feature_Data_Iter, invar_Data, on = ['pixel_id'])
 
-        for y in range(len(other_Data_prefixList)):
-            other_Data_iter = image_to_series_simple(other_Data_prefixList[y] + str(x) + other_Data_suffixList[y])
+        for y in range(len(other_Data_path)):
+            iter_otherData = other_Data_path[y].replace('XXXX', str(x))
+            other_Data_iter = image_to_series_simple(iter_otherData)
             other_Data_iter.rename(dataNameList[y], inplace = True)
             feature_Data_iter = pd.concat([feature_Data_Iter, other_Data_iter], axis = 1)
         
