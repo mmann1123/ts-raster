@@ -302,50 +302,50 @@ def image_to_series_simple(file,dtype = np.int8):
 
     return df
 
-def multi_image_to_dataframe(csvPath, outPath):
+def multi_image_to_dataframe(dataDict, outPath):
     '''Combines set of rasters to single dataFrame based on csv that lists all desired files 
     and column names to use in dataframe for data corresponding to each raster
     
-    :param csvPath: path to csv of filepaths (in column "FilePath") and desired label names for values in each raster (in column "DataName")
+    :param dataDict: dictionary of filepaths to each raster and the corresponding desired data column name
     :param outPath: path to ouput file name and location
     :return: dataFrame consisting of all desired data with previously selected labels.
  '''
     
-    fileFrame = pd.read_csv(csvPath)
-    filePath_List = fileFrame['FilePath'].tolist()
-    DataName_List = fileFrame['DataName'].tolist()
-    
-    for x in range(len(fileFrame)):
-        iter_Data = image_to_series_simple(filePath_List[x])
-        iter_Data.rename(DataName_List[x], inplace = True)
+    y = 0
+    for x in dataDict.keys():
+        iter_Data = image_to_series_simple(x)
+        iter_Data.rename(dataDict[x], inplace = True)
         
-        if x==0:
+        if y==0:
             out_Data = iter_Data
-        elif x>0:
+        elif y>0:
             out_Data = pd.concat([out_Data, iter_Data], axis = 1)
+        y+=1
     out_Data.reset_index(inplace = True)
-    out_Data.to_csv(outPath + "invarData.csv")
+    out_Data.to_csv(outPath + "invarData.csv", index = False)
     return out_Data
 
-def annual_Data_Merge(startYear, endYear, feature_path, invarData_csvPath, other_Data_path, dataNameList, outPath):
+def annual_Data_Merge(startYear, endYear, feature_path, dataDict, other_Data_path, dataNameList, outPath):
     '''merge additional annually repeating data into feature data, as well as time-invariant data
     Produces annual dataFrames consisting of all explanatory variables that may be incorporated into model
         (Consisting of features extracted from climate data in preceding years, 
         annually repeating data such as estimated housing density,
         and time-invariant data such as rate of lightning strikes or local elevation)
         
-    param startYear: year on which to start feature extraction
-    param endYear: year on which to end feature extraction
-    param other_Data_path: filepath (including filename) of example file for each annually repeating parameter to be added
+    :param startYear: year on which to start feature extraction
+    :param endYear: year on which to end feature extraction
+    :param dataDict: dictionary of filepaths to each raster and the corresponding desired data column name
+    
+    :param other_Data_path: filepath (including filename) of example file for each annually repeating parameter to be added
                          - replace the 4-digit year within each filename with XXXX in each filePath (i.e. tr_XXXX.csv rather than tr.1981.csv)
-    param feature_Data_suffixList: portion of feature data file name that follows year for additional data
-    param dataNameList: list of intended data names for additional data
-    param outPath: filepath for folder in which the output will be placed
-    return: no objects returned.  Instead, each annual dataFrame will be saved as a .csv file in the outPath folder
+    :param feature_Data_suffixList: portion of feature data file name that follows year for additional data
+    :param dataNameList: list of intended data names for additional data
+    :param outPath: filepath for folder in which the output will be placed
+    :return: no objects returned.  Instead, each annual dataFrame will be saved as a .csv file in the outPath folder
             with filename CD_XXXX.csv 
 '''
     
-    invar_Data = multi_image_to_dataframe(invarData_csvPath, outPath)
+    invar_Data = multi_image_to_dataframe(dataDict, outPath)
 
     for x in range(startYear, endYear+1):
         feature_Data_Iter = pd.read_csv(feature_path + "FD_Window_" + str(x) + ".csv")
@@ -1068,3 +1068,26 @@ def arrayToRaster(in_Array, templateRasterPath, outPath):
 
     with rasterio.open(outPath, 'w', **profile) as prob_iter:
         prob_iter.write(f2Array, 1)
+
+
+
+def Image_Reclasser(input_path, outPath, yearList, exampleRaster, reclassDict):
+    '''reclassify data within a series of images, based on a dictionary of values to be replaced with new values
+    :param input_path: path of images - includes image name, with year replaced by XXXX
+    :param outPath: path to output images
+    :param yearList: list of years to be converted
+    :param exampleRaster: example raster for outpur raster projection & parameters
+    :param reclassDict: dictionary of values to be reclassified, as well as the values to replace them 
+    :return: returns no objects - outputs each reclassified image to output path as .tif files
+    '''
+    
+    for x in yearList:
+        print(x)
+        iter_path = input_path.replace('XXXX', str(x))
+        iter_Array = tr.image_to_array(iter_path)
+        iter_Array = iter_Array.astype(np.float32)
+        print(iter_Array.shape)
+        for x in reclassDict.keys():
+            iter_Array[iter_Array == x] = reclassDict[x]
+            
+        arrayToRaster(iter_Array, exampleRaster, outPath + "Reclass_"+ str(x) + ".tif")
