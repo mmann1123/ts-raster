@@ -1,6 +1,6 @@
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, RandomForestClassifier
 from sklearn.model_selection import train_test_split as tts
-from sklearn.model_selection import GroupShuffleSplit
+from sklearn.model_selection import GroupShuffleSplit, RandomizedSearchCV
 
 from sklearn.linear_model import ElasticNet, ElasticNetCV
 from sklearn.metrics import  accuracy_score,confusion_matrix,cohen_kappa_score
@@ -180,7 +180,7 @@ def GradientBoosting(X_train, y_train, X_test, y_test, string_output = False):
     return GBoost, MSE, R_Squared
 
 
-def ElasticNetModel(X_train, y_train, X_test, y_test, string_output = False):
+def ElasticNetModel(X_train, y_train, X_test, y_test, string_output = False, selectedParams = {"alpha":0.5, "l1_ratio":0.7}):
     '''
     Conduct elastic net regression on training data and test predictive power against test data
 
@@ -189,8 +189,7 @@ def ElasticNetModel(X_train, y_train, X_test, y_test, string_output = False):
     :return: elastic net model, MSE, R-squared
     '''
 
-    enet = ElasticNet(alpha=0.5,
-                      l1_ratio=0.7)
+    enet = ElasticNet(selectedParams)
 
     model = enet.fit(X_train, y_train)
     predict_test = model.predict(X=X_test)
@@ -257,8 +256,14 @@ def model_predict_prob(model, new_X):
     '''
     return  pd.DataFrame(data = model.predict_proba(X=new_X), index = new_X.index)
 
- 
-def elasticNet_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups, DataFields, outPath):
+ def RandomSearch_Tuner(in_model, X_data, y_Data, in_params, cv=10):
+  randomSearch = randomizedSearchCV(in_model, in_params, cv)
+  randomSearch.fit(X_Data, y_Data)
+
+  return randomSearch.best_params_
+
+
+def elasticNet_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups, DataFields, outPath, params = {"alpha":np.arange(0.05, 1, 0.05), "l1_ratio":np.arange(0.05, 1, 0.005)}, cv = 10):
   '''Conduct elastic net regressions on data, with k-fold cross-validation conducted independently 
       across both years and pixels. 
       Returns mean model MSE and R2 when predicting fire risk at 
@@ -313,6 +318,10 @@ def elasticNet_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, te
   #used to create a list of lists of years that are excluded within each model run
   excluded_Years = []
 
+
+  #use randomized search to tune hyperparameters on entire dataset
+  selectedParams = RandomSearch_Tuner(ElasticNet(), combined_Data.loc[:, DataFields], target_Data['value'], params, cv)
+
   for x in pixel_testVals:
 
 
@@ -354,9 +363,9 @@ def elasticNet_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, te
           
 
 
-          pixels_years_iterOutput = ElasticNetModel(trainData_X, trainData_y['value'], testData_X_pixels_years, testData_y_pixels_years['value'])
-          pixels_iterOutput = ElasticNetModel(trainData_X, trainData_y['value'], testData_X_pixels, testData_y_pixels['value'])
-          years_iterOutput = ElasticNetModel(trainData_X, trainData_y['value'], testData_X_years, testData_y_years['value'])
+          pixels_years_iterOutput = ElasticNetModel(trainData_X, trainData_y['value'], testData_X_pixels_years, testData_y_pixels_years['value'], selectedParams)
+          pixels_iterOutput = ElasticNetModel(trainData_X, trainData_y['value'], testData_X_pixels, testData_y_pixels['value'], selectedParams)
+          years_iterOutput = ElasticNetModel(trainData_X, trainData_y['value'], testData_X_years, testData_y_years['value'], selectedParams)
 
           
           Models.append(pixels_years_iterOutput)
@@ -396,12 +405,12 @@ def elasticNet_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, te
   print("\n")
   
   pickling_on = open(outPath + "elasticNet_2dim.pickle", "wb")
-  pickle.dump([combined_Data, target_Data, Models_Summary, Models, excluded_Years], pickling_on)
+  pickle.dump([combined_Data, target_Data, Models_Summary, Models, excluded_Years, selectedParams], pickling_on)
   pickling_on.close
 
   Models_Summary.to_csv(outPath + "Model_Summary.csv")
 
-  return combined_Data, target_Data, Models_Summary, Models, excluded_Years
+  return combined_Data, target_Data, Models_Summary, Models, excluded_Years, selectedParams
 
 
 def zeroMasker(row):
@@ -454,7 +463,7 @@ def elastic_YearPredictor(combined_Data_Training, target_Data_Training, preMaske
         full_X = full_X.loc[:, DataFields]
         
         data = elastic_iter_Fit.predict(X=full_X)
-        
+        print(data)
         data = pd.DataFrame(data, columns = ['PredRisk'])
         index_mask = image_to_series_simple(mask)
         data['mask'] = index_mask
