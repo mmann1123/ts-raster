@@ -291,7 +291,7 @@ def image_to_series_simple(file,dtype = np.int8):
     :return: One-dimensional ndarray with axis (pd.dataframe with B1-Bx in columns)
     '''
 
-    # read image as array and reshape its dimension
+# read image as array and reshape its dimension
     try:
         # single band image
         rows, cols, num = image_to_array(file).shape
@@ -308,19 +308,20 @@ def image_to_series_simple(file,dtype = np.int8):
     except ValueError:
         # multiband image
         bands, rows, cols, num = image_to_array(file).shape
-        data = image_to_array(file).reshape( (rows * cols,bands) )
+        data = image_to_array(file).reshape((bands, rows * cols)).transpose()  #a = np.arange(3**3).reshape((3,3,3)).reshape(-1,9).transpose() 
         
         # create an index for each pixel
         index = pd.RangeIndex(start=0, stop=len(data), step=1, name = 'pixel_id')
         # convert N-dimension array to one dimension array
         rng = range(1, (bands ) + 1)
         
-        df = pd.DataFrame(data  = data, 
-                   index = index, 
-                   #dtype = dtype,
-                   columns  = ['B_' + str(i) for i in rng])
+        df = pd.DataFrame(data  = data,
+                          index = index,
+                          dtype = dtype,
+                          columns  = ['B_' + str(i) for i in rng])
 
     return df
+
 
 def multi_image_to_dataframe(dataDict, outPath):
     '''Combines set of rasters to single dataFrame based on csv that lists all desired files 
