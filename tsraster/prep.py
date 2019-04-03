@@ -20,6 +20,7 @@ from numpy import reshape
 import string
 from rasterio import Affine
 from rasterio.warp import reproject, Resampling
+import copy
 
 def set_df_mindex(df):
     '''
@@ -1216,3 +1217,50 @@ def poly_rasterizer_year_group_subsampler(poly,raster_exmpl,raster_path_prefix,
             
         with rasterio.open(raster_path_prefix + "fire_" + str(x) + '_' + str(x) + '.tif', 'w', **profile) as threshCull:
             threshCull.write(out_arr,1)
+
+
+def years_Since_Fire(file_Path, startYear, endYear, templateRasterPath, outPath, earliestFireRecord = 1930, maxDist = 9999):
+    '''Iterate annually across a period of years using annual fire data to create a series of rasters
+            indicating the number of years since the previous fire within each pixel
+            (relative to that year).  Fires in the year of interest are ignored, 
+            as these represent the response variable for subsequent analysis.
+            In pixels where no prior fires are recorded, the locatioon will be assumed to have burned prior to the earliest observed year
+            However, th number of years since fire may also be capped at a maximum value by setting the maxDist parameter
+        :param file_path:  filepath (including filename) of example file for each annually repeating parameter to be added
+                         - replace the 4-digit year within each filename with XXXX in each filePath 
+                            (i.e. fire_XXXX_XXXX.tif rather than fire_1981_1981.tif)
+        :param startYear: year on which to begin creating annual rasters
+        :param endYear: latest year on which to create an annual raster
+        :param templateRasterPath: filepathg (and filename) of example raster, used to set the extent, projection, and resolution of output rasters
+        :param outPath: folder in which to output the annual rasters documenting the number of years since fire throughout the area of interest
+        :param earliestFireRecord: earliest year to use in evaluating number of years since prior fire for each year of interest
+                        (should predate startyear)
+        :param maxDist: maximum number of years since prior fire.  
+            If left as default, 
+            the maximum # of years since fire relative to each year will be calculated based on the assumption that all locations 
+            burned in the year prior to the year of earliest record (earliestFireRecord)
+        :return: returns .tif rasters for each year documenting the observed number of years since each pixel burned for each year of interest 
+    '''     
+
+    #read in all fires prior to startYear, set up 3dim Array
+    for iterYear in range(earliestFireRecord, endYear):
+    
+        iterPath = file_Path.replace("XXXX", str(iterYear)) #set iterable pathname
+        iter_rawData = gdal.Open(iterPath, gdal.GA_ReadOnly) #read in image
+        iter_rawData = iter_rawData.ReadAsArray() #convert image to array
+        iter_rawData[iter_rawData == 1] = iterYear #convert 1s to year to which that raster pertains
+
+        if iterYear == earliestFireRecord:
+            concatArray = copy.deepcopy(iter_rawData)
+        elif iterYear > earliestFireRecord:
+            concatArray = np.dstack((concatArray, iter_rawData))
+            concatArray = np.amax(concatArray, axis = 2) #flatten concatenated arrays into max values for each pixel
+
+        #once startyear is reached, output rasters returning the year in which the most recent fire occurred    
+        if (iterYear + 1) >= startYear:
+                out_Array = (concatArray * -1) + (iterYear + 1)
+                out_Array[out_Array == iterYear + 1] = (iterYear + 1 - (earliestFireRecord-1)) #in cases where no fire observed, assume burn in year prior to earliest documented year
+                out_Array[out_Array > maxDist] = maxDist #prevent years since fire from exceeding maxDist
+                outPath_Raster = outPath + "YearsSinceFire_" + str(iterYear + 1) + ".tif"
+                arrayToRaster(out_Array, templateRasterPath, outPath_Raster)
+    
