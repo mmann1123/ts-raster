@@ -12,6 +12,7 @@ from os.path import isfile
 from tsraster.prep import set_common_index, set_df_index,set_df_mindex, image_to_series_simple, seriesToRaster
 from tsraster import random
 import pickle
+import numpy as np
 
 
 def get_data(obj, test_size=0.33,scale=False,stratify=None,groups=None):
@@ -189,19 +190,18 @@ def ElasticNetModel(X_train, y_train, X_test, y_test, string_output = False, sel
     :return: elastic net model, MSE, R-squared
     '''
 
-    enet = ElasticNet(selectedParams)
+    enet = ElasticNet(alpha = selectedParams["alpha"], l1_ratio = selectedParams["l1_ratio"])
 
     model = enet.fit(X_train, y_train)
     predict_test = model.predict(X=X_test)
 
-    mse_accuracy = model.score(X_test, y_test)
-    r_squared = r2_score(predict_test, y_test)
+    MSE = model.score(X_test, y_test)
+    R_Squared = r2_score(predict_test, y_test)
+    
     if string_output == True:
-      MSE = ("MSE = {}".format(mse_accuracy))
-      R_Squared = ("R-Squared = {}".format(r_squared))
-    elif string_output == False:
-      MSE = mse_accuracy
-      R_Squared = r_squared
+      MSE = ("MSE = {}".format(MSE))
+      R_Squared = ("R-Squared = {}".format(R_Squared))
+    
 
     return enet, MSE, R_Squared
 
@@ -256,8 +256,8 @@ def model_predict_prob(model, new_X):
     '''
     return  pd.DataFrame(data = model.predict_proba(X=new_X), index = new_X.index)
 
- def RandomSearch_Tuner(in_model, X_data, y_Data, in_params, cv=10):
-  randomSearch = randomizedSearchCV(in_model, in_params, cv)
+def RandomSearch_Tuner(in_model, X_Data, y_Data, in_params, cv=50):
+  randomSearch = RandomizedSearchCV(in_model, in_params, cv)
   randomSearch.fit(X_Data, y_Data)
 
   return randomSearch.best_params_
