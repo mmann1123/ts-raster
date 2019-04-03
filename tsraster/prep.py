@@ -18,6 +18,8 @@ from re import sub
 from pathlib import Path
 from numpy import reshape
 import string
+from rasterio import Affine
+from rasterio.warp import reproject, Resampling
 
 def set_df_mindex(df):
     '''
@@ -1092,3 +1094,43 @@ def Image_Reclasser(input_path, outPath, yearList, exampleRaster, reclassDict):
             iter_Array[iter_Array == x] = reclassDict[x]
             
         arrayToRaster(iter_Array, exampleRaster, outPath + "Reclass_"+ str(x) + ".tif")
+
+def raster_resolution_Changer(in_raster, outPath, resolution_multiplier = 10.0):
+
+    resolution_multiplier = float(resolution_multiplier)
+
+
+    with rasterio.open(in_raster) as src:
+        arr = src.read(1)
+        aff = src.transform
+    newarr = np.empty(shape=( # same number of bands
+                             round(arr.shape[0] * resolution_multiplier), # 150% resolution
+                             round(arr.shape[1] *resolution_multiplier)))
+    newarr = np.float32(newarr)
+    
+    # adjust the new affine transform to new cell size
+    newaff = Affine(aff.a / resolution_multiplier, aff.b, aff.c,
+                    aff.d, aff.e / resolution_multiplier, aff.f)
+
+    reproject(
+        arr, newarr,
+        src_transform = aff,
+        dst_transform = newaff,
+        src_crs = src.crs,
+        dst_crs = src.crs,
+        resampling = Resampling.bilinear)
+
+    # Write to tif, using the same profile as the source
+    with rasterio.open(outPath,
+        'w',
+        driver='GTiff',
+        width = newarr.shape[1],
+        height = newarr.shape[0],
+        count = 1,
+        dtype= np.float32,
+        nodata = 0,
+        transform = newaff,
+        crs=src.crs) as dst:
+
+        
+        dst.write(newarr, 1)
