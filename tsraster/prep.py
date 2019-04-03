@@ -283,24 +283,42 @@ def image_to_series_window(path, baseYear, length = 3, offset = 1):
 
 def image_to_series_simple(file,dtype = np.int8):
     '''
-    Reads and prepares single raster file 
+    Reads and prepares single (or multiband) raster file to series or (dataframe) 
 
     :param file: raster file name
     :param dtype: numpy data type to return (default:np.int8)
-    :return: One-dimensional ndarray with axis
+    
+    :return: One-dimensional ndarray with axis (pd.dataframe with B1-Bx in columns)
     '''
 
     # read image as array and reshape its dimension
-    rows, cols, num = image_to_array(file).shape
-    data = image_to_array(file).reshape(rows * cols)
-
-    # create an index for each pixel
-    index = pd.RangeIndex(start=0, stop=len(data), step=1, name = 'pixel_id')
-    # convert N-dimension array to one dimension array
-    df = pd.Series(data  = data, 
+    try:
+        # single band image
+        rows, cols, num = image_to_array(file).shape
+        data = image_to_array(file).reshape( (rows * cols))
+    
+        # create an index for each pixel
+        index = pd.RangeIndex(start=0, stop=len(data), step=1, name = 'pixel_id')
+        # convert N-dimension array to one dimension array
+        df = pd.Series(data  = data, 
+                       index = index, 
+                       dtype = dtype,
+                       name  = 'value')
+    
+    except ValueError:
+        # multiband image
+        bands, rows, cols, num = image_to_array(file).shape
+        data = image_to_array(file).reshape( (rows * cols,bands) )
+        
+        # create an index for each pixel
+        index = pd.RangeIndex(start=0, stop=len(data), step=1, name = 'pixel_id')
+        # convert N-dimension array to one dimension array
+        rng = range(1, (bands ) + 1)
+        
+        df = pd.DataFrame(data  = data, 
                    index = index, 
-                   dtype = dtype,
-                   name  = 'value')
+                   #dtype = dtype,
+                   columns  = ['B_' + str(i) for i in rng])
 
     return df
 
