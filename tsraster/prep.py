@@ -1095,7 +1095,15 @@ def Image_Reclasser(input_path, outPath, yearList, exampleRaster, reclassDict):
             
         arrayToRaster(iter_Array, exampleRaster, outPath + "Reclass_"+ str(x) + ".tif")
 
-def raster_resolution_Changer(in_raster, outPath, resolution_multiplier = 10.0):
+def raster_resolution_Changer(in_raster, outPath, resolution_multiplier = 10.0, resampling_method = "bilinear"):
+    '''Change resolution of a raster based on a resolution multiplier, export new raster
+
+    :param in_raster: filepath to raster for which the resolution is desired to be changed
+    :param outPath: path and filename for output raster
+    :param resolution multiplier: number by which to multiply resolution of raster (>1 produces finer resolution, <1 produces coarser resolution)
+    :return: no return  -instead, outputs raster file at new resolution to desired location
+    '''
+
 
     resolution_multiplier = float(resolution_multiplier)
 
@@ -1112,13 +1120,32 @@ def raster_resolution_Changer(in_raster, outPath, resolution_multiplier = 10.0):
     newaff = Affine(aff.a / resolution_multiplier, aff.b, aff.c,
                     aff.d, aff.e / resolution_multiplier, aff.f)
 
-    reproject(
-        arr, newarr,
-        src_transform = aff,
-        dst_transform = newaff,
-        src_crs = src.crs,
-        dst_crs = src.crs,
-        resampling = Resampling.bilinear)
+    if resampling_method == "nearest":
+        reproject(
+            arr, newarr,
+            src_transform = aff,
+            dst_transform = newaff,
+            src_crs = src.crs,
+            dst_crs = src.crs,
+            resampling = Resampling.nearest)
+        
+    if resampling_method == "bilinear":
+        reproject(
+            arr, newarr,
+            src_transform = aff,
+            dst_transform = newaff,
+            src_crs = src.crs,
+            dst_crs = src.crs,
+            resampling = Resampling.bilinear)
+
+    if resampling_method == "average":
+        reproject(
+            arr, newarr,
+            src_transform = aff,
+            dst_transform = newaff,
+            src_crs = src.crs,
+            dst_crs = src.crs,
+            resampling = Resampling.average)
 
     # Write to tif, using the same profile as the source
     with rasterio.open(outPath,
@@ -1134,3 +1161,58 @@ def raster_resolution_Changer(in_raster, outPath, resolution_multiplier = 10.0):
 
         
         dst.write(newarr, 1)
+
+
+def poly_rasterizer_year_group_subsampler(poly,raster_exmpl,raster_path_prefix,
+                 year_col_name='YEAR_',year_list=range(1930,2019), res_Mult = 10, burnThresh = 0.5):
+    '''
+    Rasterizes polygons by using subsampling from a higher-resolution 
+    than the ultimate output to calculate the proportion of each pixel covered by fire in a given year. 
+    Utilizes year column to create
+    an aggregated polygon across multiple year groups. 
+    
+
+    :param poly: polygon to to convert to raster
+    :param raster_ex: example tiff to base output resolution, extent, & projection on 
+    :param raster_path_prefix: directory path to the output file example: 'F:/Boundary/StatePoly_buf'
+    :param year_col_name: column storing year to compare year_sub_list to 
+    :param year_list: an int year, range(), or list of start end dates [1951, 1955]
+    :param res_Mult: resolution multiplier - 
+        number by which to multiply resolution of raster for high-resolution subsampling
+        (>1 produces finer resolution, <1 produces coarser resolution)
+    :param burnThresh:
+    :return: for each year, generates-  a raster image of the rasterized polygons at higher resolution than the example raster
+                                            (having divided each pixel from the example raster into res_Mult pixels)
+                                        a raster image of the proportion of each pixel (at resolution of example image) covered by fire polygons
+                                        a raster image in which all pixels (at resolution of example image) 
+                                            for which the proportion of the pixel covered by fire was estimateds as >= burnThresh as 1, 
+                                            all other pixels as 0
+    '''
+    
+    raster_resolution_Changer(raster_exmpl,
+                              raster_path_prefix + "exampleRast_HighRes.tif",
+                              resolution_multiplier = res_Mult,
+                              resampling_method = "nearest")
+    
+    for x in year_list:
+        poly_rasterizer_year_group(poly,
+                                   raster_path_prefix + "exampleRast_HighRes.tif",
+                                   raster_path_prefix,
+                                   year_col_name,
+                                   year_sub_list=x)
+    
+        raster_resolution_Changer(raster_path_prefix+str(x)+'_'+str(x)+'.tif',
+                                  raster_path_prefix + str(x) + "_subsampled.tif",
+                                  resolution_multiplier = 1 / res_Mult,
+                                  resampling_method = "average")
+       
+        with rasterio.open(raster_path_prefix + str(x) + "_subsampled.tif") as subsampled:
+            arr = subsampled.read()
+            profile = subsampled.profile
+            profile.update(dtype=rasterio.float32, count=1, compress='lzw',nodata=0)
+            out_arr = subsampled.read(1) # get data from first band, this gets updated in write
+            out_arr[out_arr<burnThresh] = 0
+            out_arr[out_arr>=burnThresh] = 1
+            
+        with rasterio.open(raster_path_prefix + "fire_" + str(x) + '_' + str(x) + '.tif', 'w', **profile) as threshCull:
+            threshCull.write(out_arr,1)
