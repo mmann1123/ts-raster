@@ -8,6 +8,7 @@ authors: m.mann & a.bedada
 import numpy as np
 import glob
 import rasterio
+import os
 import os.path
 import pandas as pd
 import geopandas as gpd
@@ -19,7 +20,10 @@ from pathlib import Path
 from numpy import reshape
 import string
 from rasterio import Affine
-from rasterio.warp import reproject, Resampling
+from rasterio.warp import calculate_default_transform, reproject, Resampling
+from shapely.geometry import box
+from rasterio.mask import mask
+from rasterio.plot import show
 import copy
 
 def set_df_mindex(df):
@@ -1263,4 +1267,91 @@ def years_Since_Fire(file_Path, startYear, endYear, templateRasterPath, outPath,
                 out_Array[out_Array > maxDist] = maxDist #prevent years since fire from exceeding maxDist
                 outPath_Raster = outPath + "YearsSinceFire_" + str(iterYear + 1) + ".tif"
                 arrayToRaster(out_Array, templateRasterPath, outPath_Raster)
+    
+
+def reproject_raster(inpath, outpath, example_raster):
+    '''reprojects a raster to match an existing raster
+    :param inpath: filepath to input raster (to be reprojected)
+    :param outpath: filepath and name to output raster
+    :param example_raster: filepath to example raster (to match the projection of)
+    :return: creates .tif file consisting of the input raster reprojected to match the example raster
+    '''
+    
+    
+    with rasterio.open(example_raster) as exmpl:
+        dst_crs = exmpl.crs
+        
+    #dst_crs = new_crs # CRS for web meractor 
+
+    with rasterio.open(inpath) as src:
+        transform, width, height = calculate_default_transform(
+            src.crs, dst_crs, src.width, src.height, *src.bounds)
+        kwargs = src.meta.copy()
+        kwargs.update({
+            'crs': dst_crs,
+            'transform': transform,
+            'width': width,
+            'height': height
+        })
+
+        with rasterio.open(outpath, 'w', **kwargs) as dst:
+            for i in range(1, src.count + 1):
+                reproject(
+                    source=rasterio.band(src, i),
+                    destination=rasterio.band(dst, i),
+                    src_transform=src.transform,
+                    src_crs=src.crs,
+                    dst_transform=transform,
+                    dst_crs=dst_crs,
+                    resampling=Resampling.nearest)
+
+def getFeatures(gdf):
+    """Function to parse features from GeoDataFrame in such a manner that rasterio wants them - used in clip_raster_to_raster"""
+    import json
+    return [json.loads(gdf.to_json())['features'][0]['geometry']] 
+
+def clip_raster_to_raster(inpath, outpath, example_raster):
+    '''clip existing raster to match example raster. Note that output resolution will also match that of example raster.
+        :param inpath: filepath to input raster (to be clipped)
+        :param outpath: filepath and name to output raster
+        :param example_raster: filepath to example raster (bounding box of this raster is used to clip input raster)
+        :return: creates .tif file consisting of the input raster reprojected to match the example raster
+    '''
+    
+    with rasterio.open(example_raster) as exmpl:  # open example raster, extract bounding box and crs
+        dst_box = exmpl.bounds
+        dst_crs = exmpl.crs
+        out_profile = exmpl.profile
+    
+    bbox = box(dst_box[0], dst_box[1], dst_box[2], dst_box[3])  #creates rectangular polygon from bounding box dst_box
+    
+    
+    src = rasterio.open(inpath) # open input data
+    
+    geo = gpd.GeoDataFrame({'geometry': bbox}, index = [0], crs=dst_crs) #convert rectanglular polygon bbox into geoDataFrame with a crs
+    
+    
+    geo = geo.to_crs(crs=src.crs.data) #re-project into same coordinate system as src (should be redundant)
+    geo.to_file("C:/Users/Python3/Documents/wildfire_FRAP_working/wildfire_FRAP/Data/Actual/Temp_Tests/testbox.shp")
+    
+    coords = getFeatures(geo) # parses geoDataFrame into format rasterio needs for masking
+    
+    
+    
+    out_img, out_transform = mask(dataset = src, shapes = coords, crop = True) #mask raster to shapefile created from bounding box of example raster
+    
+    print(type(out_img))
+    
+    
+    out_img = np.float32(out_img)
+    print(out_img.shape)
+    
+    with rasterio.open(outpath, "w", **out_profile) as dst:
+        dst.write(out_img)
+    
+    
+    clipped = rasterio.open(outpath)
+    show((clipped, 1), cmap='tab20b')
+    
+    
     
