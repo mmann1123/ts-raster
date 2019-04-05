@@ -5,6 +5,7 @@ calculate.py: a module for extracting, evaluating and saving features
 
 import numpy as np
 import pandas as pd
+import rasterio
 import os
 import gdal
 import glob
@@ -558,40 +559,56 @@ def checkRelevance2(x, y, ml_task="auto", fdr_level=0.05):
          
         return relevance_test, X_relevant_features 
 
-def Temporal_Interpolation(input_path, outPath, startYear, endYear, interval, nullValues = [255, 12, 13], exampleRaster = "../Data/Examples/3month_ts/aet/aet-201201.tif"):
-    Years = np.arange(startYear, endYear, interval)
-    #param input_path: filepath to input files
-    #param output_path: filepath to location where output files will be created
-    #param startYear: first year to include in interpolation
-    #param endYear: last year to include in interpolation
-    #param interval: interval (in years) between subsequent files
-    #param nullValues: values that should be treated as null or 0 (as list)
-    #param exampleRast: raster to use for acquiring projection and extent
+def Temporal_Interpolation(input_path, outPath, startYear, endYear, interval, nullValues = [], exampleRaster = "../Data/Examples/3month_ts/aet/aet-201201.tif"):
+    Years = np.arange(startYear, endYear+1, interval)
+    '''
+    :param input_path: filepath to input files, including filename - replace 4 digits of year with XXXX in filename
+    :param output_path: filepath to location where output files will be created, as well as template file name - - replace 4 digits of year with XXXX in filename
+    :param startYear: first year to include in interpolation
+    :param endYear: last year to include in interpolation
+    :param interval: interval (in years) between subsequent files
+    :param nullValues: values that should be treated as null or 0 (as list)
+    :param exampleRast: raster to use for acquiring projection and extent
+    :return: returns nothing: exports a series of .tif files with data values corresponding to linear regressions between preceding and following data
+    '''
+    
     
     with rasterio.open("../Data/Examples/3month_ts/aet/aet-201201.tif") as exampleRast:
         array = exampleRast.read()
         profile = exampleRast.profile
         profile.update(dtype=rasterio.float32, count=1, compress='lzw',nodata=0)
     
-    for x in range(len(Years)):
+    for x in range(len(Years)- 1):
         earlyYear = Years[x]
-        lateYear = Years[x]+ interval
+        lateYear = Years[x+1]
         for y in range(0, interval):
+            
             iterYear = earlyYear + y
-
-            earlyRaster = tr.read_images(input_path + "bhc" + str(earlyYear) + "_Clip.tif")
+           
+            earlyRasterName = input_path.replace('XXXX', str(earlyYear))
+            earlyRaster = tr.read_images(earlyRasterName)
             earlyRaster = earlyRaster[0].ReadAsArray()
-            for y in nullValues:
-                    earlyRaster[earlyRaster == y] = 0
-
-            lateRaster = tr.read_images(input_path + "bhc" + str(lateYear) + "_Clip.tif")
+            earlyRaster[earlyRaster <0.0] = 0.0
+            for z in nullValues:
+                    earlyRaster[earlyRaster == y] = 0.0
+            
+        
+            lateRasterName = input_path.replace('XXXX', str(lateYear))
+            lateRaster = tr.read_images(lateRasterName)
             lateRaster = lateRaster[0].ReadAsArray()
-            for y in nullValues:
-                    lateRaster[lateRaster == y] = 0
+            lateRaster[lateRaster <0.0] = 0.0
+            for z in nullValues:
+                    lateRaster[lateRaster == y] = 0.0
 
             #calculate annual raster by weighting between prior and successive raster
-            iterRaster = ((earlyRaster * (interval-y)) + (lateRaster * (0+y)))/interval
+            earlyWeight = interval - y
+            lateWeight = y
+            
+            iterRaster = ((earlyRaster * earlyWeight) + (lateRaster * lateWeight))/interval
+            iterRaster[iterRaster<0.0] = 0.0
+           
             iterRaster = np.float32(iterRaster)
-
-            with rasterio.open(outPath + "bhc" + str(iterYear) + "linreg.tif", 'w', **profile) as exampleRast:
+           
+            iter_outPath = outPath.replace("XXXX", str(iterYear))
+            with rasterio.open(iter_outPath, 'w', **profile) as exampleRast:
                 exampleRast.write(iterRaster, 1)

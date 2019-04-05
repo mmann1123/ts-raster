@@ -81,7 +81,22 @@ def get_data(obj, test_size=0.33,scale=False,stratify=None,groups=None):
 
 
 
-def RandomForestReg(X_train, y_train, X_test, y_test):
+def RandomForestReg(X_train, y_train, X_test, y_test, params = {"n_estimators": 100, #determines number of trees to build - more is better, but potentially slows processing
+  'criterion' : 'mse', #criterion for measuring the quality of a split (mse or mae)
+  'max_depth': 5, #maximum depth of tree - limits tree complexity, may be worth hypertuning 
+  'min_samples_split': 2, #sets minimum # of samples per split (serves similar function to min-samples leaf)
+  'min_samples_leaf': 10, #sets minimum # of samples per leaf - low values may lead to capturing noise, so may be worth hypertuning
+  'min_weight_fraction_leaf': 0, # The minimum weighted fraction of the sum total of weights (of all the input samples) required to be at a leaf node. Samples have equal weight when sample_weight is not provided.
+  'max_features': 'auto', #max number of features to be considered in a tree (auto means no hard limit)
+  'max_leaf_nodes':None, #maximum number of leaf nodes - used to limit model comlexity, similarly to max_depth or min_samples_leaf
+  'min_impurity_decrease': 0,
+  'min_impurity_split': 1e-7,
+  'bootstrap' : True,
+  'oob_score' : False, #internal cross-validation - ignore in preference to custom crossval
+  'n_jobs' : None, #sets # processors to use, None indicates no limit
+  'random_state' : None,
+  'verbose' : 0,
+  'warm_start': False}):
     '''
     Conduct random forest regression on training data and test predictive power against test data
 
@@ -93,12 +108,21 @@ def RandomForestReg(X_train, y_train, X_test, y_test):
 
     '''
 
-    RF = RandomForestRegressor(n_estimators=100,
-                               criterion="mse",
-                               max_depth=10,
-                               min_samples_leaf=5,
-                               min_samples_split=5,
-                               random_state=42)
+    RF = RandomForestRegressor(n_estimators = params['n_estimators'],
+      criterion = params['criterion'],
+      max_depth = params['max_depth'],
+      min_samples_split = params['min_samples_split'], 
+      min_samples_leaf = params['min_samples_leaf'],
+      min_weight_fraction_leaf = params['min_weight_fraction_leaf'],
+      max_features = params['max_features'],
+      max_leaf_nodes = params['max_leaf_nodes'],
+      min_impurity_decrease = params['min_impurity_decrease'],
+      bootstrap = params['bootstrap'],
+      oob_score = params['oob_score'],
+      n_jobs = params['n_jobs'],
+      random_state = params['random_state'],
+      verbose = params['verbose'],
+      warm_start = params['warm_start'])
 
     model = RF.fit(X_train, y_train)
     predict_test = model.predict(X=X_test)
@@ -259,7 +283,7 @@ def model_predict_prob(model, new_X):
 def RandomSearch_Tuner(in_model, X_Data, y_Data, in_params, cv=50):
   randomSearch = RandomizedSearchCV(in_model, in_params, cv)
   randomSearch.fit(X_Data, y_Data)
-
+  print(type(randomSearch.best_params_))
   return randomSearch.best_params_
 
 
@@ -378,6 +402,173 @@ def elasticNet_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, te
           pixels_years_R2List.append(pixels_years_iterOutput[2])
           pixels_R2List.append(pixels_iterOutput[2])
           years_R2List.append(years_iterOutput[2])
+
+  
+  
+  #combine MSE and R2 Lists into single DataFrame
+  Models_Summary['Pixels_Years_MSE'] = pixels_years_MSEList
+  Models_Summary['Pixels_MSE'] = pixels_MSEList
+  Models_Summary['Years_MSE'] = years_MSEList
+  
+  Models_Summary['Pixels_Years_R2'] = pixels_years_R2List
+  Models_Summary['Pixels_R2'] = pixels_R2List
+  Models_Summary['Years_R2'] = years_R2List
+  
+  
+  print("pixels_Years MSE Overall: ", sum(pixels_years_MSEList)/len(pixels_years_MSEList))
+  print("pixels_Years R2 Overall: ", sum(pixels_years_R2List)/len(pixels_years_R2List))
+  #print("pixels_Years R2 iterations: ", pixels_years_R2List)
+  print("\n")
+  print("pixels MSE Overall: ", sum(pixels_MSEList)/len(pixels_MSEList))
+  print("pixels R2 Overall: ", sum(pixels_R2List)/len(pixels_R2List))
+  #print("pixels R2 iterations: ", pixels_R2List)
+  print("\n")
+  print("years MSE Overall: ", sum(years_MSEList)/len(years_MSEList))
+  print("years R2 Overall: ", sum(years_R2List)/len(years_R2List))
+  #print("years R2 iterations: ", years_R2List)
+  print("\n")
+  
+  pickling_on = open(outPath + "elasticNet_2dim.pickle", "wb")
+  pickle.dump([combined_Data, target_Data, Models_Summary, Models, excluded_Years, selectedParams], pickling_on)
+  pickling_on.close
+
+  Models_Summary.to_csv(outPath + "Model_Summary.csv")
+
+  return combined_Data, target_Data, Models_Summary, Models, excluded_Years, selectedParams
+
+
+def RandomForestReg_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups, DataFields, outPath, 
+  params = {"n_estimators": 100, #determines number of trees to build - more is better, but potentially slows processing
+  'criterion' : 'mse', #criterion for measuring the quality of a split (mse or mae)
+  'max_depth': 5, #maximum depth of tree - limits tree complexity, may be worth hypertuning 
+  'min_samples_split': 2, #sets minimum # of samples per split (serves similar function to min-samples leaf)
+  'min_samples_leaf': 10, #sets minimum # of samples per leaf - low values may lead to capturing noise, so may be worth hypertuning
+  'min_weight_fraction_leaf': 0, # The minimum weighted fraction of the sum total of weights (of all the input samples) required to be at a leaf node. Samples have equal weight when sample_weight is not provided.
+  'max_features': 'auto', #max number of features to be considered in a tree (auto means no hard limit)
+  'max_leaf_nodes':None, #maximum number of leaf nodes - used to limit model comlexity, similarly to max_depth or min_samples_leaf
+  'min_impurity_decrease': 0,
+  'bootstrap' : True,
+  'oob_score' : False, #internal cross-validation - ignore in preference to custom crossval
+  'n_jobs' : None, #sets # processors to use, None indicates no limit
+  'random_state' : None,
+  'verbose' : 0,
+  'warm_start': False}, 
+  cv = 10):
+  '''Conduct random Forest regressions on data, with k-fold cross-validation conducted independently 
+      across both years and pixels. 
+      Returns mean model MSE and R2 when predicting fire risk at 
+      A) locations outside of the training dataset
+      B) years outside of the training dataset
+      C) locations and years outside of the training dataset
+
+    Returns a list of objects, consisting of:
+      0: Combined_Data file with testing/training groups labeled
+      1: Target Data file with testing/training groups labeled
+      2: summary dataFrame of MSE and R2 for each model run
+          (against holdout data representing either novel locations, novel years, or both)
+      3: list of random forest models for use in predicting Fires in further locations/years
+      4: list of list of years not used in model training for each run
+  '''
+
+  #param combined_Data: explanatory factors to be used in predicting fire risk
+  #param target_Data: observed fire occurrences
+  #param varsToGroupBy: list of (2) column names from combined_Data & target_Data to be used in creating randomized groups
+  #param groupVars: list of (2) desired column names for the resulting randomized groups
+  #param testGroups: number of distinct groups into which data sets should be divided (for each of two variables) 
+  
+  
+  #Create randomly assigned groups of equal size by which to separate out subsets of data 
+  #by years and by pixels for training and testing to (test against 
+  #A) temporally alien, B) spatially alien, and C) completely alien conditions)
+  combined_Data, target_Data = random.TestTrain_GroupMaker(combined_Data, target_Data, 
+                                                             varsToGroupBy, 
+                                                             groupVars, 
+                                                             testGroups)
+
+
+
+  #get list of group ids, since in cases where group # <10, may not begin at zero
+  pixel_testVals = list(set(combined_Data[groupVars[0]].tolist()))
+  year_testVals = list(set(combined_Data[groupVars[1]].tolist()))
+  
+  Models_Summary = pd.DataFrame([], columns = ['Pixels_Years_MSE', 'Pixels_MSE', 'Years_MSE', 
+                                             'Pixels_Years_R2', 'Pixels_R2', 'Years_R2'])
+  
+  #used to create list of model runs
+  Models = []
+  
+  #used to create data for entry as columns into summary DataFrame
+  pixels_years_MSEList = []
+  pixels_MSEList = []
+  years_MSEList = []
+  pixels_years_R2List = []
+  pixels_R2List = []
+  years_R2List = []
+
+  #used to create a list of lists of years that are excluded within each model run
+  excluded_Years = []
+
+
+  #use randomized search to tune hyperparameters on entire dataset
+  #selectedParams = RandomSearch_Tuner(RandomForestRegressor(), combined_Data.loc[:, DataFields], target_Data['value'], params, cv)
+  selectedParams = params
+
+  for x in pixel_testVals:
+
+
+      for y in year_testVals:
+          trainData_X = combined_Data[combined_Data[groupVars[0]] != x]
+          trainData_X = trainData_X[trainData_X[groupVars[1]] != y]
+          trainData_X = trainData_X.loc[:, DataFields]
+
+
+          trainData_y = target_Data[target_Data[groupVars[0]] != x]
+          trainData_y = trainData_y[trainData_y[groupVars[1]] != y]
+
+
+          testData_X_pixels_years = combined_Data[combined_Data[groupVars[0]] == x]
+          testData_X_pixels_years = testData_X_pixels_years[testData_X_pixels_years[groupVars[1]] == y]
+          testData_X_pixels_years = testData_X_pixels_years.loc[:, DataFields]
+
+          testData_X_pixels = combined_Data[combined_Data[groupVars[0]] == x]
+          testData_X_pixels = testData_X_pixels[testData_X_pixels[groupVars[1]] != y]
+          testData_X_pixels = testData_X_pixels.loc[:, DataFields]
+
+          testData_X_years = combined_Data[combined_Data[groupVars[0]] != x]
+          testData_X_years = testData_X_years[testData_X_years[groupVars[1]] == y]
+          testData_X_years = testData_X_years.loc[:, DataFields]
+
+
+
+          testData_y_pixels_years = target_Data[target_Data[groupVars[0]] == x]
+          testData_y_pixels_years = testData_y_pixels_years[testData_y_pixels_years[groupVars[1]] == y]
+          
+
+          testData_y_pixels = target_Data[target_Data[groupVars[0]] == x]
+          testData_y_pixels = testData_y_pixels[testData_y_pixels[groupVars[1]] != y]
+          
+
+          testData_y_years = target_Data[target_Data[groupVars[0]] != x]
+          testData_y_years = testData_y_years[testData_y_years[groupVars[1]] == y]
+          excluded_Years.append(list(set(testData_y_years[varsToGroupBy[1]].tolist())))
+          
+
+
+          pixels_years_iterOutput = RandomForestReg(trainData_X, trainData_y['value'], testData_X_pixels_years, testData_y_pixels_years['value'], selectedParams)
+          pixels_iterOutput = RandomForestReg(trainData_X, trainData_y['value'], testData_X_pixels, testData_y_pixels['value'], selectedParams)
+          years_iterOutput = RandomForestReg(trainData_X, trainData_y['value'], testData_X_years, testData_y_years['value'], selectedParams)
+
+          
+          Models.append(pixels_years_iterOutput)
+          
+
+          pixels_years_MSEList.append(pixels_years_iterOutput[2])
+          pixels_MSEList.append(pixels_iterOutput[2])
+          years_MSEList.append(years_iterOutput[2])
+
+          pixels_years_R2List.append(pixels_years_iterOutput[3])
+          pixels_R2List.append(pixels_iterOutput[3])
+          years_R2List.append(years_iterOutput[3])
 
   
   

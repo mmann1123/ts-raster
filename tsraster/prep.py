@@ -8,6 +8,7 @@ authors: m.mann & a.bedada
 import numpy as np
 import glob
 import rasterio
+import os
 import os.path
 import pandas as pd
 import geopandas as gpd
@@ -19,7 +20,11 @@ from pathlib import Path
 from numpy import reshape
 import string
 from rasterio import Affine
-from rasterio.warp import reproject, Resampling
+from rasterio.warp import calculate_default_transform, reproject, Resampling
+from shapely.geometry import box
+from rasterio.mask import mask
+from rasterio.plot import show
+import copy
 
 def set_df_mindex(df):
     '''
@@ -1114,7 +1119,15 @@ def Image_Reclasser(input_path, outPath, yearList, exampleRaster, reclassDict):
             
         arrayToRaster(iter_Array, exampleRaster, outPath + "Reclass_"+ str(x) + ".tif")
 
-def raster_resolution_Changer(in_raster, outPath, resolution_multiplier = 10.0):
+def raster_resolution_Changer(in_raster, outPath, resolution_multiplier = 10.0, resampling_method = "bilinear"):
+    '''Change resolution of a raster based on a resolution multiplier, export new raster
+
+    :param in_raster: filepath to raster for which the resolution is desired to be changed
+    :param outPath: path and filename for output raster
+    :param resolution multiplier: number by which to multiply resolution of raster (>1 produces finer resolution, <1 produces coarser resolution)
+    :return: no return  -instead, outputs raster file at new resolution to desired location
+    '''
+
 
     resolution_multiplier = float(resolution_multiplier)
 
@@ -1131,13 +1144,32 @@ def raster_resolution_Changer(in_raster, outPath, resolution_multiplier = 10.0):
     newaff = Affine(aff.a / resolution_multiplier, aff.b, aff.c,
                     aff.d, aff.e / resolution_multiplier, aff.f)
 
-    reproject(
-        arr, newarr,
-        src_transform = aff,
-        dst_transform = newaff,
-        src_crs = src.crs,
-        dst_crs = src.crs,
-        resampling = Resampling.bilinear)
+    if resampling_method == "nearest":
+        reproject(
+            arr, newarr,
+            src_transform = aff,
+            dst_transform = newaff,
+            src_crs = src.crs,
+            dst_crs = src.crs,
+            resampling = Resampling.nearest)
+        
+    if resampling_method == "bilinear":
+        reproject(
+            arr, newarr,
+            src_transform = aff,
+            dst_transform = newaff,
+            src_crs = src.crs,
+            dst_crs = src.crs,
+            resampling = Resampling.bilinear)
+
+    if resampling_method == "average":
+        reproject(
+            arr, newarr,
+            src_transform = aff,
+            dst_transform = newaff,
+            src_crs = src.crs,
+            dst_crs = src.crs,
+            resampling = Resampling.average)
 
     # Write to tif, using the same profile as the source
     with rasterio.open(outPath,
@@ -1153,3 +1185,192 @@ def raster_resolution_Changer(in_raster, outPath, resolution_multiplier = 10.0):
 
         
         dst.write(newarr, 1)
+
+
+def poly_rasterizer_year_group_subsampler(poly,raster_exmpl,raster_path_prefix,
+                 year_col_name='YEAR_',year_list=range(1930,2019), res_Mult = 10, burnThresh = 0.5):
+    '''
+    Rasterizes polygons by using subsampling from a higher-resolution 
+    than the ultimate output to calculate the proportion of each pixel covered by fire in a given year. 
+    Utilizes year column to create
+    an aggregated polygon across multiple year groups. 
+    
+
+    :param poly: polygon to to convert to raster
+    :param raster_ex: example tiff to base output resolution, extent, & projection on 
+    :param raster_path_prefix: directory path to the output file example: 'F:/Boundary/StatePoly_buf'
+    :param year_col_name: column storing year to compare year_sub_list to 
+    :param year_list: an int year, range(), or list of start end dates [1951, 1955]
+    :param res_Mult: resolution multiplier - 
+        number by which to multiply resolution of raster for high-resolution subsampling
+        (>1 produces finer resolution, <1 produces coarser resolution)
+    :param burnThresh:
+    :return: for each year, generates-  a raster image of the rasterized polygons at higher resolution than the example raster
+                                            (having divided each pixel from the example raster into res_Mult pixels)
+                                        a raster image of the proportion of each pixel (at resolution of example image) covered by fire polygons
+                                        a raster image in which all pixels (at resolution of example image) 
+                                            for which the proportion of the pixel covered by fire was estimateds as >= burnThresh as 1, 
+                                            all other pixels as 0
+    '''
+    
+    raster_resolution_Changer(raster_exmpl,
+                              raster_path_prefix + "exampleRast_HighRes.tif",
+                              resolution_multiplier = res_Mult,
+                              resampling_method = "nearest")
+    
+    for x in year_list:
+        poly_rasterizer_year_group(poly,
+                                   raster_path_prefix + "exampleRast_HighRes.tif",
+                                   raster_path_prefix,
+                                   year_col_name,
+                                   year_sub_list=x)
+    
+        raster_resolution_Changer(raster_path_prefix+str(x)+'_'+str(x)+'.tif',
+                                  raster_path_prefix + str(x) + "_subsampled.tif",
+                                  resolution_multiplier = 1 / res_Mult,
+                                  resampling_method = "average")
+       
+        with rasterio.open(raster_path_prefix + str(x) + "_subsampled.tif") as subsampled:
+            arr = subsampled.read()
+            profile = subsampled.profile
+            profile.update(dtype=rasterio.float32, count=1, compress='lzw',nodata=0)
+            out_arr = subsampled.read(1) # get data from first band, this gets updated in write
+            out_arr[out_arr<burnThresh] = 0
+            out_arr[out_arr>=burnThresh] = 1
+            
+        with rasterio.open(raster_path_prefix + "fire_" + str(x) + '_' + str(x) + '.tif', 'w', **profile) as threshCull:
+            threshCull.write(out_arr,1)
+
+
+def years_Since_Fire(file_Path, startYear, endYear, templateRasterPath, outPath, earliestFireRecord = 1930, maxDist = 9999):
+    '''Iterate annually across a period of years using annual fire data to create a series of rasters
+            indicating the number of years since the previous fire within each pixel
+            (relative to that year).  Fires in the year of interest are ignored, 
+            as these represent the response variable for subsequent analysis.
+            In pixels where no prior fires are recorded, the locatioon will be assumed to have burned prior to the earliest observed year
+            However, th number of years since fire may also be capped at a maximum value by setting the maxDist parameter
+        :param file_path:  filepath (including filename) of example file for each annually repeating parameter to be added
+                         - replace the 4-digit year within each filename with XXXX in each filePath 
+                            (i.e. fire_XXXX_XXXX.tif rather than fire_1981_1981.tif)
+        :param startYear: year on which to begin creating annual rasters
+        :param endYear: latest year on which to create an annual raster
+        :param templateRasterPath: filepathg (and filename) of example raster, used to set the extent, projection, and resolution of output rasters
+        :param outPath: folder in which to output the annual rasters documenting the number of years since fire throughout the area of interest
+        :param earliestFireRecord: earliest year to use in evaluating number of years since prior fire for each year of interest
+                        (should predate startyear)
+        :param maxDist: maximum number of years since prior fire.  
+            If left as default, 
+            the maximum # of years since fire relative to each year will be calculated based on the assumption that all locations 
+            burned in the year prior to the year of earliest record (earliestFireRecord)
+        :return: returns .tif rasters for each year documenting the observed number of years since each pixel burned for each year of interest 
+    '''     
+
+    #read in all fires prior to startYear, set up 3dim Array
+    for iterYear in range(earliestFireRecord, endYear):
+    
+        iterPath = file_Path.replace("XXXX", str(iterYear)) #set iterable pathname
+        iter_rawData = gdal.Open(iterPath, gdal.GA_ReadOnly) #read in image
+        iter_rawData = iter_rawData.ReadAsArray() #convert image to array
+        iter_rawData[iter_rawData == 1] = iterYear #convert 1s to year to which that raster pertains
+
+        if iterYear == earliestFireRecord:
+            concatArray = copy.deepcopy(iter_rawData)
+        elif iterYear > earliestFireRecord:
+            concatArray = np.dstack((concatArray, iter_rawData))
+            concatArray = np.amax(concatArray, axis = 2) #flatten concatenated arrays into max values for each pixel
+
+        #once startyear is reached, output rasters returning the year in which the most recent fire occurred    
+        if (iterYear + 1) >= startYear:
+                out_Array = (concatArray * -1) + (iterYear + 1)
+                out_Array[out_Array == iterYear + 1] = (iterYear + 1 - (earliestFireRecord-1)) #in cases where no fire observed, assume burn in year prior to earliest documented year
+                out_Array[out_Array > maxDist] = maxDist #prevent years since fire from exceeding maxDist
+                outPath_Raster = outPath + "YearsSinceFire_" + str(iterYear + 1) + ".tif"
+                arrayToRaster(out_Array, templateRasterPath, outPath_Raster)
+    
+
+def reproject_raster(inpath, outpath, example_raster):
+    '''reprojects a raster to match an existing raster
+    :param inpath: filepath to input raster (to be reprojected)
+    :param outpath: filepath and name to output raster
+    :param example_raster: filepath to example raster (to match the projection of)
+    :return: creates .tif file consisting of the input raster reprojected to match the example raster
+    '''
+    
+    
+    with rasterio.open(example_raster) as exmpl:
+        dst_crs = exmpl.crs
+        
+    #dst_crs = new_crs # CRS for web meractor 
+
+    with rasterio.open(inpath) as src:
+        transform, width, height = calculate_default_transform(
+            src.crs, dst_crs, src.width, src.height, *src.bounds)
+        kwargs = src.meta.copy()
+        kwargs.update({
+            'crs': dst_crs,
+            'transform': transform,
+            'width': width,
+            'height': height
+        })
+
+        with rasterio.open(outpath, 'w', **kwargs) as dst:
+            for i in range(1, src.count + 1):
+                reproject(
+                    source=rasterio.band(src, i),
+                    destination=rasterio.band(dst, i),
+                    src_transform=src.transform,
+                    src_crs=src.crs,
+                    dst_transform=transform,
+                    dst_crs=dst_crs,
+                    resampling=Resampling.nearest)
+
+def getFeatures(gdf):
+    """Function to parse features from GeoDataFrame in such a manner that rasterio wants them - used in clip_raster_to_raster"""
+    import json
+    return [json.loads(gdf.to_json())['features'][0]['geometry']] 
+
+def clip_raster_to_raster(inpath, outpath, example_raster):
+    '''clip existing raster to match example raster. Note that output resolution will also match that of example raster.
+        :param inpath: filepath to input raster (to be clipped)
+        :param outpath: filepath and name to output raster
+        :param example_raster: filepath to example raster (bounding box of this raster is used to clip input raster)
+        :return: creates .tif file consisting of the input raster reprojected to match the example raster
+    '''
+    
+    with rasterio.open(example_raster) as exmpl:  # open example raster, extract bounding box and crs
+        dst_box = exmpl.bounds
+        dst_crs = exmpl.crs
+        out_profile = exmpl.profile
+    
+    bbox = box(dst_box[0], dst_box[1], dst_box[2], dst_box[3])  #creates rectangular polygon from bounding box dst_box
+    
+    
+    src = rasterio.open(inpath) # open input data
+    
+    geo = gpd.GeoDataFrame({'geometry': bbox}, index = [0], crs=dst_crs) #convert rectanglular polygon bbox into geoDataFrame with a crs
+    
+    
+    geo = geo.to_crs(crs=src.crs.data) #re-project into same coordinate system as src (should be redundant)
+    geo.to_file("C:/Users/Python3/Documents/wildfire_FRAP_working/wildfire_FRAP/Data/Actual/Temp_Tests/testbox.shp")
+    
+    coords = getFeatures(geo) # parses geoDataFrame into format rasterio needs for masking
+    
+    
+    
+    out_img, out_transform = mask(dataset = src, shapes = coords, crop = True) #mask raster to shapefile created from bounding box of example raster
+    
+    print(type(out_img))
+    
+    
+    out_img = np.float32(out_img)
+    print(out_img.shape)
+    
+    with rasterio.open(outpath, "w", **out_profile) as dst:
+        dst.write(out_img)
+    
+    
+    clipped = rasterio.open(outpath)
+    show((clipped, 1), cmap='tab20b')
+    
+    
+    
