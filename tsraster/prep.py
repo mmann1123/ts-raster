@@ -286,7 +286,7 @@ def image_to_series_window(path, baseYear, length = 3, offset = 1):
     return df2
 
 
-def image_to_series_simple(file,dtype = np.int8):
+def image_to_series_simple(file,dtype = np.float32):
     '''
     Reads and prepares single (or multiband) raster file to series or (dataframe) 
 
@@ -340,8 +340,10 @@ def multi_image_to_dataframe(dataDict, outPath):
     y = 0
     for x in dataDict.keys():
         iter_Data = image_to_series_simple(x)
-        iter_Data.rename(dataDict[x], inplace = True)
-        
+        iter_Data.rename(dataDict[x][0], inplace = True)
+        iterNull = dataDict[x][1]
+        iter_Data[iter_Data==iterNull] = -9999.0
+
         if y==0:
             out_Data = iter_Data
         elif y>0:
@@ -665,6 +667,60 @@ def mask_df(raster_mask, original_df, missing_value = -9999, reset_index = True)
         if reset_index == True:
             original_df = reset_df_index(if_series_to_df(original_df))
         return original_df
+
+def multiYear_Mask_DFMerge(startYear, endYear, filePath, maskFile, outPath):
+    #mask multiple years of data, export the resulting files annually and as multiyar csvs
+
+    #param startYear: year on which to begin
+    #param endYear: year on which to end
+    #param DataLists: csv of files to pull, with the year is the index, 
+    #       "combined_Data_Filepaths" as the column of combined data filepaths, and
+    #       "target_Data_filePaths" as the column of the target data(i.e. fire) filepaths.
+    #param maskFile: filepath to data file used for masking
+    #outPath: filepath for folder in which the output will be placed
+
+    import copy
+    
+    mask_series = image_to_series_simple(maskFile)
+    mask_series = mask_series[mask_series ==1]
+    mask_DF = mask_series.to_frame()
+
+    for x in range(startYear, endYear+1):
+        combined_Data_iter = pd.read_csv(filePath + "CD_" + str(x) + ".csv", index_col = ["pixel_id"])
+        combined_Data_iter= combined_Data_iter.merge(mask_DF, how = 'inner', on = ['pixel_id'])
+
+        target_Data_iter = pd.read_csv(filePath + "TD_" + str(x) + ".csv", index_col = ["pixel_id"])
+        target_Data_iter = target_Data_iter.merge(mask_DF, how = 'inner', on = ['pixel_id'])
+
+
+        combined_Data_iter['year'] = x
+        combined_Data_iter.to_csv(outPath + "CD_" + str(x) + "_Masked.csv")
+
+        target_Data_iter['year'] = x
+        target_Data_iter.to_csv(outPath + "TD_" + str(x) + "_Masked.csv")
+
+        if x == startYear:
+            combined_Data = copy.deepcopy(combined_Data_iter)
+            target_Data = copy.deepcopy(target_Data_iter)
+        elif int(x) > int(startYear):
+            combined_Data = pd.concat([combined_Data, combined_Data_iter])
+            target_Data = pd.concat([target_Data, target_Data_iter]) 
+    
+    try: 
+        combined_Data.drop(['pixel_id.1', 'time']) 
+    except: 
+        pass
+
+    try: 
+        combined_Data.drop(['Unnamed: 0'])
+    except: 
+        pass
+
+    combined_Data.to_csv(outPath + "CD_" + str(startYear) + "_Masked_" + str(endYear) + ".csv")
+    target_Data.to_csv(outPath + "TD_" +  str(startYear) + "_Masked_" + str(endYear) + ".csv")
+
+    return combined_Data, target_Data
+
 
 def multiYear_Mask(startYear, endYear, filePath, maskFile, outPath):
     #mask multiple years of data, export the resulting files annually and as multiyar csvs
@@ -1041,7 +1097,7 @@ def panel_lag_1(original_df, col_names, group_by_index='pixel_id'):
     
     return original_df
      
-def seriesToRaster(in_Series, templateRasterPath, outPath):
+def seriesToRaster(in_Series, templateRasterPath, outPath, noData = 0):
     '''convert series to raster, output to location 'outPath'
     
     :param in_Series: input series to be rasterized
@@ -1057,7 +1113,7 @@ def seriesToRaster(in_Series, templateRasterPath, outPath):
     with rasterio.open(templateRasterPath) as exampleRast:
         array = exampleRast.read()
         profile = exampleRast.profile
-        profile.update(dtype=rasterio.float32, count=1, compress='lzw',nodata=0)
+        profile.update(dtype = rasterio.float32, count = 1, compress = 'lzw',nodata = noData)
 
         
         
@@ -1111,7 +1167,7 @@ def Image_Reclasser(input_path, outPath, yearList, exampleRaster, reclassDict):
     for x in yearList:
         print(x)
         iter_path = input_path.replace('XXXX', str(x))
-        iter_Array = tr.image_to_array(iter_path)
+        iter_Array = image_to_array(iter_path)
         iter_Array = iter_Array.astype(np.float32)
         print(iter_Array.shape)
         for x in reclassDict.keys():
