@@ -310,7 +310,7 @@ def image_to_series_simple(file,dtype = np.int8):
                        dtype = dtype,
                        name  = 'value')
     
-    except ValueError:
+    except:
         # multiband image
         bands, rows, cols, num = image_to_array(file).shape
         data = image_to_array(file).reshape((bands, rows * cols)).transpose()  #a = np.arange(3**3).reshape((3,3,3)).reshape(-1,9).transpose() 
