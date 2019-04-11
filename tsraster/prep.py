@@ -376,6 +376,7 @@ def annual_Data_Merge(startYear, endYear, feature_path, dataDict, other_Data_pat
     invar_Data = multi_image_to_dataframe(dataDict, outPath)
 
     for x in range(startYear, endYear+1):
+        print(x)
         feature_Data_Iter = pd.read_csv(feature_path + "FD_Window_" + str(x) + ".csv")
 
         feature_Data_Iter = pd.merge(feature_Data_Iter, invar_Data, on = ['pixel_id'])
@@ -684,6 +685,8 @@ def multiYear_Mask_DFMerge(startYear, endYear, filePath, maskFile, outPath):
     mask_series = image_to_series_simple(maskFile)
     mask_series = mask_series[mask_series ==1]
     mask_DF = mask_series.to_frame()
+    mask_DF['maskValue'] = mask_DF['value']
+    del mask_DF['value']
 
     for x in range(startYear, endYear+1):
         combined_Data_iter = pd.read_csv(filePath + "CD_" + str(x) + ".csv", index_col = ["pixel_id"])

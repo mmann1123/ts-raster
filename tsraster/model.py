@@ -96,7 +96,8 @@ def RandomForestReg(X_train, y_train, X_test, y_test, params = {"n_estimators": 
   'n_jobs' : None, #sets # processors to use, None indicates no limit
   'random_state' : None,
   'verbose' : 0,
-  'warm_start': False}):
+  'warm_start': False},
+  string_output = False):
     '''
     Conduct random forest regression on training data and test predictive power against test data
 
@@ -129,8 +130,13 @@ def RandomForestReg(X_train, y_train, X_test, y_test, params = {"n_estimators": 
 
     mse_accuracy = model.score(X_test, y_test)
     r_squared = r2_score(predict_test, y_test)
-    MSE = ("MSE = {}".format(mse_accuracy))
-    R_Squared = ("R-Squared = {}".format(r_squared))
+    
+    MSE = model.score(X_test, y_test)
+    R_Squared = r2_score(predict_test, y_test)
+    
+    if string_output == True:
+      MSE = ("MSE = {}".format(MSE))
+      R_Squared = ("R-Squared = {}".format(R_Squared))
 
     return RF, predict_test, MSE, R_Squared
 
@@ -170,7 +176,20 @@ def RandomForestClass(X_train, y_train, X_test, y_test):
 
 
 # Not working correctly
-def GradientBoosting(X_train, y_train, X_test, y_test, string_output = False):
+def GradientBoosting(X_train, y_train, X_test, y_test, string_output = False, 
+  params = {'loss': 'ls', #determines loss function to be optimized - ls = leas squares regression
+  'learning_rate': 0.1, #shrinks the contribution of each tree by the ;learning rate
+  'n_estimators': 100, #number of boosting stages to perform
+  'subsample': 1.0, #fraction of samples to be used for fitting base learners.  values <1 lead to stochastic gradient boosting, which typically reduces variance but inreases bias
+  'criterion': 'friedman_mse', # function used to measure quality of a split.  friedman_mse is an improved version of mse, while mae is also available
+  'min_samples_split': 2, #minimum samples required to split a node
+  'min_samples_leaf': 1, #minimum samples requred at each leaf node
+  'max_depth': 3, #max depth of tree - likely should be hypertuned
+  'min_impurity decrease': 0., #a node will be split if that split reduces impurity by at least that amount
+  'max_features': None,
+  'max_leaf_nodes': None, # determines max number of leaf nodes
+   'validation_fraction': 0.1, #proportion of training data to set aside as validation set for early stopping 
+   }):
     '''
     Conduct random gradient boosting regression on training data and test predictive power against test data
 
@@ -613,7 +632,7 @@ def zeroMasker(row):
     else:
         return row['PredRisk']
 
-def elastic_YearPredictor(combined_Data_Training, target_Data_Training, preMasked_Data_Path, outPath, year_List, DataFields, mask):
+def elastic_YearPredictor(combined_Data_Training, target_Data_Training, preMasked_Data_Path, outPath, year_List, DataFields, mask, params):
     '''annually predict fire risk- train model on combined_Data across all available years except year of interest
     save resulting predictions as csv and as tif to location 'outPath'
     
@@ -628,6 +647,7 @@ def elastic_YearPredictor(combined_Data_Training, target_Data_Training, preMaske
     :param Datafields: list of explanatory factors to be intered into model
     :param mask: filepath of raster mask to be used in masking output predictions, 
             and as an example raster for choosing array shape and projections for .tif output files
+    :param params: parameters for elastic net regression (presumably developed from 2dimCrossval)
     :return:  returns a list of all models, accompanied by a list of years being predicted 
             - note - return output is equivalent to data exported as models.pickle
     '''
@@ -641,8 +661,7 @@ def elastic_YearPredictor(combined_Data_Training, target_Data_Training, preMaske
         target_Data_iter_train = target_Data_Training[target_Data_Training['year'] != iterYear]
         
         
-        elastic_iter_Model = ElasticNet(alpha=0.5,
-                      l1_ratio=0.7)
+        elastic_iter_Model = ElasticNet(params)
         
         elastic_iter_Fit = elastic_iter_Model.fit(combined_Data_iter_train, target_Data_iter_train['value'])
         
@@ -663,7 +682,7 @@ def elastic_YearPredictor(combined_Data_Training, target_Data_Training, preMaske
         data.to_csv(outPath + "Pred_" + str(iterYear) + ".csv")
         
         #output predicted risk as tiff
-        seriesToRaster(data['PredRisk_Masked'], mask, outPath + "Pred_" + str(iterYear) + ".tif")
+        seriesToRaster(data['PredRisk_Masked'], mask, outPath + "Pred_" + str(iterYear) + ".tif", noData = -9999)
         
         model_List.append([elastic_iter_Fit])
         
@@ -673,3 +692,88 @@ def elastic_YearPredictor(combined_Data_Training, target_Data_Training, preMaske
         
         
     return model_List, year_List
+
+def randomForestReg_YearPredictor(combined_Data_Training, target_Data_Training, preMasked_Data_Path, outPath, year_List, DataFields, mask, params):
+    '''annually predict fire risk- train model on combined_Data across all available years except year of interest
+    save resulting predictions as csv and as tif to location 'outPath'
+    
+    :param combined_Data_Training: dataFrame including all desired explanatory factors 
+            across all locations & years to be used in training model
+    :param target_Data_Training: dataFrame including observed fire occurrences 
+            across all locations & years to be used in training model
+    :param preMasked_Data_Path: file path to location of files to use in predicting fire risk 
+                    (note - these files should not have undergone Poisson disk masking)
+    :param outPath: desired output location for predicted fire risk files (csv, pickle, and tif)
+    :param year_List: list of years for which predictions are desired
+    :param Datafields: list of explanatory factors to be intered into model
+    :param mask: filepath of raster mask to be used in masking output predictions, 
+            and as an example raster for choosing array shape and projections for .tif output files
+    :param params: parameters for random forest regression (presumably developed from 2dimCrossval)
+    :return:  returns a list of all models, accompanied by a list of years being predicted 
+            - note - return output is equivalent to data exported as models.pickle
+    '''
+    
+    model_List = []
+    
+    for iterYear in year_List:
+        combined_Data_iter_train = combined_Data_Training[combined_Data_Training['year'] != iterYear]
+        combined_Data_iter_train = combined_Data_iter_train.loc[:, DataFields]
+        
+        target_Data_iter_train = target_Data_Training[target_Data_Training['year'] != iterYear]
+        
+        
+        iter_Model =RandomForestReg(params)
+        
+        iter_Fit = iter_Model.fit(combined_Data_iter_train, target_Data_iter_train['value'])
+        
+        
+        
+        #seriesToRaster(predict_iter, templateRasterPath, outPath + "Pred_FireRisk_" + str(iterYear) + ".tif")
+
+        full_X = pd.read_csv(preMasked_Data_Path + "CD_" + str(iterYear) + ".csv")
+        full_X = full_X.loc[:, DataFields]
+        
+        data = iter_Fit.predict(X=full_X)
+        print(data)
+        data = pd.DataFrame(data, columns = ['PredRisk'])
+        index_mask = image_to_series_simple(mask)
+        data['mask'] = index_mask
+        data['PredRisk_Masked'] = data.apply(zeroMasker, axis =1)
+        
+        data.to_csv(outPath + "Pred_" + str(iterYear) + ".csv")
+        
+        #output predicted risk as tiff
+        seriesToRaster(data['PredRisk_Masked'], mask, outPath + "Pred_" + str(iterYear) + "RFreg.tif")
+        
+        model_List.append([iter_Fit])
+        
+    pickling_on = open(outPath + "models.pickle", "wb")
+    pickle.dump([model_List, year_List], pickling_on)
+    pickling_on.close
+        
+        
+    return model_List, year_List
+
+def XGBoostModel(X_train, y_train, X_test, y_test, string_output = False, selectedParams = {"learning_rate":0.1, "n_estimators":100}):
+    '''
+    Conduct elastic net regression on training data and test predictive power against test data
+
+    :param X_train: dataframe containing training data features
+    :param y_train: dataframe containing training data responses
+    :return: elastic net model, MSE, R-squared
+    '''
+
+    xgbr = XGBRegressor(learning_rate = selectedParams["learning_rate"], n_estimators = selectedParams["n_estimators"])
+
+    model = xgbr.fit(X_train, y_train)
+    predict_test = model.predict(data = X_test)
+
+    MSE = model.score(X_test, y_test)
+    R_Squared = r2_score(predict_test, y_test)
+    
+    if string_output == True:
+      MSE = ("MSE = {}".format(MSE))
+      R_Squared = ("R-Squared = {}".format(R_Squared))
+    
+
+    return xgbr, MSE, R_Squared, predict_test
