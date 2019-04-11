@@ -661,7 +661,7 @@ def elastic_YearPredictor(combined_Data_Training, target_Data_Training, preMaske
         target_Data_iter_train = target_Data_Training[target_Data_Training['year'] != iterYear]
         
         
-        elastic_iter_Model = ElasticNet(params)
+        elastic_iter_Model = ElasticNet('l1_ratio' = params['l1_ratio'], alpha = params['alpha'])
         
         elastic_iter_Fit = elastic_iter_Model.fit(combined_Data_iter_train, target_Data_iter_train['value'])
         
