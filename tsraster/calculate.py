@@ -158,7 +158,7 @@ def calculateFeatures(path, parameters, reset_df ,raster_mask=None ,tiff_output=
         return extracted_features
 
 
-def calculateFeatures_window(path, parameters, baseYear, reset_df ,length = 3, offset = 1,raster_mask=None ,tiff_output=True, workers = None, outPath= "None"):
+def calculateFeatures_window(path, parameters, baseYear, reset_df = True,length = 3, offset = 1,raster_mask=None ,tiff_output=True, workers = None, outPath= "None"):
     
     '''
     Calculates features or the statistical characteristics of time-series raster data.
@@ -218,7 +218,7 @@ def calculateFeatures_window(path, parameters, baseYear, reset_df ,length = 3, o
     
     extracted_features['time'] = str(my_df.time.min())+"_"+str(my_df.time.max())
     extracted_features.set_index(['pixel_id', 'time'], inplace=True) 
-     
+    
     # unmask extracted features
     extracted_features = tr.unmask_from_mask(mask_df_output = extracted_features, 
                                           missing_value = -9999,
@@ -408,7 +408,7 @@ def calculateFeatures_window(path, parameters, baseYear, reset_df ,length = 3, o
 #        CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType, path=out_path)
 #        return extracted_features
 
-def multiYear_Window_Extraction(startYear, endYear, featureData_Path, feature_params, invar_Data, out_Path, mask, window_length = 3, window_offset = 0):
+def multiYear_Window_Extraction(startYear, endYear, featureData_Path, feature_params, out_Path, mask, window_length = 3, window_offset = 0):
     '''
     Extracts summary statistics(features) from multiYear datasets within moving window, across years
     Outputs a series of annual dataFrames as CSV files
@@ -417,7 +417,6 @@ def multiYear_Window_Extraction(startYear, endYear, featureData_Path, feature_pa
     :param endYear: year on which to end feature extraction
     :param featureData_Path: file path to data from which to extract features
     :param feature_params: summary statistics(features) to extract from data within each window
-    :param invar_Data: year-invariate data to join with extracted feature data on an annual scale
     :param out_Path: file path to location at which extracted features should be output as a csv
     :param window_length: length of window within which to extract features
     :param window_offset: number of years by which features pertaining to each year are offset from that year

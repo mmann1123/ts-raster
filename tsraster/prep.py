@@ -121,7 +121,7 @@ def image_names_window(path, baseYear, length = 3, offset = 1):
 
     image_name = []
     for x in range(length):
-        iterImages = glob.glob((path+ '/*/*-' + str(baseYear - x + offset) + '??.tif'), recursive=True)
+        iterImages = glob.glob((path+ '/*/*-' + str(baseYear - x - offset) + '??.tif'), recursive=True)
         iterImages = [os.path.basename(tif).split('.')[0]
                   for tif in iterImages]
         image_name = image_name +  iterImages
@@ -162,7 +162,7 @@ def read_images_window(path, baseYear, length = 3, offset = 1):
     if os.path.isdir(path):
         images = []
         for x in range(length):
-            images = images +  glob.glob((path+ '/*/*-' + str(baseYear - x + offset) + '??.tif'), recursive=True)
+            images = images +  glob.glob((path+ '/*/*-' + str(baseYear - x - offset) + '??.tif'), recursive=True)
         raster_files = [gdal.Open(f, gdal.GA_ReadOnly) for f in images]
     else:
         raster_files = [gdal.Open(path, gdal.GA_ReadOnly)]
@@ -342,7 +342,10 @@ def multi_image_to_dataframe(dataDict, outPath):
         iter_Data = image_to_series_simple(x)
         iter_Data.rename(dataDict[x][0], inplace = True)
         iterNull = dataDict[x][1]
-        iter_Data[iter_Data==iterNull] = -9999.0
+        if dataDict[x][2] == "NoData":
+            iter_Data[iter_Data==iterNull] = -9999.0
+        elif dataDict[x][2] != "NoData":
+            iter_Data[iter_Data==iterNull] = dataDict[x][2]
 
         if y==0:
             out_Data = iter_Data
@@ -605,6 +608,7 @@ def mask_df(raster_mask, original_df, missing_value = -9999, reset_index = True)
     # convert mask to pandas series keep only cells with value 1
     index_mask = image_to_series_simple(raster_mask)
     index_mask = index_mask[index_mask == 1]
+    print(len(index_mask)) ##
     
     # if original_df is list concatenate by index
     if type(original_df) == list:
@@ -639,7 +643,10 @@ def mask_df(raster_mask, original_df, missing_value = -9999, reset_index = True)
         # set multiindex 
         original_df.set_index(['pixel_id', 'time'], inplace=True)
         original_df = original_df.iloc[original_df.index.get_level_values('pixel_id').isin(index_mask.index)]
-    
+        print(original_df.head()) ##
+        print(len(original_df)) ##
+    original_df.to_csv('C:/Users/Python3/Documents/wildfire_FRAP_working/wildfire_FRAP/Data/Scratch_Tests/MaskTest/testo.csv') ## OK TO HERE
+
     # remove any more missing values 
     if missing_value != None:
         # inserts nan in missing value locations 
@@ -650,7 +657,7 @@ def mask_df(raster_mask, original_df, missing_value = -9999, reset_index = True)
     
         original_df.dropna(inplace=True)
         
-
+    original_df.to_csv('C:/Users/Python3/Documents/wildfire_FRAP_working/wildfire_FRAP/Data/Scratch_Tests/MaskTest/testo2.csv')
 
 
     if list_flag == True:
@@ -661,6 +668,8 @@ def mask_df(raster_mask, original_df, missing_value = -9999, reset_index = True)
         if reset_index == True:
             a = reset_df_index(if_series_to_df(a))
             b = reset_df_index(if_series_to_df(b))
+        original_df.to_csv('C:/Users/Python3/Documents/wildfire_FRAP_working/wildfire_FRAP/Data/Scratch_Tests/MaskTest/testo3a.csv')
+        original_df.to_csv('C:/Users/Python3/Documents/wildfire_FRAP_working/wildfire_FRAP/Data/Scratch_Tests/MaskTest/testo3b.csv')
         return a , b
     
     else:
@@ -750,8 +759,9 @@ def multiYear_Mask(startYear, endYear, filePath, maskFile, outPath):
         #read in mask data generated using poisson disk regression as mask
         target_Data_iter,  combined_Data_iter  = mask_df(maskFile,
                                        original_df=[target_Data_iter, combined_Data_iter],
+                                       missing_value = None,
                                        reset_index = False)
-                                                        
+
         combined_Data_iter['year'] = x
         combined_Data_iter.to_csv(outPath + "CD_" + str(x) + "_Masked.csv")
 
@@ -879,7 +889,7 @@ def unmask_from_mask(mask_df_output, raster_mask, missing_value = -9999):
     
     # set up df with correct index to unmask to
     unmask_df = if_series_to_df(image_to_series_simple(raster_mask,dtype = np.float32))
-    unmask_df[unmask_df.value==0] = missing_value
+    unmask_df[unmask_df.value !=missing_value] = missing_value
     unmask_df.reset_index(inplace=True)
     time_index = mask_df_output.reset_index().time.unique()[0]
     unmask_df['time'] = time_index
