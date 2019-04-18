@@ -228,7 +228,7 @@ def calculateFeatures_window(path, parameters, baseYear, reset_df = True,length 
     if length>0:
       baseName = str(baseYear + offset) + '_' + str(baseYear + length+ offset -1)
     elif length<0: 
-      baseName = str(baseYear + length+ offset) + '_' + str(baseYear + offset -1)
+      baseName = str(baseYear + length+ offset + 1) + '_' + str(baseYear + offset)
 
     # deal with output location 
     if outPath == "None":
@@ -414,7 +414,7 @@ def calculateFeatures_window(path, parameters, baseYear, reset_df = True,length 
 #        CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType, path=out_path)
 #        return extracted_features
 
-def multiYear_Window_Extraction(startYears, featureData_Path, feature_params, out_Path, mask, window_length = 3, window_offset = 0):
+def multiYear_Window_Extraction(startYears, featureData_Path, feature_params, out_Path, mask, length = 3, offset = 0):
     '''
     Extracts summary statistics(features) from multiYear datasets within moving window, across years
     Outputs a series of annual dataFrames as CSV files
@@ -438,8 +438,8 @@ def multiYear_Window_Extraction(startYears, featureData_Path, feature_params, ou
         extracted_features_iter = calculateFeatures_window(path = featureData_Path, 
                                                   parameters = feature_params, 
                                                   baseYear = x,
-                                                  length = window_length,
-                                                  offset = window_offset,
+                                                  length = length,
+                                                  offset = offset,
                                                   reset_df=True,
                                                   raster_mask =  mask,
                                                   tiff_output=True,
@@ -451,7 +451,12 @@ def multiYear_Window_Extraction(startYears, featureData_Path, feature_params, ou
         extracted_features_iter.reset_index(inplace = True)
         
 
-        extracted_features_iter.to_csv(out_Path + "FD_Window_" + str(x + offset) + '_' + str(x + length+ offset -1) + ".csv")
+        if length>0:
+          baseName = str(x + offset) + '_' + str(x + length+ offset -1)
+        elif length<0: 
+          baseName = str(x + length+ offset + 1) + '_' + str(x + offset)
+
+        extracted_features_iter.to_csv(out_Path + "FD_Window_" + baseName + ".csv")
 
 def features_to_array(path, input_file):
     '''

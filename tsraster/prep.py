@@ -120,8 +120,16 @@ def image_names_window(path, baseYear, length = 3, offset = 1):
     '''
 
     image_name = []
-    for x in range(length):
-        iterImages = glob.glob((path+ '/*/*-' + str(baseYear - x - offset) + '??.tif'), recursive=True)
+
+    #ensure that negative lengths are handled correctly
+    if length >0:
+        polarity = 1
+    elif length <0:
+        polarity = -1 
+
+    for x in range(abs(length)):
+
+        iterImages = glob.glob((path+ '/*/*-' + str(baseYear + (x * polarity) + offset) + '??.tif'), recursive=True)
         iterImages = [os.path.basename(tif).split('.')[0]
                   for tif in iterImages]
         image_name = image_name +  iterImages
@@ -398,7 +406,7 @@ def annual_Data_Merge(startYear, endYear, feature_path, dataDict, other_Data_pat
         feature_Data_iter.to_csv(outPath + "CD_" + str(x) + ".csv")
 
 
-def period_Data_Merge(startYears, feature_path, dataDict, other_Data_path, dataNameList, outPath):
+def period_Data_Merge(startYears, feature_path, dataDict, other_Data_path, dataNameList, outPath, length = 1):
     '''merge additional annually repeating data into feature data, as well as time-invariant data
     Produces annual dataFrames consisting of all explanatory variables that may be incorporated into model
         (Consisting of features extracted from climate data in preceding years, 
@@ -421,14 +429,12 @@ def period_Data_Merge(startYears, feature_path, dataDict, other_Data_path, dataN
     invar_Data = multi_image_to_dataframe(dataDict, outPath)
 
 
-    for x in range(len(startYears)-1):
-        length = startYears[x+1] - startYears[x]
-        baseYear = startYears[x]
+    for x in startYears:
 
         print(x)
 
         
-        feature_Data_Iter = pd.read_csv("FD_Window_" + str(baseYear) +"_" + str(startYears[x+1]) + ".csv")
+        feature_Data_Iter = pd.read_csv("FD_Window_" + str(x) +"_" + str(x + length - 1) + ".csv")
 
         feature_Data_Iter = pd.merge(feature_Data_Iter, invar_Data, on = ['pixel_id'])
 
@@ -453,7 +459,7 @@ def period_Data_Merge(startYears, feature_path, dataDict, other_Data_path, dataN
             other_Data_iter.rename(dataNameList[y], inplace = True)
             feature_Data_iter = pd.concat([feature_Data_Iter, other_Data_iter], axis = 1)
         
-        feature_Data_iter.to_csv(outPath + "CD_" + str(x) + ".csv")
+        feature_Data_iter.to_csv(outPath + "CD_" + str(x) + "_" + str(x + length -1) + ".csv")
     
     
 def target_Data_to_csv_multiYear(startYears, length, file_Path, outPath):
