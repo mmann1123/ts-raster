@@ -226,9 +226,9 @@ def calculateFeatures_window(path, parameters, baseYear, reset_df = True,length 
     
     
     if length>0:
-      baseName = str(baseYear + offset) + '_' + str(baseYear + length+ offset)
+      baseName = str(baseYear + offset) + '_' + str(baseYear + length+ offset -1)
     elif length<0: 
-      baseName = str(baseYear + length+ offset) + '_' + str(baseYear + offset)
+      baseName = str(baseYear + length+ offset) + '_' + str(baseYear + offset -1)
 
     # deal with output location 
     if outPath == "None":
@@ -414,7 +414,7 @@ def calculateFeatures_window(path, parameters, baseYear, reset_df = True,length 
 #        CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType, path=out_path)
 #        return extracted_features
 
-def multiYear_Window_Extraction(startYear, endYear, featureData_Path, feature_params, out_Path, mask, window_length = 3, window_offset = 0):
+def multiYear_Window_Extraction(startYears, featureData_Path, feature_params, out_Path, mask, window_length = 3, window_offset = 0):
     '''
     Extracts summary statistics(features) from multiYear datasets within moving window, across years
     Outputs a series of annual dataFrames as CSV files
@@ -432,7 +432,7 @@ def multiYear_Window_Extraction(startYear, endYear, featureData_Path, feature_pa
     '''
     
     # read in variables that are time variant, extract summary features, and concatenate output
-    for x in range(startYear, endYear+1):
+    for x in startYears:
 
         #get climate parameters for desired window relative to iterated year
         extracted_features_iter = calculateFeatures_window(path = featureData_Path, 
@@ -451,50 +451,7 @@ def multiYear_Window_Extraction(startYear, endYear, featureData_Path, feature_pa
         extracted_features_iter.reset_index(inplace = True)
         
 
-        extracted_features_iter.to_csv(out_Path + "FD_Window_" + str(x- window_length - offset) +"_" +  str(x - window_offset) + ".csv")
-
-
-
-def multiYear_Window_Extraction2(startYears,  featureData_Path, feature_params, out_Path, mask):
-    '''
-    Extracts summary statistics(features) from multiYear datasets within moving window, across years
-    Outputs a series of annual dataFrames as CSV files
-    
-    :param startYears: list of years on which to start feature extraction
-    :param endYear: year on which to end feature extraction
-    :param featureData_Path: file path to data from which to extract features
-    :param feature_params: summary statistics(features) to extract from data within each window
-    :param out_Path: file path to location at which extracted features should be output as a csv
-    :param window_length: length of window within which to extract features
-    :param window_offset: number of years by which features pertaining to each year are offset from that year
-    :param mask:  mask to apply to data prior to feature extraction
-    :return: no return.  instead, feature data relative to each year of interest is saved as a .csv file at the out_Path location
-              under the filename FD_Window_XXXX.csv 
-    '''
-    
-    # read in variables that are time variant, extract summary features, and concatenate output
-    for x in range(len(startYears)-1):
-        length = startYears[x+1] - startYears[x]
-        baseYear = startYears[x+1]
-
-          #get climate parameters for desired window relative to iterated year
-        extracted_features_iter = calculateFeatures_window(path = featureData_Path, 
-                                                  parameters = feature_params, 
-                                                  baseYear = baseYear,
-                                                  length = length,
-                                                  offset = 0,
-                                                  reset_df=True,
-                                                  raster_mask =  mask,
-                                                  tiff_output=True,
-                                                  workers = 1,
-                                                  outPath = out_Path)
-
-
-        #reset index of extracted features to combine with other datasets based on pixel ids
-        extracted_features_iter.reset_index(inplace = True)
-        
-
-        extracted_features_iter.to_csv(out_Path + "FD_Window_" + str(startYears[x]) +"_" + str(startYears[x+1]) + ".csv")
+        extracted_features_iter.to_csv(out_Path + "FD_Window_" + str(x + offset) + '_' + str(x + length+ offset -1) + ".csv")
 
 def features_to_array(path, input_file):
     '''

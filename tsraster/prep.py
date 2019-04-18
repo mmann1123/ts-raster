@@ -474,7 +474,7 @@ def target_Data_to_csv_multiYear(startYears, length, file_Path, outPath):
     for x in startYears:
         for y in range(length):
             target_variable_iter = file_Path + "fire_" + str(x) + "_" + str(x) + ".tif"
-            if y=0:
+            if y==0:
                 target_Data_iter = image_to_series_simple(target_variable_iter)
                 target_Data_iter = target_Data_iter.to_frame(name = "value")
             elif y>0:
