@@ -113,9 +113,9 @@ def image_to_series(path):
     :param path: directory path
     :return: pandas series
     '''
-    
-    rows, cols, num = image_to_array(path).shape
-    data = image_to_array(path).reshape(rows*cols, num)
+    data = image_to_array(path)
+    rows, cols, num = data.shape
+    data = data.reshape(rows*cols, num)
     
     # create index
     index = pd.RangeIndex(start=0, stop=len(data), step=1, name = 'pixel_id') 
