@@ -52,7 +52,7 @@ def CreateTiff(Name, Array, driver, NDV, GeoT, Proj, DataType, path):
     return Name
 
 
-def calculateFeatures(path, parameters, reset_df,raster_mask=None ,tiff_output=True, workers = None):
+def calculateFeatures(path, parameters, reset_df,raster_mask=None ,tiff_output=True,missing_value = -9999, workers = None):
     '''
     Calculates features or the statistical characteristics of time-series raster data.
     It can also save features as a csv file (dataframe) and/or tiff file.
@@ -108,7 +108,7 @@ def calculateFeatures(path, parameters, reset_df,raster_mask=None ,tiff_output=T
      
     # unmask extracted features
     extracted_features = tr.unmask_from_mask(mask_df_output = extracted_features, 
-                                          missing_value = -9999,
+                                          missing_value = missing_value,
                                           raster_mask = raster_mask)
     
     # deal with output location 
