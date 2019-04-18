@@ -147,7 +147,7 @@ def read_images(path):
     return raster_files
 
 
-def read_images_window(path, baseYear, length = 3, offset = 1):
+def read_images_window(path, baseYear, length = -3, offset = 0):
     '''
     Reads a set of associated raster bands from a file.
     Can read one or multiple files stored in different folders.
@@ -161,8 +161,12 @@ def read_images_window(path, baseYear, length = 3, offset = 1):
 
     if os.path.isdir(path):
         images = []
-        for x in range(length):
-            images = images +  glob.glob((path+ '/*/*-' + str(baseYear - x - offset) + '??.tif'), recursive=True)
+        for x in range(abs(length)):
+            if length >0:
+                images = images +  glob.glob((path+ '/*/*-' + str(baseYear + x + offset) + '??.tif'), recursive=True)
+
+            elif length <0:
+                images = images +  glob.glob((path+ '/*/*-' + str(baseYear - x + offset) + '??.tif'), recursive=True)
         raster_files = [gdal.Open(f, gdal.GA_ReadOnly) for f in images]
     else:
         raster_files = [gdal.Open(path, gdal.GA_ReadOnly)]
@@ -208,8 +212,9 @@ def image_to_series(path):
     :return: pandas series
     '''
     
-    rows, cols, num = image_to_array(path).shape
-    data = image_to_array(path).reshape(rows*cols, num)
+    data = image_to_array(path)
+    rows, cols, num = data.shape
+    data = data.reshape(rows*cols, num)
     
     # create index
     index = pd.RangeIndex(start=0, stop=len(data), step=1, name = 'pixel_id') 
@@ -391,9 +396,67 @@ def annual_Data_Merge(startYear, endYear, feature_path, dataDict, other_Data_pat
             feature_Data_iter = pd.concat([feature_Data_Iter, other_Data_iter], axis = 1)
         
         feature_Data_iter.to_csv(outPath + "CD_" + str(x) + ".csv")
+
+
+def period_Data_Merge(startYears, feature_path, dataDict, other_Data_path, dataNameList, outPath):
+    '''merge additional annually repeating data into feature data, as well as time-invariant data
+    Produces annual dataFrames consisting of all explanatory variables that may be incorporated into model
+        (Consisting of features extracted from climate data in preceding years, 
+        annually repeating data such as estimated housing density,
+        and time-invariant data such as rate of lightning strikes or local elevation)
+        
+    :param startYear: year on which to start feature extraction
+    :param endYear: year on which to end feature extraction
+    :param dataDict: dictionary of filepaths to each raster and the corresponding desired data column name
+    
+    :param other_Data_path: filepath (including filename) of example file for each annually repeating parameter to be added
+                         - replace the 4-digit year within each filename with XXXX in each filePath (i.e. tr_XXXX.csv rather than tr.1981.csv)
+    :param feature_Data_suffixList: portion of feature data file name that follows year for additional data
+    :param dataNameList: list of intended data names for additional data
+    :param outPath: filepath for folder in which the output will be placed
+    :return: no objects returned.  Instead, each annual dataFrame will be saved as a .csv file in the outPath folder
+            with filename CD_XXXX.csv 
+'''
+    
+    invar_Data = multi_image_to_dataframe(dataDict, outPath)
+
+
+    for x in range(len(startYears)-1):
+        length = startYears[x+1] - startYears[x]
+        baseYear = startYears[x]
+
+        print(x)
+
+        
+        feature_Data_Iter = pd.read_csv("FD_Window_" + str(baseYear) +"_" + str(startYears[x+1]) + ".csv")
+
+        feature_Data_Iter = pd.merge(feature_Data_Iter, invar_Data, on = ['pixel_id'])
+
+        
+        # assemble multiple annual files acrossthe period of interest, by mean value
+        for y in range(len(other_Data_path)):
+            for z in range(length):
+                
+                iter_otherData_subIter = other_Data_path[y].replace('XXXX', str(x+z))
+                
+                if z == 0:
+                    other_Data_iter = image_to_series_simple(iter_otherData_subIter)
+                    other_Data_iter['value'] = other_Data_iter['value'].map(float)
+
+                elif z>0:
+                    other_Data_iter_subIter = image_to_series_simple(iter_otherData_subIter)
+                    other_Data_iter_subIter['value'] = other_Data_iter_subIter['value'].map(float)
+                    other_Data_iter['value'] = other_Data_iter['value'] + other_Data_iter_subIter['value']
+
+            other_Data_iter['value'] = other_Data_iter['value']/float(length)
+
+            other_Data_iter.rename(dataNameList[y], inplace = True)
+            feature_Data_iter = pd.concat([feature_Data_Iter, other_Data_iter], axis = 1)
+        
+        feature_Data_iter.to_csv(outPath + "CD_" + str(x) + ".csv")
     
     
-def target_Data_to_csv_multiYear(startYear, endYear, file_Path, outPath):
+def target_Data_to_csv_multiYear(startYears, length, file_Path, outPath):
     '''convert annual fire data rasters into annual dataFrames, export as .CSV files
     also does some minor reformatting to prevent problems with downstream processing
 
@@ -408,12 +471,19 @@ def target_Data_to_csv_multiYear(startYear, endYear, file_Path, outPath):
 '''
 
     
-    for x in range(startYear, endYear+1):
+    for x in startYears:
+        for y in range(length):
+            target_variable_iter = file_Path + "fire_" + str(x) + "_" + str(x) + ".tif"
+            if y=0:
+                target_Data_iter = image_to_series_simple(target_variable_iter)
+                target_Data_iter = target_Data_iter.to_frame(name = "value")
+            elif y>0:
+                target_Data_iter['value'] = target_Data_iter['value'] +  image_to_series_simple(target_variable_iter)
         # read target data (Fires in iterated Year)
-        target_variable_iter = file_Path + "fire_" + str(x) + "_" + str(x) + ".tif"
-        target_Data_iter = image_to_series_simple(target_variable_iter)
-        target_Data_iter = target_Data_iter.to_frame(name = "value")
-        target_Data_iter.to_csv(outPath + "TD_" + str(x) + ".csv")
+        
+        
+        
+        target_Data_iter.to_csv(outPath + "TD_" + str(x) + '_' + str(x+length) + ".csv")
 
 
 def poly_rasterizer(poly,raster_ex, raster_path_prefix, buffer_poly_cells=0):
@@ -678,7 +748,7 @@ def mask_df(raster_mask, original_df, missing_value = -9999, reset_index = True)
             original_df = reset_df_index(if_series_to_df(original_df))
         return original_df
 
-def multiYear_Mask_DFMerge(startYear, endYear, filePath, maskFile, outPath):
+'''def multiYear_Mask_DFMerge(startYear, endYear, filePath, maskFile, outPath):
     #mask multiple years of data, export the resulting files annually and as multiyar csvs
 
     #param startYear: year on which to begin
@@ -731,7 +801,7 @@ def multiYear_Mask_DFMerge(startYear, endYear, filePath, maskFile, outPath):
     combined_Data.to_csv(outPath + "CD_" + str(startYear) + "_Masked_" + str(endYear) + ".csv")
     target_Data.to_csv(outPath + "TD_" +  str(startYear) + "_Masked_" + str(endYear) + ".csv")
 
-    return combined_Data, target_Data
+    return combined_Data, target_Data'''
 
 
 def multiYear_Mask(startYear, endYear, filePath, maskFile, outPath):
