@@ -406,22 +406,23 @@ def annual_Data_Merge(startYear, endYear, feature_path, dataDict, other_Data_pat
         feature_Data_iter.to_csv(outPath + "CD_" + str(x) + ".csv")
 
 
-def period_Data_Merge(startYears, feature_path, dataDict, other_Data_path, dataNameList, outPath, length = 1):
+def period_Data_Merge(startYears, feature_path, dataDict, other_Data_path, dataNameList, outPath, length = 1, feature_offset = 0, feature_length = 1):
     '''merge additional annually repeating data into feature data, as well as time-invariant data
     Produces annual dataFrames consisting of all explanatory variables that may be incorporated into model
         (Consisting of features extracted from climate data in preceding years, 
         annually repeating data such as estimated housing density,
         and time-invariant data such as rate of lightning strikes or local elevation)
         
-    :param startYear: year on which to start feature extraction
-    :param endYear: year on which to end feature extraction
+    :param startYears: list of years on which to start feature extraction
+    :param feature_path: path to featue data
     :param dataDict: dictionary of filepaths to each raster and the corresponding desired data column name
-    
     :param other_Data_path: filepath (including filename) of example file for each annually repeating parameter to be added
                          - replace the 4-digit year within each filename with XXXX in each filePath (i.e. tr_XXXX.csv rather than tr.1981.csv)
-    :param feature_Data_suffixList: portion of feature data file name that follows year for additional data
     :param dataNameList: list of intended data names for additional data
     :param outPath: filepath for folder in which the output will be placed
+    :param length: length of period
+    :param feature offset: number of years by which to offset featue data from period of interest (to allow use of climate comnditions in preceding years)
+    :param feature length: length of period for features - may desired to differ from period length if based on preceding conditions
     :return: no objects returned.  Instead, each annual dataFrame will be saved as a .csv file in the outPath folder
             with filename CD_XXXX.csv 
 '''
@@ -434,7 +435,7 @@ def period_Data_Merge(startYears, feature_path, dataDict, other_Data_path, dataN
         print(x)
 
         
-        feature_Data_Iter = pd.read_csv("FD_Window_" + str(x) +"_" + str(x + length - 1) + ".csv")
+        feature_Data_Iter = pd.read_csv(feature_path + "FD_Window_" + str(x) +"_" + str(x + length - 1) + ".csv")
 
         feature_Data_Iter = pd.merge(feature_Data_Iter, invar_Data, on = ['pixel_id'])
 
@@ -447,14 +448,14 @@ def period_Data_Merge(startYears, feature_path, dataDict, other_Data_path, dataN
                 
                 if z == 0:
                     other_Data_iter = image_to_series_simple(iter_otherData_subIter)
-                    other_Data_iter['value'] = other_Data_iter['value'].map(float)
+                    other_Data_iter = other_Data_iter.map(float)
 
                 elif z>0:
                     other_Data_iter_subIter = image_to_series_simple(iter_otherData_subIter)
-                    other_Data_iter_subIter['value'] = other_Data_iter_subIter['value'].map(float)
-                    other_Data_iter['value'] = other_Data_iter['value'] + other_Data_iter_subIter['value']
+                    other_Data_iter_subIter = other_Data_iter_subIter.map(float)
+                    other_Data_iter = other_Data_iter + other_Data_iter_subIter
 
-            other_Data_iter['value'] = other_Data_iter['value']/float(length)
+            other_Data_iter = other_Data_iter/float(length)
 
             other_Data_iter.rename(dataNameList[y], inplace = True)
             feature_Data_iter = pd.concat([feature_Data_Iter, other_Data_iter], axis = 1)
@@ -462,7 +463,7 @@ def period_Data_Merge(startYears, feature_path, dataDict, other_Data_path, dataN
         feature_Data_iter.to_csv(outPath + "CD_" + str(x) + "_" + str(x + length -1) + ".csv")
     
     
-def target_Data_to_csv_multiYear(startYears, length, file_Path, outPath):
+def target_Data_to_csv_multiYear(startYears, length, file_Path, out_Path):
     '''convert annual fire data rasters into annual dataFrames, export as .CSV files
     also does some minor reformatting to prevent problems with downstream processing
 
@@ -470,7 +471,7 @@ def target_Data_to_csv_multiYear(startYears, length, file_Path, outPath):
     :param startYear: year on which to start feature extraction
     :param endYear: year on which to end feature extraction
     :param file_Path: path to target data files (fire data)
-    :outPath: filepath for folder in which the output will be placed:
+    :out_Path: filepath for folder in which the output will be placed:
     :return: no objects returned.  Instead, annual dataFrames will be saved at location outPath
             using the filname TD_XXXX.csv
 
@@ -479,7 +480,7 @@ def target_Data_to_csv_multiYear(startYears, length, file_Path, outPath):
     
     for x in startYears:
         for y in range(length):
-            target_variable_iter = file_Path + "fire_" + str(x) + "_" + str(x) + ".tif"
+            target_variable_iter = file_Path + "fire_" + str(x+ y) + "_" + str(x + y) + ".tif"
             if y==0:
                 target_Data_iter = image_to_series_simple(target_variable_iter)
                 target_Data_iter = target_Data_iter.to_frame(name = "value")
@@ -489,7 +490,7 @@ def target_Data_to_csv_multiYear(startYears, length, file_Path, outPath):
         
         
         
-        target_Data_iter.to_csv(outPath + "TD_" + str(x) + '_' + str(x+length) + ".csv")
+        target_Data_iter.to_csv(out_Path + "TD_" + str(x) + '_' + str(x+length - 1) + ".csv")
 
 
 def poly_rasterizer(poly,raster_ex, raster_path_prefix, buffer_poly_cells=0):
@@ -810,7 +811,7 @@ def mask_df(raster_mask, original_df, missing_value = -9999, reset_index = True)
     return combined_Data, target_Data'''
 
 
-def multiYear_Mask(startYear, endYear, filePath, maskFile, outPath):
+def multiYear_Mask(startYears, filePath, maskFile, outPath, length = 1):
     #mask multiple years of data, export the resulting files annually and as multiyar csvs
 
     #param startYear: year on which to begin
@@ -824,12 +825,17 @@ def multiYear_Mask(startYear, endYear, filePath, maskFile, outPath):
 
     import copy
     
-    for x in range(startYear, endYear+1):
+    firstYear = min(startYears)
+    lastYear = max(startYears)
+    startYears.sort()
+    for x in startYears:
+
+        iterPeriod = str(x) + "_" + str(x+length -1)
         
-        combined_Data_iter = pd.read_csv(filePath + "CD_" + str(x) + ".csv", index_col = ["pixel_id"])
+        combined_Data_iter = pd.read_csv(filePath + "CD_" + iterPeriod + ".csv", index_col = ["pixel_id"])
         
 
-        target_Data_iter = pd.read_csv(filePath + "TD_" + str(x) + ".csv", index_col = ["pixel_id"])
+        target_Data_iter = pd.read_csv(filePath + "TD_" + iterPeriod + ".csv", index_col = ["pixel_id"])
         
 
         #read in mask data generated using poisson disk regression as mask
@@ -838,17 +844,17 @@ def multiYear_Mask(startYear, endYear, filePath, maskFile, outPath):
                                        missing_value = None,
                                        reset_index = False)
 
-        combined_Data_iter['year'] = x
-        combined_Data_iter.to_csv(outPath + "CD_" + str(x) + "_Masked.csv")
+        combined_Data_iter['year'] = x  #year needs to remain startyear rather than a string to facilitate the random group sampling later on
+        combined_Data_iter.to_csv(outPath + "CD_" + iterPeriod + "_Masked.csv")
 
         target_Data_iter['year'] = x
-        target_Data_iter.to_csv(outPath + "TD_" + str(x) + "_Masked.csv")
+        target_Data_iter.to_csv(outPath + "TD_" + iterPeriod + "_Masked.csv")
 
         
-        if x == startYear:
+        if x == firstYear:
             combined_Data = copy.deepcopy(combined_Data_iter)
             target_Data = copy.deepcopy(target_Data_iter)
-        elif int(x) > int(startYear):
+        elif x > firstYear:
             combined_Data = pd.concat([combined_Data, combined_Data_iter])
             target_Data = pd.concat([target_Data, target_Data_iter]) 
     
@@ -862,8 +868,8 @@ def multiYear_Mask(startYear, endYear, filePath, maskFile, outPath):
     except: 
         pass
 
-    combined_Data.to_csv(outPath + "CD_" + str(startYear) + "_Masked_" + str(endYear) + ".csv")
-    target_Data.to_csv(outPath + "TD_" +  str(startYear) + "_Masked_" + str(endYear) + ".csv")
+    combined_Data.to_csv(outPath + "CD_" + str(lastYear) + "_" +  str(firstYear) + "_Masked_" + str(length) + "len.csv")
+    target_Data.to_csv(outPath + "TD_" +  str(lastYear) + "_" + str(firstYear) + "_Masked_"  + str(length) + "len.csv")
 
     return combined_Data, target_Data
 
