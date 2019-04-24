@@ -13,6 +13,7 @@ from tsraster.prep import set_common_index, set_df_index,set_df_mindex, image_to
 from tsraster import random
 import pickle
 import numpy as np
+from xgboost import XGBRegressor
 
 
 def get_data(obj, test_size=0.33,scale=False,stratify=None,groups=None):
@@ -632,7 +633,7 @@ def zeroMasker(row):
     else:
         return row['PredRisk']
 
-def elastic_YearPredictor(combined_Data_Training, target_Data_Training, preMasked_Data_Path, outPath, year_List, DataFields, mask, params):
+def elastic_YearPredictor(combined_Data_Training, target_Data_Training, preMasked_Data_Path, outPath, year_List, periodLen, DataFields, mask, params):
     '''annually predict fire risk- train model on combined_Data across all available years except year of interest
     save resulting predictions as csv and as tif to location 'outPath'
     
@@ -669,7 +670,7 @@ def elastic_YearPredictor(combined_Data_Training, target_Data_Training, preMaske
         
         #seriesToRaster(predict_iter, templateRasterPath, outPath + "Pred_FireRisk_" + str(iterYear) + ".tif")
 
-        full_X = pd.read_csv(preMasked_Data_Path + "CD_" + str(iterYear) + ".csv")
+        full_X = pd.read_csv(preMasked_Data_Path + "CD_" + str(iterYear) + "_" + str(iterYear + periodLen - 1) + ".csv")
         full_X = full_X.loc[:, DataFields]
         
         data = elastic_iter_Fit.predict(X=full_X)
@@ -682,7 +683,7 @@ def elastic_YearPredictor(combined_Data_Training, target_Data_Training, preMaske
         data.to_csv(outPath + "Pred_" + str(iterYear) + ".csv")
         
         #output predicted risk as tiff
-        seriesToRaster(data['PredRisk_Masked'], mask, outPath + "Pred_" + str(iterYear) + ".tif", noData = -9999)
+        seriesToRaster(data['PredRisk_Masked'], mask, outPath + "Pred_" + str(iterYear) + "_" + str(iterYear + periodLen - 1) + ".tif", noData = -9999)
         
         model_List.append([elastic_iter_Fit])
         
@@ -693,7 +694,7 @@ def elastic_YearPredictor(combined_Data_Training, target_Data_Training, preMaske
         
     return model_List, year_List
 
-def randomForestReg_YearPredictor(combined_Data_Training, target_Data_Training, preMasked_Data_Path, outPath, year_List, DataFields, mask, params):
+def randomForestReg_YearPredictor(combined_Data_Training, target_Data_Training, preMasked_Data_Path, outPath, year_List, periodLen, DataFields, mask, params):
     '''annually predict fire risk- train model on combined_Data across all available years except year of interest
     save resulting predictions as csv and as tif to location 'outPath'
     
@@ -722,7 +723,11 @@ def randomForestReg_YearPredictor(combined_Data_Training, target_Data_Training, 
         target_Data_iter_train = target_Data_Training[target_Data_Training['year'] != iterYear]
         
         
-        iter_Model =RandomForestReg(params)
+        iter_Model = RandomForestRegressor(n_estimators = params["n_estimators"], criterion = params["criterion"],
+          max_depth = params["max_depth"], min_samples_split = params['min_samples_split'], min_samples_leaf = params['min_samples_leaf'],
+        min_weight_fraction_leaf = params['min_weight_fraction_leaf'], max_features = params['max_features'], max_leaf_nodes = params['max_leaf_nodes'],
+        min_impurity_decrease = params['min_impurity_decrease'], bootstrap = params['bootstrap'], oob_score = params['oob_score'], n_jobs = params['n_jobs'],
+        random_state = params['random_state'], verbose = params['verbose'], warm_start = params['warm_start'])
         
         iter_Fit = iter_Model.fit(combined_Data_iter_train, target_Data_iter_train['value'])
         
@@ -730,7 +735,7 @@ def randomForestReg_YearPredictor(combined_Data_Training, target_Data_Training, 
         
         #seriesToRaster(predict_iter, templateRasterPath, outPath + "Pred_FireRisk_" + str(iterYear) + ".tif")
 
-        full_X = pd.read_csv(preMasked_Data_Path + "CD_" + str(iterYear) + ".csv")
+        full_X = pd.read_csv(preMasked_Data_Path + "CD_" + str(iterYear) + "_" + str(iterYear + periodLen - 1) + ".csv")
         full_X = full_X.loc[:, DataFields]
         
         data = iter_Fit.predict(X=full_X)
@@ -765,7 +770,7 @@ def XGBoostModel(X_train, y_train, X_test, y_test, string_output = False, select
 
     xgbr = XGBRegressor(learning_rate = selectedParams["learning_rate"], n_estimators = selectedParams["n_estimators"])
 
-    model = xgbr.fit(X_train, y_train)
+    model = xgbr.fit(X_train, y_train.values)  #must convert y_train to values to prevent an erroneous error warning
     predict_test = model.predict(data = X_test)
 
     MSE = model.score(X_test, y_test)
@@ -777,3 +782,190 @@ def XGBoostModel(X_train, y_train, X_test, y_test, string_output = False, select
     
 
     return xgbr, MSE, R_Squared, predict_test
+
+
+def XGBoostReg_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups, DataFields, outPath, params = {'eta': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], #step size shrinkage used in updates to prevent overfitting (also called learning_rate)
+         'n_estimators': [100, 200, 300]}, cv = 10):
+
+    combined_Data, target_Data = random.TestTrain_GroupMaker(combined_Data, target_Data, 
+                                                             varsToGroupBy, 
+                                                             groupVars, 
+                                                             testGroups)
+
+    #get list of group ids, since in cases where group # <10, may not begin at zero
+    pixel_testVals = list(set(combined_Data[groupVars[0]].tolist()))
+    year_testVals = list(set(combined_Data[groupVars[1]].tolist()))
+
+    Models_Summary = pd.DataFrame([], columns = ['Pixels_Years_MSE', 'Pixels_MSE', 'Years_MSE', 
+                                             'Pixels_Years_R2', 'Pixels_R2', 'Years_R2'])
+
+    #used to create list of model runs
+    Models = []
+  
+  #used to create data for entry as columns into summary DataFrame
+    pixels_years_MSEList = []
+    pixels_MSEList = []
+    years_MSEList = []
+    pixels_years_R2List = []
+    pixels_R2List = []
+    years_R2List = []
+
+  #used to create a list of lists of years that are excluded within each model run
+    excluded_Years = []
+
+
+     #use randomized search to tune hyperparameters on entire dataset
+    if ((type(params['eta']) == list) or (type(params['n_estimators']) == list)):
+        selectedParams = RandomSearch_Tuner(XGBRegressor(), combined_Data.loc[:, DataFields], target_Data['value'].values, params, cv)
+    else:
+        selectedParams = params
+    
+    for x in pixel_testVals:
+
+
+        for y in year_testVals:
+            trainData_X = combined_Data[combined_Data[groupVars[0]] != x]
+            trainData_X = trainData_X[trainData_X[groupVars[1]] != y]
+            trainData_X = trainData_X.loc[:, DataFields]
+
+
+            trainData_y = target_Data[target_Data[groupVars[0]] != x]
+            trainData_y = trainData_y[trainData_y[groupVars[1]] != y]
+
+
+            testData_X_pixels_years = combined_Data[combined_Data[groupVars[0]] == x]
+            testData_X_pixels_years = testData_X_pixels_years[testData_X_pixels_years[groupVars[1]] == y]
+            testData_X_pixels_years = testData_X_pixels_years.loc[:, DataFields]
+
+            testData_X_pixels = combined_Data[combined_Data[groupVars[0]] == x]
+            testData_X_pixels = testData_X_pixels[testData_X_pixels[groupVars[1]] != y]
+            testData_X_pixels = testData_X_pixels.loc[:, DataFields]
+
+            testData_X_years = combined_Data[combined_Data[groupVars[0]] != x]
+            testData_X_years = testData_X_years[testData_X_years[groupVars[1]] == y]
+            testData_X_years = testData_X_years.loc[:, DataFields]
+
+
+
+            testData_y_pixels_years = target_Data[target_Data[groupVars[0]] == x]
+            testData_y_pixels_years = testData_y_pixels_years[testData_y_pixels_years[groupVars[1]] == y]
+
+
+            testData_y_pixels = target_Data[target_Data[groupVars[0]] == x]
+            testData_y_pixels = testData_y_pixels[testData_y_pixels[groupVars[1]] != y]
+
+
+            testData_y_years = target_Data[target_Data[groupVars[0]] != x]
+            testData_y_years = testData_y_years[testData_y_years[groupVars[1]] == y]
+            excluded_Years.append(list(set(testData_y_years[varsToGroupBy[1]].tolist())))
+
+            pixels_years_iterOutput = XGBoostModel(trainData_X, trainData_y['value'], testData_X_pixels_years, testData_y_pixels_years['value'], selectedParams)
+            pixels_iterOutput = XGBoostModel(trainData_X, trainData_y['value'], testData_X_pixels, testData_y_pixels['value'], selectedParams)
+            years_iterOutput = XGBoostModel(trainData_X, trainData_y['value'], testData_X_years, testData_y_years['value'], selectedParams)
+
+
+            Models.append(pixels_years_iterOutput)
+
+
+            pixels_years_MSEList.append(pixels_years_iterOutput[1])
+            pixels_MSEList.append(pixels_iterOutput[1])
+            years_MSEList.append(years_iterOutput[1])
+
+            pixels_years_R2List.append(pixels_years_iterOutput[2])
+            pixels_R2List.append(pixels_iterOutput[2])
+            years_R2List.append(years_iterOutput[2])
+        
+    #combine MSE and R2 Lists into single DataFrame
+    Models_Summary['Pixels_Years_MSE'] = pixels_years_MSEList
+    Models_Summary['Pixels_MSE'] = pixels_MSEList
+    Models_Summary['Years_MSE'] = years_MSEList
+
+    Models_Summary['Pixels_Years_R2'] = pixels_years_R2List
+    Models_Summary['Pixels_R2'] = pixels_R2List
+    Models_Summary['Years_R2'] = years_R2List
+
+
+    print("pixels_Years MSE Overall: ", sum(pixels_years_MSEList)/len(pixels_years_MSEList))
+    print("pixels_Years R2 Overall: ", sum(pixels_years_R2List)/len(pixels_years_R2List))
+    #print("pixels_Years R2 iterations: ", pixels_years_R2List)
+    print("\n")
+    print("pixels MSE Overall: ", sum(pixels_MSEList)/len(pixels_MSEList))
+    print("pixels R2 Overall: ", sum(pixels_R2List)/len(pixels_R2List))
+    #print("pixels R2 iterations: ", pixels_R2List)
+    print("\n")
+    print("years MSE Overall: ", sum(years_MSEList)/len(years_MSEList))
+    print("years R2 Overall: ", sum(years_R2List)/len(years_R2List))
+    #print("years R2 iterations: ", years_R2List)
+    print("\n")
+
+    pickling_on = open(outPath + "XGBoost_2dim.pickle", "wb")
+    pickle.dump([combined_Data, target_Data, Models_Summary, Models, excluded_Years, selectedParams], pickling_on)
+    pickling_on.close
+
+    Models_Summary.to_csv(outPath + "Model_Summary_XGBOOST.csv")
+
+    return combined_Data, target_Data, Models_Summary, Models, excluded_Years, selectedParams
+
+
+
+def XGBoostReg_YearPredictor(combined_Data_Training, target_Data_Training, preMasked_Data_Path, outPath, year_List, periodLen, DataFields, mask, params = {'eta': 0.3, #step size shrinkage used in updates to prevent overfitting (also called learning_rate)
+         'n_estimators': 100}):
+    '''annually predict fire risk- train model on combined_Data across all available years except year of interest
+    save resulting predictions as csv and as tif to location 'outPath'
+    
+    :param combined_Data_Training: dataFrame including all desired explanatory factors 
+            across all locations & years to be used in training model
+    :param target_Data_Training: dataFrame including observed fire occurrences 
+            across all locations & years to be used in training model
+    :param preMasked_Data_Path: file path to location of files to use in predicting fire risk 
+                    (note - these files should not have undergone Poisson disk masking)
+    :param outPath: desired output location for predicted fire risk files (csv, pickle, and tif)
+    :param year_List: list of years for which predictions are desired
+    :param Datafields: list of explanatory factors to be intered into model
+    :param mask: filepath of raster mask to be used in masking output predictions, 
+            and as an example raster for choosing array shape and projections for .tif output files
+    :param params: parameters for random forest regression (presumably developed from 2dimCrossval)
+    :return:  returns a list of all models, accompanied by a list of years being predicted 
+            - note - return output is equivalent to data exported as models.pickle
+    '''
+    
+    model_List = []
+    
+    for iterYear in year_List:
+        combined_Data_iter_train = combined_Data_Training[combined_Data_Training['year'] != iterYear]
+        combined_Data_iter_train = combined_Data_iter_train.loc[:, DataFields]
+        
+        target_Data_iter_train = target_Data_Training[target_Data_Training['year'] != iterYear]
+        
+        
+        iter_Model = XGBRegressor(learning_rate = params["eta"], n_estimators = params["n_estimators"])
+        
+        iter_Fit = iter_Model.fit(combined_Data_iter_train, target_Data_iter_train['value'].values)
+        
+        
+        
+        #seriesToRaster(predict_iter, templateRasterPath, outPath + "Pred_FireRisk_" + str(iterYear) + ".tif")
+
+        full_X = pd.read_csv(preMasked_Data_Path + "CD_" + str(iterYear) + "_" + str(iterYear + periodLen - 1) + ".csv")
+        full_X = full_X.loc[:, DataFields]
+
+        data = iter_Fit.predict(full_X)
+        print(data)
+        data = pd.DataFrame(data, columns = ['PredRisk'])
+        index_mask = image_to_series_simple(mask)
+        data['mask'] = index_mask
+        data['PredRisk_Masked'] = data.apply(zeroMasker, axis =1)
+        
+        data.to_csv(outPath + "Pred_" + str(iterYear) + ".csv")
+        
+        #output predicted risk as tiff
+        seriesToRaster(data['PredRisk_Masked'], mask, outPath + "Pred_" + str(iterYear) + "XGBoost.tif")
+        
+        model_List.append([iter_Fit])
+        
+    pickling_on = open(outPath + "models.pickle", "wb")
+    pickle.dump([model_List, year_List], pickling_on)
+    pickling_on.close
+        
+        
+    return model_List, year_List

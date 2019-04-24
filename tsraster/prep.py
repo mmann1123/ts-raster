@@ -434,8 +434,16 @@ def period_Data_Merge(startYears, feature_path, dataDict, other_Data_path, dataN
 
         print(x)
 
-        
-        feature_Data_Iter = pd.read_csv(feature_path + "FD_Window_" + str(x) +"_" + str(x + length - 1) + ".csv")
+        #set up years to match with original file names in otder to pull correct feature data
+        if feature_length >0:
+            feature_dates = [(x+feature_offset), (x+feature_length + feature_offset - 1)]
+        elif feature_length <0:
+            feature_dates = [(x+feature_offset), (x+feature_length + feature_offset + 1)]
+        elif feature_length == 0:
+            print("feature Dates must include at least one year")
+
+        feature_dates.sort()
+        feature_Data_Iter = pd.read_csv(feature_path + "FD_Window_" + str(feature_dates[0]) +"_" + str(feature_dates[1]) + ".csv")
 
         feature_Data_Iter = pd.merge(feature_Data_Iter, invar_Data, on = ['pixel_id'])
 
@@ -480,7 +488,7 @@ def target_Data_to_csv_multiYear(startYears, length, file_Path, out_Path):
     
     for x in startYears:
         for y in range(length):
-            target_variable_iter = file_Path + "fire_" + str(x+ y) + "_" + str(x + y) + ".tif"
+            target_variable_iter = file_Path + "fire_" + str(x + y) + "_" + str(x + y) + ".tif"
             if y==0:
                 target_Data_iter = image_to_series_simple(target_variable_iter)
                 target_Data_iter = target_Data_iter.to_frame(name = "value")
@@ -868,8 +876,8 @@ def multiYear_Mask(startYears, filePath, maskFile, outPath, length = 1):
     except: 
         pass
 
-    combined_Data.to_csv(outPath + "CD_" + str(lastYear) + "_" +  str(firstYear) + "_Masked_" + str(length) + "len.csv")
-    target_Data.to_csv(outPath + "TD_" +  str(lastYear) + "_" + str(firstYear) + "_Masked_"  + str(length) + "len.csv")
+    combined_Data.to_csv(outPath + "CD_" + str(firstYear) + "_" +  str(lastYear) + "_Masked_" + str(length) + "len.csv")
+    target_Data.to_csv(outPath + "TD_" +  str(firstYear) + "_" + str(lastYear) + "_Masked_"  + str(length) + "len.csv")
 
     return combined_Data, target_Data
 
