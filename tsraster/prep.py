@@ -25,6 +25,7 @@ from shapely.geometry import box
 from rasterio.mask import mask
 from rasterio.plot import show
 import copy
+import sys
 
 def set_df_mindex(df):
     '''
@@ -471,15 +472,20 @@ def period_Data_Merge(startYears, feature_path, dataDict, other_Data_path, dataN
         feature_Data_iter.to_csv(outPath + "CD_" + str(x) + "_" + str(x + length -1) + ".csv")
     
     
-def target_Data_to_csv_multiYear(startYears, length, file_Path, out_Path):
+def target_Data_to_csv_multiYear(startYears, length, file_Path, out_Path, output_type = "Count"):
     '''convert annual fire data rasters into annual dataFrames, export as .CSV files
     also does some minor reformatting to prevent problems with downstream processing
 
     
-    :param startYear: year on which to start feature extraction
-    :param endYear: year on which to end feature extraction
+    :param startYears: list of years on which to start feature extraction
+    :param length: length of extraction period, beginning with each startYear (set to 1 for annual values)
     :param file_Path: path to target data files (fire data)
-    :out_Path: filepath for folder in which the output will be placed:
+    :param out_Path: filepath for folder in which the output will be placed
+    :param output_style: determines nature of output 
+            set to Count to output number of fires in each pixel within each period
+            set to Mean to output mean number of fires/year over the period
+            set to Binary to return 1 if burned during the period, 0 otherwise
+
     :return: no objects returned.  Instead, annual dataFrames will be saved at location outPath
             using the filname TD_XXXX.csv
 
@@ -494,6 +500,14 @@ def target_Data_to_csv_multiYear(startYears, length, file_Path, out_Path):
                 target_Data_iter = target_Data_iter.to_frame(name = "value")
             elif y>0:
                 target_Data_iter['value'] = target_Data_iter['value'] +  image_to_series_simple(target_variable_iter)
+        if output_type == "Mean":
+            target_Data_iter['value'] = target_Data_iter['value'].map(float) / float(length)
+        elif output_type == "Binary":
+            tempArray = np.array(target_Data_iter['value'])
+            target_Data_iter['value'] = np.where(tempArray>0, 1,0)
+        elif output_type != "Count":
+            print('EXCEPTION: output_type must be set to one of the following strings: \nCount\nMean\nBinary')
+            sys.exit()
         # read target data (Fires in iterated Year)
         
         

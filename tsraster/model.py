@@ -303,7 +303,6 @@ def model_predict_prob(model, new_X):
 def RandomSearch_Tuner(in_model, X_Data, y_Data, in_params, cv=50):
   randomSearch = RandomizedSearchCV(in_model, in_params, cv)
   randomSearch.fit(X_Data, y_Data)
-  print(type(randomSearch.best_params_))
   return randomSearch.best_params_
 
 
@@ -683,11 +682,11 @@ def elastic_YearPredictor(combined_Data_Training, target_Data_Training, preMaske
         data.to_csv(outPath + "Pred_" + str(iterYear) + ".csv")
         
         #output predicted risk as tiff
-        seriesToRaster(data['PredRisk_Masked'], mask, outPath + "Pred_" + str(iterYear) + "_" + str(iterYear + periodLen - 1) + ".tif", noData = -9999)
+        seriesToRaster(data['PredRisk_Masked'], mask, outPath + "Pred_" + str(iterYear) + "_" + str(iterYear + periodLen - 1) + "_elastic.tif", noData = -9999)
         
         model_List.append([elastic_iter_Fit])
         
-    pickling_on = open(outPath + "models.pickle", "wb")
+    pickling_on = open(outPath + "elastic_models.pickle", "wb")
     pickle.dump([model_List, year_List], pickling_on)
     pickling_on.close
         
@@ -748,7 +747,7 @@ def randomForestReg_YearPredictor(combined_Data_Training, target_Data_Training, 
         data.to_csv(outPath + "Pred_" + str(iterYear) + ".csv")
         
         #output predicted risk as tiff
-        seriesToRaster(data['PredRisk_Masked'], mask, outPath + "Pred_" + str(iterYear) + "RFreg.tif")
+        seriesToRaster(data['PredRisk_Masked'], mask, outPath + "Pred_" +str(iterYear) + "_" + str(iterYear + periodLen - 1) + "RFreg.tif")
         
         model_List.append([iter_Fit])
         
@@ -959,7 +958,7 @@ def XGBoostReg_YearPredictor(combined_Data_Training, target_Data_Training, preMa
         data.to_csv(outPath + "Pred_" + str(iterYear) + ".csv")
         
         #output predicted risk as tiff
-        seriesToRaster(data['PredRisk_Masked'], mask, outPath + "Pred_" + str(iterYear) + "XGBoost.tif")
+        seriesToRaster(data['PredRisk_Masked'], mask, outPath + "Pred_" + str(iterYear) + "_" + str(iterYear + periodLen - 1) + "XGBoost.tif")
         
         model_List.append([iter_Fit])
         
