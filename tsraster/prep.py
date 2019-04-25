@@ -1146,7 +1146,7 @@ def arrayToRaster(in_Array, templateRasterPath, outPath):
     with rasterio.open(templateRasterPath) as exampleRast:
         array = exampleRast.read()
         profile = exampleRast.profile
-        profile.update(dtype=rasterio.float32, count=1, compress='lzw',nodata=0)
+        profile.update(dtype=rasterio.float32, count=1, compress='lzw',nodata=-9999)
 
         
         
