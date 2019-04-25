@@ -54,7 +54,7 @@ def CreateTiff(Name, Array, driver, NDV, GeoT, Proj, DataType, path):
     return Name
 
 
-def calculateFeatures(path, parameters, reset_df ,raster_mask=None ,tiff_output=True, workers = None):
+def calculateFeatures(path, parameters, reset_df,raster_mask=None ,tiff_output=True,missing_value = -9999, workers = None):
     '''
     Calculates features or the statistical characteristics of time-series raster data.
     It can also save features as a csv file (dataframe) and/or tiff file.
@@ -111,7 +111,7 @@ def calculateFeatures(path, parameters, reset_df ,raster_mask=None ,tiff_output=
      
     # unmask extracted features
     extracted_features = tr.unmask_from_mask(mask_df_output = extracted_features, 
-                                          missing_value = -9999,
+                                          missing_value = -missing_value,
                                           raster_mask = raster_mask)
     
     # deal with output location 
@@ -158,7 +158,7 @@ def calculateFeatures(path, parameters, reset_df ,raster_mask=None ,tiff_output=
         return extracted_features
 
 
-def calculateFeatures_window(path, parameters, baseYear, reset_df ,length = 3, offset = 1,raster_mask=None ,tiff_output=True, workers = None, outPath= "None"):
+def calculateFeatures_window(path, parameters, baseYear, reset_df = True,length = 3, offset = 0,raster_mask=None ,tiff_output=True, workers = None, outPath= "None"):
     
     '''
     Calculates features or the statistical characteristics of time-series raster data.
@@ -218,34 +218,40 @@ def calculateFeatures_window(path, parameters, baseYear, reset_df ,length = 3, o
     
     extracted_features['time'] = str(my_df.time.min())+"_"+str(my_df.time.max())
     extracted_features.set_index(['pixel_id', 'time'], inplace=True) 
-     
+    
     # unmask extracted features
     extracted_features = tr.unmask_from_mask(mask_df_output = extracted_features, 
                                           missing_value = -9999,
                                           raster_mask = raster_mask)
     
+    
+    if length>0:
+      baseName = str(baseYear + offset) + '_' + str(baseYear + length+ offset -1)
+    elif length<0: 
+      baseName = str(baseYear + length+ offset + 1) + '_' + str(baseYear + offset)
+
     # deal with output location 
     if outPath == "None":
       out_path = Path(path).parent.joinpath(Path(path).stem+"_features")
       out_path.mkdir(parents=True, exist_ok=True)
       
       # write out features to csv file
-      print("features:"+os.path.join(out_path,'extracted_features' + str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  '.csv'))
-      extracted_features.to_csv(os.path.join(out_path,'extracted_features' + str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  '.csv'), chunksize=10000)
+      print("features:"+os.path.join(out_path,'extracted_features' + baseName +  '.csv'))
+      extracted_features.to_csv(os.path.join(out_path,'extracted_features' + baseName +  '.csv'), chunksize=10000)
        # write out feature names 
       kr = pd.DataFrame(list(extracted_features.columns))
       kr.index += 1
       kr.index.names = ['band']
       kr.columns = ['feature_name']
-      kr.to_csv(os.path.join(out_path,"features_names" + str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  ".csv"))
+      kr.to_csv(os.path.join(out_path,"features_names" + baseName +  ".csv"))
     elif outPath != "None":
-      print("features:"+os.path.join(outPath,'extracted_features' + str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  '.csv'))
-      extracted_features.to_csv(os.path.join(outPath,'extracted_features' + str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  '.csv'), chunksize=10000)
+      print("features:"+os.path.join(outPath,'extracted_features' + baseName +  '.csv'))
+      extracted_features.to_csv(os.path.join(outPath,'extracted_features' + baseName +  '.csv'), chunksize=10000)
       kr = pd.DataFrame(list(extracted_features.columns))
       kr.index += 1
       kr.index.names = ['band']
       kr.columns = ['feature_name']
-      kr.to_csv(os.path.join(outPath,"features_names" + str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  ".csv"))
+      kr.to_csv(os.path.join(outPath,"features_names" + baseName +  ".csv"))
    
     
     # write out features to tiff file
@@ -260,7 +266,7 @@ def calculateFeatures_window(path, parameters, baseYear, reset_df ,length = 3, o
         
         #reshape the dimension of features extracted
         f2Array = matrix_features.reshape(rows, cols, num_of_layers)
-        output_file = 'extracted_features'+ str(baseYear) + '_' + str(length) + '_prev_offset' + str(offset) +  '.tiff'  
+        output_file = 'extracted_features'+ baseName +  '.tiff'  
         
         #Get Meta Data from raw data
         raw_data = read_images(path)
@@ -408,7 +414,7 @@ def calculateFeatures_window(path, parameters, baseYear, reset_df ,length = 3, o
 #        CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType, path=out_path)
 #        return extracted_features
 
-def multiYear_Window_Extraction(startYear, endYear, featureData_Path, feature_params, invar_Data, out_Path, mask, window_length = 3, window_offset = 0):
+def multiYear_Window_Extraction(startYears, featureData_Path, feature_params, out_Path, mask, length = 3, offset = 0):
     '''
     Extracts summary statistics(features) from multiYear datasets within moving window, across years
     Outputs a series of annual dataFrames as CSV files
@@ -417,7 +423,6 @@ def multiYear_Window_Extraction(startYear, endYear, featureData_Path, feature_pa
     :param endYear: year on which to end feature extraction
     :param featureData_Path: file path to data from which to extract features
     :param feature_params: summary statistics(features) to extract from data within each window
-    :param invar_Data: year-invariate data to join with extracted feature data on an annual scale
     :param out_Path: file path to location at which extracted features should be output as a csv
     :param window_length: length of window within which to extract features
     :param window_offset: number of years by which features pertaining to each year are offset from that year
@@ -427,14 +432,14 @@ def multiYear_Window_Extraction(startYear, endYear, featureData_Path, feature_pa
     '''
     
     # read in variables that are time variant, extract summary features, and concatenate output
-    for x in range(startYear, endYear+1):
+    for x in startYears:
 
         #get climate parameters for desired window relative to iterated year
         extracted_features_iter = calculateFeatures_window(path = featureData_Path, 
                                                   parameters = feature_params, 
                                                   baseYear = x,
-                                                  length = window_length,
-                                                  offset = window_offset,
+                                                  length = length,
+                                                  offset = offset,
                                                   reset_df=True,
                                                   raster_mask =  mask,
                                                   tiff_output=True,
@@ -446,7 +451,12 @@ def multiYear_Window_Extraction(startYear, endYear, featureData_Path, feature_pa
         extracted_features_iter.reset_index(inplace = True)
         
 
-        extracted_features_iter.to_csv(out_Path + "FD_Window_" + str(x) + ".csv")
+        if length>0:
+          baseName = str(x + offset) + '_' + str(x + length+ offset -1)
+        elif length<0: 
+          baseName = str(x + length+ offset + 1) + '_' + str(x + offset)
+
+        extracted_features_iter.to_csv(out_Path + "FD_Window_" + baseName + ".csv")
 
 def features_to_array(path, input_file):
     '''
