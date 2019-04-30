@@ -407,7 +407,7 @@ def annual_Data_Merge(startYear, endYear, feature_path, dataDict, other_Data_pat
         feature_Data_iter.to_csv(outPath + "CD_" + str(x) + ".csv")
 
 
-def period_Data_Merge(startYears, feature_path, dataDict, other_Data_path, dataNameList, outPath, length = 1, feature_offset = 0, feature_length = 1):
+def period_Data_Merge(startYears, feature_data, dataDict, other_Data_path, dataNameList, outPath, length = 1, feature_offset = 0, feature_length = 1):
     '''merge additional annually repeating data into feature data, as well as time-invariant data
     Produces annual dataFrames consisting of all explanatory variables that may be incorporated into model
         (Consisting of features extracted from climate data in preceding years, 
@@ -415,38 +415,47 @@ def period_Data_Merge(startYears, feature_path, dataDict, other_Data_path, dataN
         and time-invariant data such as rate of lightning strikes or local elevation)
         
     :param startYears: list of years on which to start feature extraction
-    :param feature_path: path to featue data
+    :param feature_paths: dictionary of feature paths, consisting of the filepath and a list consisting of:
+            -the number of years by which to offset the earliest portion of feature data from period of interest (to allow use of climate comnditions in preceding years)
+            -the length of period for features - may desired to differ from period length if based on preceding conditions
+            -the suffix that should be added to the data names for that set of feature data
     :param dataDict: dictionary of filepaths to each raster and the corresponding desired data column name
     :param other_Data_path: filepath (including filename) of example file for each annually repeating parameter to be added
                          - replace the 4-digit year within each filename with XXXX in each filePath (i.e. tr_XXXX.csv rather than tr.1981.csv)
     :param dataNameList: list of intended data names for additional data
     :param outPath: filepath for folder in which the output will be placed
     :param length: length of period
-    :param feature offset: number of years by which to offset featue data from period of interest (to allow use of climate comnditions in preceding years)
-    :param feature length: length of period for features - may desired to differ from period length if based on preceding conditions
     :return: no objects returned.  Instead, each annual dataFrame will be saved as a .csv file in the outPath folder
             with filename CD_XXXX.csv 
 '''
     
-    invar_Data = multi_image_to_dataframe(dataDict, outPath)
+    merged_Data = multi_image_to_dataframe(dataDict, outPath)
 
 
     for x in startYears:
 
         print(x)
+        for feature_suffix in feature_data:
+            print(feature_suffix)
+            feature_offset = feature_data[feature_suffix][0] #get feature length corresping to that iteration
+            feature_length = feature_data[feature_suffix][1] #get feature length corresping to that iteration
+            feature_path = feature_data[feature_suffix][2] # get path to feature data
+            #set up years to match with original file names in otder to pull correct feature data
+            if feature_length >0:
+                feature_dates = [(x+feature_offset), (x+feature_length + feature_offset - 1)]
+            elif feature_length <0:
+                feature_dates = [(x+feature_offset), (x+feature_length + feature_offset + 1)]
+            elif feature_length == 0:
+                print("feature Dates must include at least one year")
+                sys.exit()
+            feature_dates.sort()
+            feature_Data_Iter = pd.read_csv(feature_path + "FD_Window_" + str(feature_dates[0]) +"_" + str(feature_dates[1]) + ".csv", index_col = 'pixel_id')
+            for columnName in list(feature_Data_Iter.columns):
+                feature_Data_Iter[columnName + feature_suffix] = feature_Data_Iter[columnName]
+                del feature_Data_Iter[columnName]
+            feature_Data_Iter.reset_index(inplace = True)
 
-        #set up years to match with original file names in otder to pull correct feature data
-        if feature_length >0:
-            feature_dates = [(x+feature_offset), (x+feature_length + feature_offset - 1)]
-        elif feature_length <0:
-            feature_dates = [(x+feature_offset), (x+feature_length + feature_offset + 1)]
-        elif feature_length == 0:
-            print("feature Dates must include at least one year")
-
-        feature_dates.sort()
-        feature_Data_Iter = pd.read_csv(feature_path + "FD_Window_" + str(feature_dates[0]) +"_" + str(feature_dates[1]) + ".csv")
-
-        feature_Data_Iter = pd.merge(feature_Data_Iter, invar_Data, on = ['pixel_id'])
+            merged_Data = pd.merge(merged_Data, feature_Data_Iter, on = ['pixel_id'])
 
         
         # assemble multiple annual files acrossthe period of interest, by mean value
@@ -467,13 +476,14 @@ def period_Data_Merge(startYears, feature_path, dataDict, other_Data_path, dataN
             other_Data_iter = other_Data_iter/float(length)
 
             other_Data_iter.rename(dataNameList[y], inplace = True)
-            feature_Data_iter = pd.concat([feature_Data_Iter, other_Data_iter], axis = 1)
+            other_Data_iter.to_csv(outPath + 'testo.csv')
+            merged_Data = pd.concat([merged_Data, other_Data_iter], axis = 1)
         
-        feature_Data_iter.to_csv(outPath + "CD_" + str(x) + "_" + str(x + length -1) + ".csv")
+        merged_Data.to_csv(outPath + "CD_" + str(x) + "_" + str(x + length -1) + ".csv")
     
     
 def target_Data_to_csv_multiYear(startYears, length, file_Path, out_Path, output_type = "Count"):
-    '''convert annual fire data rasters into annual dataFrames, export as .CSV files
+    '''convert annual fire data rasters into dataFrames corresponding to each period of interest, and export as .CSV files
     also does some minor reformatting to prevent problems with downstream processing
 
     
@@ -486,7 +496,7 @@ def target_Data_to_csv_multiYear(startYears, length, file_Path, out_Path, output
             set to Mean to output mean number of fires/year over the period
             set to Binary to return 1 if burned during the period, 0 otherwise
 
-    :return: no objects returned.  Instead, annual dataFrames will be saved at location outPath
+    :return: no objects returned.  Instead, dataFrames will be saved at location outPath
             using the filname TD_XXXX.csv
 
 '''
@@ -834,16 +844,19 @@ def mask_df(raster_mask, original_df, missing_value = -9999, reset_index = True)
 
 
 def multiYear_Mask(startYears, filePath, maskFile, outPath, length = 1):
-    #mask multiple years of data, export the resulting files annually and as multiyar csvs
+    '''mask multiple years of data, export the resulting files annually and as multiyear csvs
 
-    #param startYear: year on which to begin
-    #param endYear: year on which to end
-    #param DataLists: csv of files to pull, with the year is the index, 
-    #       "combined_Data_Filepaths" as the column of combined data filepaths, and
-    #       "target_Data_filePaths" as the column of the target data(i.e. fire) filepaths.
-    #param maskFile: filepath to data file used for masking
-    #outPath: filepath for folder in which the output will be placed
+    :param startYears: years on which to begin
+    :param filepath: folder in which files to be masked are located.  Files mult be formatted as folles:
+        CD_XXXX_YYYY.csv for combined data, and
+        TD_XXXX_YYYY.csv for fire data where XXXX indicates the year on which a period of interest begins, 
+                and YYYY indicates the last year within that period of interest
+    :param maskFile: filepath to data file used for masking
+    :outPath: filepath for folder in which the output will be placed
+    :param length: the length of the desired period of interest
+    :return: masked dataframes of combined data and target data
 
+'''
 
     import copy
     

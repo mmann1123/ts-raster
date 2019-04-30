@@ -419,8 +419,7 @@ def multiYear_Window_Extraction(startYears, featureData_Path, feature_params, ou
     Extracts summary statistics(features) from multiYear datasets within moving window, across years
     Outputs a series of annual dataFrames as CSV files
     
-    :param startYear: year on which to start feature extraction
-    :param endYear: year on which to end feature extraction
+    :param startYears: list of years on which to start feature extraction
     :param featureData_Path: file path to data from which to extract features
     :param feature_params: summary statistics(features) to extract from data within each window
     :param out_Path: file path to location at which extracted features should be output as a csv
@@ -456,7 +455,7 @@ def multiYear_Window_Extraction(startYears, featureData_Path, feature_params, ou
         elif length<0: 
           baseName = str(x + length+ offset + 1) + '_' + str(x + offset)
 
-        extracted_features_iter.to_csv(out_Path + "FD_Window_" + baseName + ".csv")
+        extracted_features_iter.to_csv(out_Path + "FD_Window_" + baseName + ".csv", index = False)
 
 def features_to_array(path, input_file):
     '''
