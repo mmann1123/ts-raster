@@ -661,7 +661,7 @@ def Extract_features_Dask(df,
                 outFrame[dataTypes[y] + '_' + paramList[x]] = groupByFrames[x][dataTypes[y]] #add data from a given feature & data type to outFrame
     return outFrame                
 
-def multiYear_Window_Extraction(startYears, 
+def multiYear_Window_Extraction_Dask(startYears, 
                               featureData_Path,  
                               out_Path, 
                               raster_mask = None,  
