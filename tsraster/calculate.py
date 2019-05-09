@@ -158,6 +158,111 @@ def calculateFeatures(path, parameters, reset_df,raster_mask=None ,tiff_output=T
         return extracted_features
 
 
+'''def calculateFeaturesDask(path, parameters, reset_df,raster_mask=None ,tiff_output=True,missing_value = -9999, workers = None):
+    '''
+    Calculates features or the statistical characteristics of time-series raster data.
+    It can also save features as a csv file (dataframe) and/or tiff file.
+    
+    :param path: directory path to the raster files
+    :param parameters: a dictionary of features to be extracted
+    :param reset_df: boolean option for existing raster inputs as dataframe
+    :param raster_mask: path to binary raster mask (default None)
+    :param tiff_output: boolean option for exporting tiff file (default True)
+    :param workers: number of parallel workers in multiprocessing pool (default None)
+    :return: extracted features as a dataframe and tiff file
+    '''
+    
+    if reset_df == False:
+        #if reset_df =F read in csv file holding saved version of my_df
+        my_df = tr.read_my_df(path)
+            
+    else:
+        #if reset_df =T calculate ts_series and save csv
+        my_df = image_to_series(path)
+        print('df: '+os.path.join(path,'my_df.csv'))
+        my_df.to_csv(os.path.join(path,'my_df.csv'), chunksize=10000, index=False)
+    
+    # mask rasters based on desired mask, if present
+    if raster_mask is not None:
+        my_df = tr.mask_df(raster_mask = raster_mask, 
+                        original_df = my_df)
+    
+    #distribute processing across multiprocessing pool, if multiple workers are present
+    if workers is not None:
+        Distributor = LocalDaskDistributor(n_workers=workers,
+                                                 disable_progressbar=False,
+                                                 progressbar_title="Feature Extraction")
+        #Distributor = LocalDaskDistributor(n_workers=workers)
+    else:
+        Distributor = None
+    
+    extracted_features = extract_features(my_df, 
+                                          default_fc_parameters = parameters,
+                                          column_sort = "time",
+                                          column_value = "value",
+                                          column_id = "pixel_id",
+                                          column_kind="kind", 
+                                          #chunksize = 1000,
+                                          distributor=Distributor
+                                          )
+    
+    # change index name to match pixel and time period
+    extracted_features.index.rename('pixel_id',inplace=True)
+    extracted_features.reset_index(inplace=True, level=['pixel_id'])
+    
+    extracted_features['time'] = str(my_df.time.min())+"_"+str(my_df.time.max())
+    extracted_features.set_index(['pixel_id', 'time'], inplace=True) 
+     
+    # unmask extracted features
+    extracted_features = tr.unmask_from_mask(mask_df_output = extracted_features, 
+                                          missing_value = -missing_value,
+                                          raster_mask = raster_mask)
+    
+    # deal with output location 
+    out_path = Path(path).parent.joinpath(Path(path).stem+"_features")
+    out_path.mkdir(parents=True, exist_ok=True)
+    
+    # write out features to csv file
+    print("features:"+os.path.join(out_path,'extracted_features.csv'))
+    extracted_features.to_csv(os.path.join(out_path,'extracted_features.csv'), chunksize=10000)
+    
+    # write out feature names 
+    kr = pd.DataFrame(list(extracted_features.columns))
+    kr.index += 1
+    kr.index.names = ['band']
+    kr.columns = ['feature_name']
+    kr.to_csv(os.path.join(out_path,"features_names.csv"))
+    
+    # write out features to tiff file
+    if tiff_output == False:
+        return extracted_features
+    else:
+        # get image dimension from raw data
+        rows, cols, num = image_to_array(path).shape
+        # get the total number of features extracted
+        matrix_features = extracted_features.values
+        num_of_layers = matrix_features.shape[1]
+        
+        #reshape the dimension of features extracted
+        f2Array = matrix_features.reshape(rows, cols, num_of_layers)
+        output_file = 'extracted_features.tiff'  
+        
+        #Get Meta Data from raw data
+        raw_data = read_images(path)
+        GeoTransform = raw_data[0].GetGeoTransform()
+        driver = gdal.GetDriverByName('GTiff')
+        
+        noData = -9999
+        
+        Projection = raw_data[0].GetProjectionRef()
+        DataType = gdal.GDT_Float32
+        
+        #export tiff
+        CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType, path=out_path)
+        return extracted_features
+'''
+
+
 def calculateFeatures_window(path, parameters, baseYear, reset_df = True,length = 3, offset = 0,raster_mask=None ,tiff_output=True, workers = None, outPath= "None"):
     
     '''
@@ -285,136 +390,9 @@ def calculateFeatures_window(path, parameters, baseYear, reset_df = True,length 
           CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType, path=outPath)
         return extracted_features
 
-#def calculateFeatures2(path, parameters, mask=None, reset_df=True, tiff_output=True, 
-#                           missing_value =-9999,workers=2):
-#    '''
-#    Calculates features or the statistical characteristics of time-series raster data.
-#    It can also save features as a csv file (dataframe) and/or tiff file.
-#    
-#    :param path: directory path to the raster files
-#    :param parameters: a dictionary of features to be extracted
-#    :param reset_df: boolean option for existing raster inputs as dataframe
-#    :param tiff_output: boolean option for exporting tiff file
-#    :return: extracted features as a dataframe and tiff file
-#    '''
-#      
-#    if reset_df == False:
-#        #if reset_df =F read in csv file holding saved version of my_df
-#        df_long = pd.read_csv(os.path.join(path,'df_long.csv'))
-#        
-#        # create example of original df to help unmask 
-#        df_original = pd.read_csv(os.path.join(path,'df_original.csv') )
-#        df_original = pd.DataFrame(index = pd.RangeIndex(start=0,
-#                                                         stop=len(df_original),
-#                                                         step=1), 
-#                                             dtype=np.float32)
-#        
-#        # set index name to pixel id 
-#        df_original.index.names = ['pixel_id']
-#        
-#    else:
-#        #if reset_df =T calculate ts_series and save csv
-#        df_long, df_original   = image_to_series2(path, 
-#                                                  mask)
-#        
-#        print('df: '+os.path.join(path,'df_long.csv'))
-#        df_long.to_csv(os.path.join(path,'df_long.csv'), 
-#                     chunksize=10000, 
-#                     index=False)
-#    
-#        df_original.to_csv(os.path.join(path,'df_original.csv'), 
-#                     chunksize=10000, 
-#                     index=True)
-#    
-#    # remove missing values from df_long
-#    df_long = df_long[df_long['value'] != missing_value]
-#    
-#    # check if the number of observation per pixel are not identical
-#    if ~df_long.groupby(['pixel_id','kind']).kind.count().all():
-#        print('ERROR: the number of observation per pixel are not identical')
-#        print('       fix missing values to have a uniform time series')
-#        print(df_long.groupby(['time']).time.unique())
-#        
-#        return(df_long.groupby(['pixel_id','kind']).kind.count().all())
-#     
-#        
-#    Distributor = MultiprocessingDistributor(n_workers=workers,
-#                                             disable_progressbar=False,
-#                                             progressbar_title="Feature Extraction")
-#    #Distributor = LocalDaskDistributor(n_workers=2)
-#    
-#    extracted_features = extract_features(df_long,
-#                                          #chunksize=10e6,
-#                                          default_fc_parameters=parameters,
-#                                          column_id="pixel_id", 
-#                                          column_sort="time", 
-#                                          column_kind="kind", 
-#                                          column_value="value",
-#                                          distributor=Distributor
-#                                          )
-#    
-#    # extracted_features.index is == df_long.pixel_id
-#    extracted_features.index.name= 'pixel_id'
-#    
-#    
-#    #unmask extracted features to match df_original index 
-#    extracted_features = pd.concat( [df_original, extracted_features], 
-#                                            axis=1 )
-#    
-#    # fill missing values with correct 
-#    extracted_features.fillna(missing_value, inplace=True)
-#    
-#    
-#    # deal with output location 
-#    out_path = Path(path).parent.joinpath(Path(path).stem+"_features")
-#    out_path.mkdir(parents=True, exist_ok=True)
-#     
-#    # write out features to csv file
-#    print("features:"+os.path.join(out_path,'extracted_features.csv'))
-#    extracted_features.to_csv(os.path.join(out_path,'extracted_features.csv'), chunksize=10000)
-#    
-#    # write data frame
-#    kr = pd.DataFrame(list(extracted_features.columns))
-#    kr.index += 1
-#    kr.index.names = ['band']
-#    kr.columns = ['feature_name']
-#    kr.to_csv(os.path.join(out_path,"features_names.csv"))
-#    
-#    
-#    # write out features to tiff file
-#    if tiff_output == False:
-#    
-#        '''tiff_output is true and by default exports tiff '''
-#    
-#        return extracted_features  
-#    
-#    else:
-#         print('use export_features instead')
-#        # get image dimension from raw data
-#        rows, cols, num = image_to_array(path).shape
-#        # get the total number of features extracted
-#        matrix_features = extracted_features.values
-#        num_of_layers = matrix_features.shape[1]
-#        
-#        #reshape the dimension of features extracted
-#        f2Array = matrix_features.reshape(rows, cols, num_of_layers)
-#        output_file = 'extracted_features.tiff'  
-#        
-#        #Get Meta Data from raw data
-#        raw_data = read_images(path)
-#        GeoTransform = raw_data[0].GetGeoTransform()
-#        driver = gdal.GetDriverByName('GTiff')
-#        
-#        noData = -9999
-#        
-#        Projection = raw_data[0].GetProjectionRef()
-#        DataType = gdal.GDT_Float32
-#        
-#        #export tiff
-#        CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType, path=out_path)
-#        return extracted_features
 
-def multiYear_Window_Extraction(startYears, featureData_Path, feature_params, out_Path, mask, length = 3, offset = 0):
+
+def multiYear_Window_Extraction(startYears, featureData_Path, feature_params, out_Path, mask, length = 3, offset = 0, workers = None):
     '''
     Extracts summary statistics(features) from multiYear datasets within moving window, across years
     Outputs a series of annual dataFrames as CSV files
@@ -442,7 +420,7 @@ def multiYear_Window_Extraction(startYears, featureData_Path, feature_params, ou
                                                   reset_df=True,
                                                   raster_mask =  mask,
                                                   tiff_output=True,
-                                                  workers = 1,
+                                                  workers = workers,
                                                   outPath = out_Path)
 
 
@@ -621,3 +599,153 @@ def Temporal_Interpolation(input_path, outPath, startYear, endYear, interval, nu
             iter_outPath = outPath.replace("XXXX", str(iterYear))
             with rasterio.open(iter_outPath, 'w', **profile) as exampleRast:
                 exampleRast.write(iterRaster, 1)
+
+
+def Extract_features_Dask(df, 
+                          parameters = {'mean':True, 'max': True, 'min': True, 'std': True},
+                          dataTypes = ['aet', 'cwd'],
+                         column_id = 'pixel_id'):
+  '''Conduct feature extraction using Dask - takes in a pandas or dask dataframe, outputs summary parameters (those set to true)
+      in a pandas dataFrame
+      :param df: input pandas or dask dataFrame
+      :param parameters: dictionary of parameters to be used: set each value to to True if you wish it to be calculated
+      :param dataTypes: list of column names from which summary features are to be calculated
+      :param column_id: name of column to be blocking factor in groupby statements
+      :return: returns a pandas dataFrame consisting of the column_ids and all desired summary features
+
+  '''   
+
+
+    df = df[[column_id]+ dataTypes] # eliminate any data column for which summary statistics are not desired
+    
+    
+    groupByList = []
+    
+    if parameters['mean'] == True:
+        means = df.groupby('pixel_id').mean()
+        groupByList.append(means)
+    elif parameters['mean'] != True:
+        means = None
+    
+    if parameters['max'] == True:
+        maxs = df.groupby('pixel_id').max()
+        groupByList.append(maxs)
+    elif parameters['max'] != True:
+        maxs = None
+        
+    if parameters['min'] == True:
+        mins = df.groupby('pixel_id').min()
+        groupByList.append(maxs)
+    elif parameters['min'] != True:
+        mins = None
+        
+    if parameters['std'] == True:
+        stds = df.groupby('pixel_id').std()
+        groupByList.append(stds)
+    elif parameters['std'] != True:
+        stds = None
+    
+    groupByFrames = dask.compute(means, maxs, mins, stds)
+    
+    
+    
+    #using these groupByFrames, populate a new pandas df with data from each, with appropriate column headers
+    is_outFrame_built = False # set outFrame to None so that it can be populated by pixel_id index when needed
+    paramList = list(parameters.keys()) # turn dictionary keys into list for iteration
+    for x in range(len(paramList)):
+        if type(groupByFrames[x]) == pd.core.frame.DataFrame:
+            for y in range(len(dataTypes)):
+                if is_outFrame_built == False:
+                    outFrame = groupByFrames[x].loc[:, []] #create blank dataFrame with index pixel_id 
+                    is_outFrame_built = True
+                outFrame[dataTypes[y] + '_' + paramList[x]] = groupByFrames[x][dataTypes[y]] #add data from a given feature & data type to outFrame
+    return outFrame                
+
+def multiYear_Window_Extraction(startYears, 
+                              featureData_Path,  
+                              out_Path, 
+                              raster_mask = None,  
+                              feature_params = {'mean':True, 'max': True, 'min': True, 'std': True},
+                              length = 3, 
+                              offset = 0, 
+                              dataTypes = ['aet', 'cwd'],
+                              chunks = 1000,
+                              reset_df = True):
+  '''
+  Extracts summary statistics(features) from multiYear datasets within moving window, across years
+  Outputs a series of annual dataFrames as CSV files using dask
+  
+  :param startYears: list of years on which to start feature extraction
+  :param featureData_Path: file path to data from which to extract features
+  :param feature_params: summary statistics(features) to extract from data within each window
+  :param out_Path: file path to location at which extracted features should be output as a csv
+  :param window_length: length of window within which to extract features
+  :param window_offset: number of years by which features pertaining to each year are offset from that year
+  :param raster_mask:  mask to apply to data prior to feature extraction
+  :param dataTypes: list of dataTypes to be examined
+  :param chunks: size of chunk to be used by dask
+  :param reset_df: if False, attempt to open pre-existing feature data before recalculating it in each period of interest
+          --Should be set to true if features or mask havew changed since previous versions were calculated
+  :return: no return.  instead, feature data relative to each year of interest is saved as a .csv file at the out_Path location
+            under the filename FD_Window_XXXX.csv 
+  '''
+  
+  
+  
+  
+  
+  # read in variables that are time variant, extract summary features, and concatenate output
+  for x in startYears:
+      print(x)
+      #create base part of name for extracted feature data
+      if length>0:
+        baseName = str(x + offset) + '_' + str(x + length+ offset -1)
+      elif length<0: 
+        baseName = str(x + length+ offset + 1) + '_' + str(x + offset)
+      
+      
+      if reset_df == False:
+          try:
+              df_iter = pd.read_csv(out_path + "FD_Window_" + baseName + ".csv", index = False)
+              new_df_Needed = False
+          except:
+              new_df_Needed = True
+      
+      elif reset_df != False:
+          new_df_Needed = True
+      
+      
+      
+      if new_df_Needed == True: #read in climate data from rasters and extract features
+          
+          
+          df_iter = image_to_Dask_Dataframe(path = featureData_Path, 
+                                       baseYear = x, 
+                                       length = length, 
+                                       offset = offset,
+                                       dataTypes = dataTypes,
+                                       chunks = 1000)
+
+          #get climate parameters for desired window relative to iterated year
+          extracted_features_iter = Extract_features_Dask(df_iter, 
+                            parameters = feature_params,
+                            dataTypes = dataTypes,
+                           column_id = 'pixel_id')
+          
+          #output extracted features to csv
+          extracted_features_iter.to_csv(out_Path + "FD_Window_" + baseName + "_PreMasked.csv", index = False)
+          
+
+
+      
+          #reset index of extracted features to combine with other datasets based on pixel ids
+          extracted_features_iter.reset_index(inplace = True)
+      
+          # mask rasters based on desired mask, if present
+          if raster_mask is not None:
+              extracted_features_iter = tr.mask_df(raster_mask = raster_mask, 
+                              original_df = extracted_features_iter, multiIndex = False)
+      
+  
+
+      extracted_features_iter.to_csv(out_Path + "FD_Window_" + baseName + ".csv", index = False)
