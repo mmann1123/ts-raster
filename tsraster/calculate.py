@@ -55,8 +55,7 @@ def CreateTiff(Name, Array, driver, NDV, GeoT, Proj, DataType, path):
 
 
 def calculateFeatures(path, parameters, reset_df,raster_mask=None ,tiff_output=True,missing_value = -9999, workers = None):
-    '''
-    Calculates features or the statistical characteristics of time-series raster data.
+    '''Calculates features or the statistical characteristics of time-series raster data.
     It can also save features as a csv file (dataframe) and/or tiff file.
     
     :param path: directory path to the raster files
@@ -159,7 +158,7 @@ def calculateFeatures(path, parameters, reset_df,raster_mask=None ,tiff_output=T
 
 
 '''def calculateFeaturesDask(path, parameters, reset_df,raster_mask=None ,tiff_output=True,missing_value = -9999, workers = None):
-    '''
+    
     Calculates features or the statistical characteristics of time-series raster data.
     It can also save features as a csv file (dataframe) and/or tiff file.
     
@@ -170,7 +169,7 @@ def calculateFeatures(path, parameters, reset_df,raster_mask=None ,tiff_output=T
     :param tiff_output: boolean option for exporting tiff file (default True)
     :param workers: number of parallel workers in multiprocessing pool (default None)
     :return: extracted features as a dataframe and tiff file
-    '''
+    
     
     if reset_df == False:
         #if reset_df =F read in csv file holding saved version of my_df
