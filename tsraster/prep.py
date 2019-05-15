@@ -754,7 +754,6 @@ def mask_df(raster_mask, original_df, missing_value = -9999, reset_index = True)
         original_df = original_df.iloc[original_df.index.get_level_values('pixel_id').isin(index_mask.index)]
         print(original_df.head()) ##
         print(len(original_df)) ##
-    original_df.to_csv('C:/Users/Python3/Documents/wildfire_FRAP_working/wildfire_FRAP/Data/Scratch_Tests/MaskTest/testo.csv') ## OK TO HERE
 
     # remove any more missing values 
     if missing_value != None:
@@ -766,7 +765,6 @@ def mask_df(raster_mask, original_df, missing_value = -9999, reset_index = True)
     
         original_df.dropna(inplace=True)
         
-    original_df.to_csv('C:/Users/Python3/Documents/wildfire_FRAP_working/wildfire_FRAP/Data/Scratch_Tests/MaskTest/testo2.csv')
 
 
     if list_flag == True:
@@ -777,8 +775,6 @@ def mask_df(raster_mask, original_df, missing_value = -9999, reset_index = True)
         if reset_index == True:
             a = reset_df_index(if_series_to_df(a))
             b = reset_df_index(if_series_to_df(b))
-        original_df.to_csv('C:/Users/Python3/Documents/wildfire_FRAP_working/wildfire_FRAP/Data/Scratch_Tests/MaskTest/testo3a.csv')
-        original_df.to_csv('C:/Users/Python3/Documents/wildfire_FRAP_working/wildfire_FRAP/Data/Scratch_Tests/MaskTest/testo3b.csv')
         return a , b
     
     else:
