@@ -403,8 +403,9 @@ def multiYear_Window_Extraction(startYears, featureData_Path, feature_params, ou
     :param featureData_Path: file path to data from which to extract features
     :param feature_params: summary statistics(features) to extract from data within each window
     :param out_Path: file path to location at which extracted features should be output as a csv
-    :param window_length: length of window within which to extract features
-    :param window_offset: number of years by which features pertaining to each year are offset from that year
+    :param length: length of window within which to extract features
+    :param offset: number of years by which features pertaining to each year are offset from that year
+    :param workers: number of workers
     :param mask:  mask to apply to data prior to feature extraction
     :return: no return.  instead, feature data relative to each year of interest is saved as a .csv file at the out_Path location
               under the filename FD_Window_XXXX.csv 
