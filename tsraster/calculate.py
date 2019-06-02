@@ -107,7 +107,8 @@ def calculateFeatures(path, parameters, reset_df,raster_mask=None ,tiff_output=T
     extracted_features.set_index(['pixel_id', 'time'], inplace=True) 
      
     # unmask extracted features
-    extracted_features = tr.unmask_from_mask(mask_df_output = extracted_features, 
+    if raster_mask is not None:
+        extracted_features = tr.unmask_from_mask(mask_df_output = extracted_features, 
                                           missing_value = missing_value,
                                           raster_mask = raster_mask)
     
