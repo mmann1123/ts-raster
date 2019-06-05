@@ -734,6 +734,7 @@ def multiYear_Window_Extraction_Dask_No_TSFresh(startYears,
                                        length = length, 
                                        offset = offset,
                                        dataTypes = dataTypes,
+                                       examplePath = raster_mask,
                                        chunks = 1000)
 
           #get climate parameters for desired window relative to iterated year
