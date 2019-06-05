@@ -15,6 +15,7 @@ from tsfresh.utilities.distribution import MultiprocessingDistributor, LocalDask
 from tsfresh.feature_selection.relevance import calculate_relevance_table as crt
 from tsraster.prep import image_to_series, image_to_array, read_images, image_to_series_window, image_to_array_window, read_images_window
 import tsraster.prep  as tr
+import dask as dask
 #from tsfresh.utilities.distribution import LocalDaskDistributor
 
 
@@ -603,66 +604,72 @@ def Temporal_Interpolation(input_path, outPath, startYear, endYear, interval, nu
             with rasterio.open(iter_outPath, 'w', **profile) as exampleRast:
                 exampleRast.write(iterRaster, 1)
 
-
 def Extract_features_Dask(df, 
-                          parameters = {'mean':True, 'max': True, 'min': True, 'std': True},
-                          dataTypes = ['aet', 'cwd'],
+                          parameters = {'mean':True, 'max': True, 'min': True},
+                          dataTypes = ['ppt','tmx','aet','cwd','pet','pck'],
                          column_id = 'pixel_id'):
-  '''Conduct feature extraction using Dask - takes in a pandas or dask dataframe, outputs summary parameters (those set to true)
-      in a pandas dataFrame
-      :param df: input pandas or dask dataFrame
-      :param parameters: dictionary of parameters to be used: set each value to to True if you wish it to be calculated
-      :param dataTypes: list of column names from which summary features are to be calculated
-      :param column_id: name of column to be blocking factor in groupby statements
-      :return: returns a pandas dataFrame consisting of the column_ids and all desired summary features
+    '''
+    Extract mean, max, and/or min values for each pixel from a dask dataFrame derived from monthly rasters by pixel_id
+    Outputs a csv of extracted features, alongside a tif of each extracted feature
 
-  '''   
+    :param df: input dask dataFrame from which features are to be extracted
+    :param dataTypes: dictionary of three extraction types: defaults to outputting all three, some may be excluded by seting values to false
+    :param column_id: id of column by which to identify pixels: defaults to 'pixel_id'
+   
+    '''
 
-
-  df = df[[column_id]+ dataTypes] # eliminate any data column for which summary statistics are not desired
+    df = df[[column_id]+ dataTypes]
+    
+    
+    groupByList = []
+    
+    if parameters['mean'] == True:
+        means = df.groupby('pixel_id').mean()
+        groupByList.append(means)
+    elif parameters['mean'] != True:
+        means = None
+    
+    if parameters['max'] == True:
+        maxs = df.groupby('pixel_id').max()
+        groupByList.append(maxs)
+    elif parameters['max'] != True:
+        maxs = None
+        
+    if parameters['min'] == True:
+        mins = df.groupby('pixel_id').min()
+        groupByList.append(maxs)
+    elif parameters['min'] != True:
+        mins = None
+        
+    
+    groupByFrames = dask.compute(means, maxs, mins)
+    
+    
+    
+    #using these groupByFrames, populate a new pandas df with data from each, with appropriate column headers
+    is_outFrame_built = False # set outFrame to None so that it can be populated by pixel_id index when needed
+    
+    paramList = list(parameters.keys()) # turn dictionary keys into list for iteration
+    for x in range(len(paramList)):
+        if type(groupByFrames[x]) == pd.core.frame.DataFrame:
+            for y in range(len(dataTypes)):
+                if is_outFrame_built == False:
+                    outFrame = groupByFrames[x].loc[:, []] #create blank dataFrame with index pixel_id 
+                    is_outFrame_built = True
+                outFrame[dataTypes[y] + '_' + paramList[x]] = groupByFrames[x][dataTypes[y]] #add data from a given feature & data type to outFrame
+    return outFrame
   
-  
-  groupByList = []
-  
-  if parameters['mean'] == True:
-      means = df.groupby('pixel_id').mean()
-      groupByList.append(means)
-  elif parameters['mean'] != True:
-      means = None
-  
-  if parameters['max'] == True:
-      maxs = df.groupby('pixel_id').max()
-      groupByList.append(maxs)
-  elif parameters['max'] != True:
-      maxs = None
-      
-  if parameters['min'] == True:
-      mins = df.groupby('pixel_id').min()
-      groupByList.append(maxs)
-  elif parameters['min'] != True:
-      mins = None
-      
-  if parameters['std'] == True:
-      stds = df.groupby('pixel_id').std()
-      groupByList.append(stds)
-  elif parameters['std'] != True:
-      stds = None
-  
-  groupByFrames = dask.compute(means, maxs, mins, stds)
-  
-  
-  
-  #using these groupByFrames, populate a new pandas df with data from each, with appropriate column headers
-  is_outFrame_built = False # set outFrame to None so that it can be populated by pixel_id index when needed
-  paramList = list(parameters.keys()) # turn dictionary keys into list for iteration
-  for x in range(len(paramList)):
-      if type(groupByFrames[x]) == pd.core.frame.DataFrame:
-          for y in range(len(dataTypes)):
-              if is_outFrame_built == False:
-                  outFrame = groupByFrames[x].loc[:, []] #create blank dataFrame with index pixel_id 
-                  is_outFrame_built = True
-              outFrame[dataTypes[y] + '_' + paramList[x]] = groupByFrames[x][dataTypes[y]] #add data from a given feature & data type to outFrame
-  return outFrame                
+    #using these groupByFrames, populate a new pandas df with data from each, with appropriate column headers
+    is_outFrame_built = False # set outFrame to None so that it can be populated by pixel_id index when needed
+    paramList = list(parameters.keys()) # turn dictionary keys into list for iteration
+    for x in range(len(paramList)):
+        if type(groupByFrames[x]) == pd.core.frame.DataFrame:
+            for y in range(len(dataTypes)):
+                if is_outFrame_built == False:
+                    outFrame = groupByFrames[x].loc[:, []] #create blank dataFrame with index pixel_id 
+                    is_outFrame_built = True
+                outFrame[dataTypes[y] + '_' + paramList[x]] = groupByFrames[x][dataTypes[y]] #add data from a given feature & data type to outFrame
+    return outFrame                
 
 def multiYear_Window_Extraction_Dask_No_TSFresh(startYears, 
                               featureData_Path,  
@@ -674,8 +681,8 @@ def multiYear_Window_Extraction_Dask_No_TSFresh(startYears,
                               dataTypes = ['aet', 'cwd'],
                               chunks = 1000,
                               reset_df = True):
-  '''
-  Extracts summary statistics(features) from multiYear datasets within moving window, across years
+  
+  '''Extracts summary statistics(features) from multiYear datasets within moving window, across years
   Outputs a series of annual dataFrames as CSV files using dask
   
   :param startYears: list of years on which to start feature extraction
@@ -722,7 +729,7 @@ def multiYear_Window_Extraction_Dask_No_TSFresh(startYears,
       if new_df_Needed == True: #read in climate data from rasters and extract features
           
           
-          df_iter = image_to_Dask_Dataframe(path = featureData_Path, 
+          df_iter = tr.image_to_Dask_Dataframe(path = featureData_Path, 
                                        baseYear = x, 
                                        length = length, 
                                        offset = offset,
@@ -752,6 +759,8 @@ def multiYear_Window_Extraction_Dask_No_TSFresh(startYears,
   
 
       extracted_features_iter.to_csv(out_Path + "FD_Window_" + baseName + ".csv", index = False)
+
+
 
 def calculateFeatures_window_Dask(path,
                                   parameters, 
@@ -888,45 +897,87 @@ def calculateFeatures_window_Dask(path,
         CreateTiff(output_file, f2Array, driver, noData, GeoTransform, Projection, DataType, path=outPath)
       return extracted_features
 
-def multiYear_Window_Extraction_Dask(startYears, featureData_Path, feature_params, out_Path, mask, length = 3, offset = 0, workers = None):
-  '''
-  Extracts summary statistics(features) from multiYear datasets within moving window, across years
-  Outputs a series of annual dataFrames as CSV files
-  
-  :param startYears: list of years on which to start feature extraction
-  :param featureData_Path: file path to data from which to extract features
-  :param feature_params: summary statistics(features) to extract from data within each window
-  :param out_Path: file path to location at which extracted features should be output as a csv
-  :param window_length: length of window within which to extract features
-  :param window_offset: number of years by which features pertaining to each year are offset from that year
-  :param mask:  mask to apply to data prior to feature extraction
-  :return: no return.  instead, feature data relative to each year of interest is saved as a .csv file at the out_Path location
-            under the filename FD_Window_XXXX.csv 
-  '''
-  
-  # read in variables that are time variant, extract summary features, and concatenate output
-  for x in startYears:
+def multiModel_Window_Extraction(startYears, 
+                                featureData_Path,  
+                                out_Path, 
+                                raster_mask = None,
+                                exampleRasterPath = "C:/Users/isaac/Documents/wildfire_FRAP_working/wildfire_FRAP/Data/Examples/buffer/StatePoly_buf.tif",
+                                feature_params = {'mean':True, 'max': True, 'min': True},
+                                length = 1, 
+                                offset = 0, 
+                                dataTypes = ['ppt','tmx','aet','cwd','pet','pck'],
+                                chunks = 1000,
+                                reset_df = True):
+    '''
+    Extracts summary statistics(features) from multiYear datasets within moving window, across years
+    Outputs a series of annual dataFrames as CSV files using dask
+    
+    :param startYears: list of years on which to start feature extraction
+    :param featureData_Path: file path to data from which to extract features
+    :param feature_params: summary statistics(features) to extract from data within each window
+    :param out_Path: file path to location at which extracted features should be output as a csv
+    :param window_length: length of window within which to extract features
+    :param window_offset: number of years by which features pertaining to each year are offset from that year
+    :param raster_mask:  mask to apply to data prior to feature extraction
+    :param dataTypes: list of dataTypes to be examined
+    :param chunks: size of chunk to be used by dask
+    :param reset_df: if False, attempt to open pre-existing feature data before recalculating it in each period of interest
+            --Should be set to true if features or mask havew changed since previous versions were calculated
+    :return: no return.  instead, feature data relative to each year of interest is saved as a .csv file at the out_Path location
+              under the filename FD_Window_XXXX.csv 
+    '''
+    
+    
 
-      #get climate parameters for desired window relative to iterated year
-      extracted_features_iter = calculateFeatures_window_Dask(path = featureData_Path, 
-                                                parameters = feature_params, 
-                                                baseYear = x,
-                                                length = length,
-                                                offset = offset,
-                                                reset_df=True,
-                                                raster_mask =  mask,
-                                                tiff_output=True,
-                                                workers = workers,
-                                                outPath = out_Path)
+    
+    
+    
+    
+    # read in variables that are time variant, extract summary features, and concatenate output
+    for x in startYears: #iterate across years
+        print(x)
+        for y in ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]: #iterate across months
 
 
-      #reset index of extracted features to combine with other datasets based on pixel ids
-      extracted_features_iter.reset_index(inplace = True)
-      
+            if reset_df == False:
+                try:
+                    df_iter = pd.read_csv(out_path + "FD_Window_" +  str(x) + "_MultiModel" + ".csv", index = False)
+                    new_df_Needed = False
+                except:
+                    new_df_Needed = True
 
-      if length>0:
-        baseName = str(x + offset) + '_' + str(x + length+ offset -1)
-      elif length<0: 
-        baseName = str(x + length+ offset + 1) + '_' + str(x + offset)
+            elif reset_df != False:
+                new_df_Needed = True
 
-      extracted_features_iter.to_csv(out_Path + "FD_Window_" + baseName + ".csv", index = False)
+
+
+            if new_df_Needed == True: #read in climate data from rasters and extract features
+
+
+                df_iter = tr.image_to_Dask_Dataframe(path = featureData_Path, 
+                                             baseYear = x, 
+                                             length = length, 
+                                             offset = 0,
+                                             dataTypes = dataTypes,
+                                             chunks = 1000, 
+                                             month = y, 
+                                             examplePath = exampleRasterPath)
+
+                #get climate parameters for desired window relative to iterated year
+                extracted_features_iter = Extract_features_Dask(df_iter, 
+                                  parameters = feature_params,
+                                  dataTypes = dataTypes,
+                                 column_id = 'pixel_id')
+
+
+                #reset index of extracted features to combine with other datasets based on pixel ids
+                extracted_features_iter.reset_index(inplace = True)
+
+
+                #output extracted features to csv
+                extracted_features_iter.to_csv(out_Path + "FD_Window_" + str(x) + "_" + str(y) + "_MultiModel.csv", index = False)
+                
+                #output extracted features to raster
+                for dataType in dataTypes:
+                    for feature in feature_params:
+                        tr.seriesToRaster(extracted_features_iter.loc[:, [dataType + "_"+ feature] ], exampleRasterPath, out_Path + feature + "/" + dataType + "_" +  str(x) + y + '.tif', noData = -9999)

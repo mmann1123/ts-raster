@@ -26,6 +26,9 @@ from rasterio.mask import mask
 from rasterio.plot import show
 import copy
 import sys
+import dask as dask
+import dask.array as da
+import dask.dataframe as dd
 
 def set_df_mindex(df):
     '''
@@ -112,11 +115,16 @@ def image_names(path):
     return image_name
 
 
-def image_names_window(path, baseYear, length = 3, offset = 1):
+def image_names_window(path, baseYear, length = 3, offset = 1, dataType = '*', month = None):
     '''
-    Reads raster files from multiple folders and returns their names
+    Reads raster files from multiple folders and returns their names -includes option for month selection
     
     :param path: directory path
+    :param baseYear: year of interest
+    :param length: number of prior years to evaluate (default 3)
+    :param offset: number of years by which to offset parameters from year of interest (default 1)
+    :param dataType: data Type to be examined - defaults to scanning all types unless specified
+    :param month: if none, scan across months. Otherwise, scan only files with a specific month number (defaults to None)
     :return: names of the raster files
     '''
 
@@ -127,10 +135,14 @@ def image_names_window(path, baseYear, length = 3, offset = 1):
         polarity = 1
     elif length <0:
         polarity = -1 
-
+    
+    if month == None:
+        suffix = '??.tif'
+    elif month != None:
+        suffix = str(month)+ '.tif'
     for x in range(abs(length)):
 
-        iterImages = glob.glob((path+ '/*/*-' + str(baseYear + (x * polarity) + offset) + '??.tif'), recursive=True)
+        iterImages = glob.glob((path+ '/*/' + dataType + '-' + str(baseYear + (x * polarity) + offset) + suffix), recursive=True)
         iterImages = [os.path.basename(tif).split('.')[0]
                   for tif in iterImages]
         image_name = image_name +  iterImages
@@ -156,7 +168,7 @@ def read_images(path):
     return raster_files
 
 
-def read_images_window(path, baseYear, length = -3, offset = 0):
+def read_images_window(path, baseYear, length = -3, offset = 0, dataType = '*', month = '??'):
     '''
     Reads a set of associated raster bands from a file.
     Can read one or multiple files stored in different folders.
@@ -165,17 +177,19 @@ def read_images_window(path, baseYear, length = -3, offset = 0):
     :param length: number of prior years to evaluate (default 3)
     :param baseYear: year of interest
     :param offset: number of years by which to offset parameters from year of interest (default 1)
+    :param dataType: data Type to be examined - defaults to scanning all types unless specified
+    :param month: by default, scans across months. Otherwise, scan only files with a specific month number (defaults to None)
     :return: raster files opened as GDALDataset
     '''
-
+    
     if os.path.isdir(path):
         images = []
         for x in range(abs(length)):
             if length >0:
-                images = images +  glob.glob((path+ '/*/*-' + str(baseYear + x + offset) + '??.tif'), recursive=True)
+                images = images +  glob.glob((path+ '/*/' + dataType + '-' + str(baseYear + x + offset) + str(month)+ '.tif'), recursive=True)
 
             elif length <0:
-                images = images +  glob.glob((path+ '/*/*-' + str(baseYear - x + offset) + '??.tif'), recursive=True)
+                images = images +  glob.glob((path+ '/*/' + dataType + '-' + str(baseYear - x + offset) + str(month)+ '.tif'), recursive=True)
         raster_files = [gdal.Open(f, gdal.GA_ReadOnly) for f in images]
     else:
         raster_files = [gdal.Open(path, gdal.GA_ReadOnly)]
@@ -211,6 +225,88 @@ def image_to_array_window(path, baseYear, length = 3, offset = 1):
                              axis=-1)
 
     return raster_array
+
+def image_to_Dask_Dataframe(path, 
+                            baseYear, 
+                            length = 3, 
+                            offset = 1, 
+                            dataTypes = ['ppt','tmx','aet','cwd','pet','pck'], 
+                            chunks = 1000, 
+                            month = '??', 
+                            examplePath = "C:/Users/isaac/Documents/wildfire_FRAP_working/wildfire_FRAP/Data/Examples/buffer/StatePoly_buf.tif"):
+    '''
+    Converts images inside multiple folders to stacked array
+
+    :param path: directory path
+    :param baseYear: year of interest
+    :param length: number of prior years to evaluate (default 3)
+    :param offset: number of years by which to offset parameters from year of interest (default 1)
+    :param dataTypes: list of dataTypes to be examined
+    :param chunks: size of chunk to be used by dask
+    :param month: by default, scans across months. Otherwise, scan only files with a specific month number (defaults to None)
+    :param examplePath: path to example raster of kength & shape of desired output
+    :return: stacked numpy array
+    '''
+    
+    
+    #get example data for constructing index & time arrays
+    imageNames_example= image_names_window(path, baseYear, length, offset, dataTypes[0], month = month)
+    exampleRaster = gdal.Open(examplePath, gdal.GA_ReadOnly)
+    rasterLen = len(exampleRaster.ReadAsArray().flatten())
+    
+    #create vertical arrays of pixel_id and timecode, concatenate across all years
+    index_array = da.concatenate([da.from_array(np.array(range(0,rasterLen, 1)).reshape(-1, 1), chunks = chunks) 
+                             for x in range(len(image_names_window(path, baseYear, length, offset, dataTypes[0], month = month)))])
+    time_array = da.concatenate([da.from_array(np.array([imageNames_example[x].split('-')[1]]* rasterLen).reshape(-1, 1), chunks = chunks) 
+                             for x in range(len(image_names_window(path, baseYear, length, offset, dataTypes[0],month = month)))])
+    
+    index_array.compute()
+    time_array.compute()
+    
+    raster_arrays = [index_array, time_array]
+    
+    
+    
+    
+    for x in range(len(dataTypes)): #create an array for each datatype as a column, place into list of dask arrays
+        
+        imageNames= image_names_window(path, baseYear, length, offset, dataTypes[x], month = month)
+        
+        raster_array_iter = da.concatenate([da.from_array(raster.ReadAsArray().reshape(-1, 1), chunks = chunks)
+                             for raster in read_images_window(path, baseYear, length, offset, dataTypes[x], month = month)])
+        
+        raster_array_iter.compute()
+        raster_arrays = raster_arrays + [copy.deepcopy(raster_array_iter)]
+        
+        
+        #tests to ensure array lengths and number of rasters match across all arrays
+        if len(imageNames) != len(imageNames_example):
+            print('Error: Number of Rasters not equal across data types: ', dataTypes[x])
+            print(len(imageNames))
+            print(len(imageNames_example))
+        if len(raster_array_iter) != len(index_array):
+            print('ERROR: Length Mismatch between raster and index arrays')
+        if len(raster_array_iter) != len(time_array):
+            print('ERROR: Length Mismatch between raster and time arrays')
+
+    
+    #set column names
+    columnNames = ['pixel_id', 'time']+ dataTypes
+        
+    
+   
+    outData =  dd.from_dask_array(da.stack(raster_arrays, axis = 1)[:,:,0], columns = columnNames)
+    
+    outData[columnNames[0]] = outData[columnNames[0]].astype(np.int64)
+    outData[columnNames[1]] = outData[columnNames[1]].astype(np.int64)
+    
+    for x in range(len(dataTypes)):    
+        outData[dataTypes[x]] = outData[dataTypes[x]].astype(np.float64)
+    
+    
+    return outData
+    
+    
 
 
 def image_to_series(path):
@@ -339,6 +435,31 @@ def image_to_series_simple(file,dtype = np.float32):
                           dtype = dtype,
                           columns  = ['B_' + str(i) for i in rng])
 
+    return df
+
+
+def image_to_series_wide(path, baseYear, length = 3, offset = 1):
+    '''
+    Converts images to one dimensional  array with axis labels
+    
+    :param path: directory path
+    :param length: number of prior years to evaluate (default 3)
+    :param baseYear: year of interest
+    :param offset: number of years by which to offset parameters from year of interest (default 1)
+    :return: pandas series
+    '''
+    
+    rows, cols, num = image_to_array_window(path, baseYear, length, offset).shape
+    data = image_to_array_window(path,baseYear, length, offset).reshape(rows*cols, num)
+    
+    # create index
+    index = pd.RangeIndex(start=0, stop=len(data), step=1, name = 'pixel_id') 
+    
+    # create wide df with images as columns
+    df = pd.DataFrame(data=data[0:,0:],
+                      index=index, 
+                      dtype=np.float32, 
+                      columns=image_names_window(path, baseYear, length, offset))
     return df
 
 
@@ -702,7 +823,7 @@ def poly_to_series(poly,raster_ex, field_name, nodata=-9999, plot_output=True):
 
     return df
 
-def mask_df(raster_mask, original_df, missing_value = -9999, reset_index = True):
+def mask_df(raster_mask, original_df, missing_value = -9999, reset_index = True, multiIndex = True):
     '''
     Reads in raster mask and subsets dataframe by mask index
     
@@ -750,7 +871,10 @@ def mask_df(raster_mask, original_df, missing_value = -9999, reset_index = True)
         original_df = original_df.iloc[original_df.index.get_level_values('pixel_id').isin(index_mask.index)]
     except KeyError:
         # set multiindex 
-        original_df.set_index(['pixel_id', 'time'], inplace=True)
+        if multiIndex == True:
+            original_df.set_index(['pixel_id', 'time'], inplace=True)
+        elif multiIndex != True:
+            original_df.set_index(['pixel_id'], inplace=True)
         original_df = original_df.iloc[original_df.index.get_level_values('pixel_id').isin(index_mask.index)]
         print(original_df.head()) ##
         print(len(original_df)) ##
@@ -765,7 +889,6 @@ def mask_df(raster_mask, original_df, missing_value = -9999, reset_index = True)
     
         original_df.dropna(inplace=True)
         
-
 
     if list_flag == True:
         # split back out list elements 
@@ -1533,7 +1656,7 @@ def clip_raster_to_raster(inpath, outpath, example_raster):
     
     
     geo = geo.to_crs(crs=src.crs.data) #re-project into same coordinate system as src (should be redundant)
-    geo.to_file("C:/Users/Python3/Documents/wildfire_FRAP_working/wildfire_FRAP/Data/Actual/Temp_Tests/testbox.shp")
+    geo.to_file("C:/Users/isaac/Documents/wildfire_FRAP_working/wildfire_FRAP/Data/Actual/Temp_Tests/testbox.shp")
     
     coords = getFeatures(geo) # parses geoDataFrame into format rasterio needs for masking
     
@@ -1555,4 +1678,130 @@ def clip_raster_to_raster(inpath, outpath, example_raster):
     show((clipped, 1), cmap='tab20b')
     
     
+def image_names_Dask(path, baseYear, length = 3, offset = 1, dataType = 'aet'):
+    '''
+    Reads raster files from multiple folders and returns their names
+    
+    :param path: directory path
+    :param baseYear: year of interest
+    :param length: number of prior years to evaluate (default 3)
+    :param offset: number of years by which to offset parameters from year of interest (default 1)
+    :param dataType: data Type to be examined
+    :return: names of the raster files
+    '''
+
+    image_name = []
+
+    #ensure that negative lengths are handled correctly
+    if length >0:
+        polarity = 1
+    elif length <0:
+        polarity = -1 
+
+    for x in range(abs(length)):
+
+        iterImages = glob.glob((path+ '/*/' + dataType + '-' + str(baseYear + (x * polarity) + offset) + '??.tif'), recursive=True)
+        iterImages = [os.path.basename(tif).split('.')[0]
+                  for tif in iterImages]
+        image_name = image_name +  iterImages
+    
+    return image_name
+
+def read_images_window_Dask(path, baseYear, length = -3, offset = 0, dataType = 'aet'):
+    '''
+    Reads a set of associated raster bands from a file.
+    Can read one or multiple files stored in different folders.
+
+    :param path: file name or directory path
+    :param length: number of prior years to evaluate (default 3)
+    :param baseYear: year of interest
+    :param offset: number of years by which to offset parameters from year of interest (default 1)
+    :param dataType: data Type to be examined
+    :return: raster files opened as GDALDataset
+    '''
+
+    if os.path.isdir(path):
+        images = []
+        for x in range(abs(length)):
+            if length >0:
+                images = images +  glob.glob((path+ '/*/' + dataType + '-' + str(baseYear + x + offset) + '??.tif'), recursive=True)
+
+            elif length <0:
+                images = images +  glob.glob((path+ '/*/' + dataType + '-' + str(baseYear - x + offset) + '??.tif'), recursive=True)
+        raster_files = [gdal.Open(f, gdal.GA_ReadOnly) for f in images]
+    else:
+        raster_files = [gdal.Open(path, gdal.GA_ReadOnly)]
+    return raster_files
+
+'''
+def image_to_Dask_Dataframe(path, baseYear, length = 3, offset = 1, dataTypes = ['aet', 'cwd'], chunks = 1000):
+    
+    Converts images inside multiple folders to stacked array
+
+    :param path: directory path
+    :param baseYear: year of interest
+    :param length: number of prior years to evaluate (default 3)
+    :param offset: number of years by which to offset parameters from year of interest (default 1)
+    :param dataTypes: list of dataTypes to be examined
+    :param chunks: size of chunk to be used by dask
+    :return: stacked numpy array
+    
+    
+    
+    #get example data for constructing index & time arrays
+    imageNames_example= image_names_Dask(path, baseYear, length, offset, dataTypes[0])
+    examplePath = path+ '/' + dataTypes[0] + '/' + imageNames_example[0] + '.tif'
+    exampleRaster = gdal.Open(examplePath, gdal.GA_ReadOnly)
+    rasterLen = len(exampleRaster.ReadAsArray().flatten())
+    
+    #create vertical arrays of pixel_id and timecode, concatenate across all years
+    index_array = da.concatenate([da.from_array(np.array(range(0,rasterLen, 1)).reshape(-1, 1), chunks = chunks) 
+                             for x in range(len(image_names_Dask(path, baseYear, length, offset, dataTypes[0])))])
+    time_array = da.concatenate([da.from_array(np.array([imageNames_example[x].split('-')[1]]* rasterLen).reshape(-1, 1), chunks = chunks) 
+                             for x in range(len(image_names_Dask(path, baseYear, length, offset, dataTypes[0])))])
+    
+    index_array.compute()
+    time_array.compute()
+    
+    raster_arrays = [index_array, time_array]
+    
+    
+    
+    
+    for x in range(len(dataTypes)): #create an array for each datatype as a column, place into list of dask arrays
+        
+        imageNames= image_names_Dask(path, baseYear, length, offset, dataTypes[x])
+        
+        raster_array_iter = da.concatenate([da.from_array(raster.ReadAsArray().reshape(-1, 1), chunks = chunks)
+                             for raster in read_images_window_Dask(path, baseYear, length, offset, dataTypes[x])])
+        
+        raster_array_iter.compute()
+        raster_arrays = raster_arrays + [copy.deepcopy(raster_array_iter)]
+        
+        
+        #tests to ensure array lengths and number of rasters match across all arrays
+        if len(imageNames) != len(imageNames_example):
+            print('Error: Number of Raster not equal across data types: ', dataTypes[x])
+        if len(raster_array_iter) != len(index_array):
+            print('ERROR: Length Mismatch between raster and index arrays')
+        if len(raster_array_iter) != len(time_array):
+            print('ERROR: Length Mismatch between raster and time arrays')
+
+    
+    #set column names
+    columnNames = ['pixel_id', 'time']+ dataTypes
+        
+    
+   
+    outData =  dd.from_dask_array(da.stack(raster_arrays, axis = 1)[:,:,0], columns = columnNames)
+    
+    outData[columnNames[0]] = outData[columnNames[0]].astype(np.int64)
+    outData[columnNames[1]] = outData[columnNames[1]].astype(np.int64)
+    
+    for x in range(len(dataTypes)):    
+        outData[dataTypes[x]] = outData[dataTypes[x]].astype(np.float64)
+    
+    
+    return outData
+  '''  
     
