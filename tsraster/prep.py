@@ -1724,10 +1724,17 @@ def read_images_window_Dask(path, baseYear, length = -3, offset = 0, dataType = 
         images = []
         for x in range(abs(length)):
             if length >0:
-                images = images +  glob.glob((path+ '/*/' + dataType + '-' + str(baseYear + x + offset) + '??.tif'), recursive=True)
+                try:
+                    images = images +  glob.glob((path+ '/*/' + dataType + '-' + str(baseYear + x + offset) + '??.tif'), recursive=True)
+                except: # in case of underscore used rather than hyphen
+                    images = images +  glob.glob((path+ '/*/' + dataType + '_' + str(baseYear + x + offset) + '??.tif'), recursive=True)
 
             elif length <0:
-                images = images +  glob.glob((path+ '/*/' + dataType + '-' + str(baseYear - x + offset) + '??.tif'), recursive=True)
+                try:
+                    images = images +  glob.glob((path+ '/*/' + dataType + '-' + str(baseYear - x + offset) + '??.tif'), recursive=True)
+                except: # in case of underscore used rather than hyphen
+                    images = images +  glob.glob((path+ '/*/' + dataType + '_' + str(baseYear - x + offset) + '??.tif'), recursive=True)
+
         raster_files = [gdal.Open(f, gdal.GA_ReadOnly) for f in images]
     else:
         raster_files = [gdal.Open(path, gdal.GA_ReadOnly)]
@@ -1804,4 +1811,10 @@ def image_to_Dask_Dataframe(path, baseYear, length = 3, offset = 1, dataTypes = 
     
     return outData
   '''  
+    def Annual_Extracted_Features_csv_to_Rasters(yearList, path, dataTypes, feature_params, out_Path, exampleRasterPath):
+    for x in yearList:
+        extracted_features_iter = pd.read_csv(path + "FD_Window_" + str(x) + "_" + str(x) + ".csv")
+        for dataType in dataTypes:
+                    for feature in feature_params:
+                        tr.seriesToRaster(extracted_features_iter.loc[:, [dataType + "__"+ feature] ], exampleRasterPath, out_Path + feature + "/" + dataType + "-" +  str(x) + '.tif', noData = -9999)
     

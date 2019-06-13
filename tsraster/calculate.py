@@ -981,4 +981,4 @@ def multiModel_Window_Extraction(startYears,
                 #output extracted features to raster
                 for dataType in dataTypes:
                     for feature in feature_params:
-                        tr.seriesToRaster(extracted_features_iter.loc[:, [dataType + "_"+ feature] ], exampleRasterPath, out_Path + feature + "/" + dataType + "_" +  str(x) + y + '.tif', noData = -9999)
+                        tr.seriesToRaster(extracted_features_iter.loc[:, [dataType + "_"+ feature] ], exampleRasterPath, out_Path + feature + "/" + dataType + "-" +  str(x) + y + '.tif', noData = -9999)
