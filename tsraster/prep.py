@@ -1816,5 +1816,5 @@ def image_to_Dask_Dataframe(path, baseYear, length = 3, offset = 1, dataTypes = 
         extracted_features_iter = pd.read_csv(path + "FD_Window_" + str(x) + "_" + str(x) + ".csv")
         for dataType in dataTypes:
                     for feature in feature_params:
-                        tr.seriesToRaster(extracted_features_iter.loc[:, [dataType + "__"+ feature] ], exampleRasterPath, out_Path + feature + "/" + dataType + "-" +  str(x) + '.tif', noData = -9999)
+                        seriesToRaster(extracted_features_iter.loc[:, [dataType + "__"+ feature] ], exampleRasterPath, out_Path + feature + "/" + dataType + "-" +  str(x) + '.tif', noData = -9999)
     
