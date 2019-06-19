@@ -142,10 +142,23 @@ def image_names_window(path, baseYear, length = 3, offset = 1, dataType = '*', m
         suffix = str(month)+ '.tif'
     for x in range(abs(length)):
 
-        iterImages = glob.glob((path+ '/*/' + dataType + '-' + str(baseYear + (x * polarity) + offset) + suffix), recursive=True)
-        iterImages = [os.path.basename(tif).split('.')[0]
+        if type(dataType) == str:
+                iterImages = glob.glob((path+ '/*/' + dataType + '-' + str(baseYear + (x * polarity) + offset) + suffix), recursive=True)
+                iterImages = [os.path.basename(tif).split('.')[0]
                   for tif in iterImages]
-        image_name = image_name +  iterImages
+                image_name = image_name +  iterImages
+
+        elif type(dataType) == list:
+            for y in range(len(dataType)):
+                iterImages = glob.glob((path+ '/*/' + dataType[y] + '-' + str(baseYear + (x * polarity) + offset) + suffix), recursive=True)
+                iterImages = [os.path.basename(tif).split('.')[0]
+                  for tif in iterImages]
+                image_name = image_name +  iterImages
+               
+
+    
+        
+        
     
     return image_name
 
@@ -177,7 +190,7 @@ def read_images_window(path, baseYear, length = -3, offset = 0, dataType = '*', 
     :param length: number of prior years to evaluate (default 3)
     :param baseYear: year of interest
     :param offset: number of years by which to offset parameters from year of interest (default 1)
-    :param dataType: data Type to be examined - defaults to scanning all types unless specified
+    :param dataType: data Type to be examined - defaults to scanning all types unless specified - must be string (if * (for all types) or single type, or list (if multiple types))
     :param month: by default, scans across months. Otherwise, scan only files with a specific month number (defaults to None)
     :return: raster files opened as GDALDataset
     '''
@@ -185,11 +198,22 @@ def read_images_window(path, baseYear, length = -3, offset = 0, dataType = '*', 
     if os.path.isdir(path):
         images = []
         for x in range(abs(length)):
-            if length >0:
-                images = images +  glob.glob((path+ '/*/' + dataType + '-' + str(baseYear + x + offset) + str(month)+ '.tif'), recursive=True)
+            if type(dataType) == str:
+                if length >0:
+                    images = images +  glob.glob((path+ '/*/' + dataType + '-' + str(baseYear + x + offset) + str(month)+ '.tif'), recursive=True)
 
-            elif length <0:
-                images = images +  glob.glob((path+ '/*/' + dataType + '-' + str(baseYear - x + offset) + str(month)+ '.tif'), recursive=True)
+                elif length <0:
+                    images = images +  glob.glob((path+ '/*/' + dataType + '-' + str(baseYear - x + offset) + str(month)+ '.tif'), recursive=True)
+            
+            elif type(dataType) == list:
+                for y in range(len(dataType)):
+                    if length >0:
+                        images = images +  glob.glob((path+ '/*/' + dataType[y] + '-' + str(baseYear + x + offset) + str(month)+ '.tif'), recursive=True)
+
+                    elif length <0:
+                        images = images +  glob.glob((path+ '/*/' + dataType[y] + '-' + str(baseYear - x + offset) + str(month)+ '.tif'), recursive=True)
+
+
         raster_files = [gdal.Open(f, gdal.GA_ReadOnly) for f in images]
     else:
         raster_files = [gdal.Open(path, gdal.GA_ReadOnly)]
@@ -209,7 +233,7 @@ def image_to_array(path):
 
     return raster_array
 
-def image_to_array_window(path, baseYear, length = 3, offset = 1):
+def image_to_array_window(path, baseYear, length = 3, offset = 1, dataTypes = "*"):
     '''
     Converts images inside multiple folders to stacked array
 
@@ -221,7 +245,7 @@ def image_to_array_window(path, baseYear, length = 3, offset = 1):
     '''
 
     raster_array = np.stack([raster.ReadAsArray()
-                             for raster in read_images_window(path, baseYear, length, offset)],
+                             for raster in read_images_window(path, baseYear, length, offset, dataType = dataTypes)],
                              axis=-1)
 
     return raster_array
@@ -351,7 +375,7 @@ def image_to_series(path):
     #    df2['time'] = df2.index.get_level_values('time') 
     return df2
  
-def image_to_series_window(path, baseYear, length = 3, offset = 1):
+def image_to_series_window(path, baseYear, length = 3, offset = 1, dataTypes = "*"):
     '''
     Converts images to one dimensional  array with axis labels
     
@@ -362,8 +386,9 @@ def image_to_series_window(path, baseYear, length = 3, offset = 1):
     :return: pandas series
     '''
     
-    rows, cols, num = image_to_array_window(path, baseYear, length, offset).shape
-    data = image_to_array_window(path,baseYear, length, offset).reshape(rows*cols, num)
+    rows, cols, num = image_to_array_window(path, baseYear, length, offset, dataTypes).shape
+    data = image_to_array_window(path,baseYear, length, offset, dataTypes).reshape(rows*cols, num)
+    
     
     # create index
     index = pd.RangeIndex(start=0, stop=len(data), step=1, name = 'pixel_id') 
@@ -372,7 +397,7 @@ def image_to_series_window(path, baseYear, length = 3, offset = 1):
     df = pd.DataFrame(data=data[0:,0:],
                       index=index, 
                       dtype=np.float32, 
-                      columns=image_names_window(path, baseYear, length, offset))
+                      columns=image_names_window(path, baseYear, length, offset, dataTypes))
     
     #reindex and sort columns
     df2 = df.reindex(sorted(df.columns), axis=1)
@@ -1811,7 +1836,7 @@ def image_to_Dask_Dataframe(path, baseYear, length = 3, offset = 1, dataTypes = 
     
     return outData
   '''  
-    def Annual_Extracted_Features_csv_to_Rasters(yearList, path, dataTypes, feature_params, out_Path, exampleRasterPath):
+def Annual_Extracted_Features_csv_to_Rasters(yearList, path, dataTypes, feature_params, out_Path, exampleRasterPath):
     for x in yearList:
         extracted_features_iter = pd.read_csv(path + "FD_Window_" + str(x) + "_" + str(x) + ".csv")
         for dataType in dataTypes:

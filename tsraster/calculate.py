@@ -263,7 +263,7 @@ def calculateFeaturesDask(path, parameters, reset_df,raster_mask=None ,tiff_outp
 
 
 
-def calculateFeatures_window(path, parameters, baseYear, reset_df = True,length = 3, offset = 0,raster_mask=None ,tiff_output=True, workers = None, outPath= "None"):
+def calculateFeatures_window(path, parameters, baseYear, reset_df = True,length = 3, offset = 0,raster_mask=None ,tiff_output=True, workers = None, outPath= "None", dataTypes = "*"):
     
     '''
     Calculates features or the statistical characteristics of time-series raster data.
@@ -289,7 +289,7 @@ def calculateFeatures_window(path, parameters, baseYear, reset_df = True,length 
             
     else:
         #if reset_df =T calculate ts_series and save csv
-        my_df = image_to_series_window(path, baseYear, length, offset)
+        my_df = image_to_series_window(path, baseYear, length, offset,  dataTypes)
         print('df: '+os.path.join(path,'my_df.csv'))
         my_df.to_csv(os.path.join(path,'my_df.csv'), chunksize=10000, index=False)
     
@@ -395,7 +395,7 @@ def calculateFeatures_window(path, parameters, baseYear, reset_df = True,length 
 
 
 
-def multiYear_Window_Extraction(startYears, featureData_Path, feature_params, out_Path, mask, length = 3, offset = 0, workers = None):
+def multiYear_Window_Extraction(startYears, featureData_Path, feature_params, out_Path, mask, length = 3, offset = 0, workers = None, dataTypes = "*"):
     '''
     Extracts summary statistics(features) from multiYear datasets within moving window, across years
     Outputs a series of annual dataFrames as CSV files
@@ -425,7 +425,8 @@ def multiYear_Window_Extraction(startYears, featureData_Path, feature_params, ou
                                                   raster_mask =  mask,
                                                   tiff_output=True,
                                                   workers = workers,
-                                                  outPath = out_Path)
+                                                  outPath = out_Path,
+                                                  dataTypes = dataTypes)
 
 
         #reset index of extracted features to combine with other datasets based on pixel ids
