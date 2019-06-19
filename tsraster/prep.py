@@ -241,6 +241,7 @@ def image_to_array_window(path, baseYear, length = 3, offset = 1, dataTypes = "*
     :param length: number of prior years to evaluate (default 3)
     :param baseYear: year of interest
     :param offset: number of years by which to offset parameters from year of interest (default 1)
+    :param dataTypes: string of the dataType of interest (e.g., aet, etc - may be * in cases where all dataTypes are desired) or list of strings consisting of the datatypes of interest
     :return: stacked numpy array
     '''
 
@@ -383,6 +384,7 @@ def image_to_series_window(path, baseYear, length = 3, offset = 1, dataTypes = "
     :param length: number of prior years to evaluate (default 3)
     :param baseYear: year of interest
     :param offset: number of years by which to offset parameters from year of interest (default 1)
+    :param dataTypes: string of the dataType of interest (e.g., aet, etc - may be * in cases where all dataTypes are desired) or list of strings consisting of the datatypes of interest
     :return: pandas series
     '''
     

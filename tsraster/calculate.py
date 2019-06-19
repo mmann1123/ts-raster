@@ -279,6 +279,7 @@ def calculateFeatures_window(path, parameters, baseYear, reset_df = True,length 
     :param raster_mask: path to binary raster mask (default None)
     :param tiff_output: boolean option for exporting tiff file (default True)
     :param workers: number of parallel workers in multiprocessing pool (default None)
+    :param dataTypes: string of the dataType of interest (e.g., aet, etc - may be * in cases where all dataTypes are desired) or list of strings consisting of the datatypes of interest
     :return: extracted features as a dataframe and tiff file
     '''
     
@@ -408,6 +409,7 @@ def multiYear_Window_Extraction(startYears, featureData_Path, feature_params, ou
     :param offset: number of years by which features pertaining to each year are offset from that year
     :param workers: number of workers
     :param mask:  mask to apply to data prior to feature extraction
+    :param dataTypes: string of the dataType of interest (e.g., aet, etc - may be * in cases where all dataTypes are desired) or list of strings consisting of the datatypes of interest
     :return: no return.  instead, feature data relative to each year of interest is saved as a .csv file at the out_Path location
               under the filename FD_Window_XXXX.csv 
     '''
