@@ -563,7 +563,7 @@ def period_Data_Merge(startYears, feature_data, dataDict, other_Data_path, dataN
         and time-invariant data such as rate of lightning strikes or local elevation)
         
     :param startYears: list of years on which to start feature extraction
-    :param feature_paths: dictionary of feature paths, consisting of the filepath and a list consisting of:
+    :param feature_data: dictionary of feature paths, consisting of the filepath and a list consisting of:
             -the number of years by which to offset the earliest portion of feature data from period of interest (to allow use of climate comnditions in preceding years)
             -the length of period for features - may desired to differ from period length if based on preceding conditions
             -the suffix that should be added to the data names for that set of feature data
@@ -585,7 +585,7 @@ def period_Data_Merge(startYears, feature_data, dataDict, other_Data_path, dataN
         print(x)
         for feature_suffix in feature_data:
             print(feature_suffix)
-            feature_offset = feature_data[feature_suffix][0] #get feature length corresping to that iteration
+            feature_offset = feature_data[feature_suffix][0] #get feature offset corresping to that iteration
             feature_length = feature_data[feature_suffix][1] #get feature length corresping to that iteration
             feature_path = feature_data[feature_suffix][2] # get path to feature data
             #set up years to match with original file names in otder to pull correct feature data
@@ -603,7 +603,7 @@ def period_Data_Merge(startYears, feature_data, dataDict, other_Data_path, dataN
                 del feature_Data_Iter[columnName]
             feature_Data_Iter.reset_index(inplace = True)
 
-            merged_Data = pd.merge(merged_Data, feature_Data_Iter, on = ['pixel_id'])
+            merged_Data_iter = pd.merge(merged_Data, feature_Data_Iter, on = ['pixel_id'], suffixes = (False, False))
 
         
         # assemble multiple annual files acrossthe period of interest, by mean value
@@ -625,9 +625,9 @@ def period_Data_Merge(startYears, feature_data, dataDict, other_Data_path, dataN
 
             other_Data_iter.rename(dataNameList[y], inplace = True)
             other_Data_iter.to_csv(outPath + 'testo.csv')
-            merged_Data = pd.concat([merged_Data, other_Data_iter], axis = 1)
+            merged_Data_iter = pd.concat([merged_Data_iter, other_Data_iter], axis = 1)
         
-        merged_Data.to_csv(outPath + "CD_" + str(x) + "_" + str(x + length -1) + ".csv")
+        merged_Data_iter.to_csv(outPath + "CD_" + str(x) + "_" + str(x + length -1) + ".csv")
     
     
 def target_Data_to_csv_multiYear(startYears, length, file_Path, out_Path, output_type = "Count"):
