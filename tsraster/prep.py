@@ -717,7 +717,7 @@ def poly_rasterizer(poly,raster_ex, raster_path_prefix, buffer_poly_cells=0):
         shapes = ((geom,value) for geom, value in zip(poly.geometry, poly.ONES))
 
         #rasterize shapes
-        burned_value = features.rasterize(shapes=shapes, fill=0, out=out_arr, transform=dst.transform)
+        burned_value = features.rasterize(shapes=shapes, fill=0, out=np.zeros(out_arr.shape, dtype = "Float32"), transform=dst.transform)
         dst.write(burned_value,1)
 
 

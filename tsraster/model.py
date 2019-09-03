@@ -784,7 +784,7 @@ def XGBoostModel(X_train, y_train, X_test, y_test, string_output = False, select
 
 
 def XGBoostReg_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups, DataFields, outPath, params = {'eta': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], #step size shrinkage used in updates to prevent overfitting (also called learning_rate)
-         'n_estimators': [100, 200, 300]}, cv = 10):
+         'n_estimators': [10, 50, 100, 200, 300]}, cv = 10):
 
     combined_Data, target_Data = random.TestTrain_GroupMaker(combined_Data, target_Data, 
                                                              varsToGroupBy, 
