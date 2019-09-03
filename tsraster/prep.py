@@ -651,13 +651,20 @@ def target_Data_to_csv_multiYear(startYears, length, file_Path, out_Path, output
 
     
     for x in startYears:
-        for y in range(length):
-            target_variable_iter = file_Path + "fire_" + str(x + y) + "_" + str(x + y) + ".tif"
-            if y==0:
-                target_Data_iter = image_to_series_simple(target_variable_iter)
-                target_Data_iter = target_Data_iter.to_frame(name = "value")
-            elif y>0:
-                target_Data_iter['value'] = target_Data_iter['value'] +  image_to_series_simple(target_variable_iter)
+        if length >0:
+            for y in range(length):
+                target_variable_iter = file_Path + "fire_" + str(x + y) + "_" + str(x + y) + ".tif"
+                if y==0:
+                    target_Data_iter = image_to_series_simple(target_variable_iter)
+                    target_Data_iter = target_Data_iter.to_frame(name = "value")
+                elif y>0:
+                    target_Data_iter['value'] = target_Data_iter['value'] +  image_to_series_simple(target_variable_iter)
+        elif length == 0:
+            target_variable_iter = file_Path + "fire_" + str(x) + "_" + str(x) + ".tif"
+            target_Data_iter = image_to_series_simple(target_variable_iter)
+            target_Data_iter = target_Data_iter.to_frame(name = "value")
+
+
         if output_type == "Mean":
             target_Data_iter['value'] = target_Data_iter['value'].map(float) / float(length)
         elif output_type == "Binary":
