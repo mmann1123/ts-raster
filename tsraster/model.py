@@ -14,6 +14,14 @@ from tsraster import random
 import pickle
 import numpy as np
 from xgboost import XGBRegressor
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.model_selection import cross_val_score
+from skopt.space import Real, Integer
+from skopt.utils import use_named_args
+from skopt import gp_minimize
+from skopt.plots import plot_convergence
+from skopt.plots import plot_evaluations
+from skopt.plots import plot_objective
 
 
 def get_data(obj, test_size=0.33,scale=False,stratify=None,groups=None):
@@ -456,172 +464,126 @@ def elasticNet_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, te
   return combined_Data, target_Data, Models_Summary, Models, excluded_Years, selectedParams
 
 
-def RandomForestReg_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups, DataFields, outPath, 
-  params = {"n_estimators": 100, #determines number of trees to build - more is better, but potentially slows processing
-  'criterion' : 'mse', #criterion for measuring the quality of a split (mse or mae)
-  'max_depth': 5, #maximum depth of tree - limits tree complexity, may be worth hypertuning 
-  'min_samples_split': 2, #sets minimum # of samples per split (serves similar function to min-samples leaf)
-  'min_samples_leaf': 10, #sets minimum # of samples per leaf - low values may lead to capturing noise, so may be worth hypertuning
-  'min_weight_fraction_leaf': 0, # The minimum weighted fraction of the sum total of weights (of all the input samples) required to be at a leaf node. Samples have equal weight when sample_weight is not provided.
-  'max_features': 'auto', #max number of features to be considered in a tree (auto means no hard limit)
-  'max_leaf_nodes':None, #maximum number of leaf nodes - used to limit model comlexity, similarly to max_depth or min_samples_leaf
-  'min_impurity_decrease': 0,
-  'bootstrap' : True,
-  'oob_score' : False, #internal cross-validation - ignore in preference to custom crossval
-  'n_jobs' : None, #sets # processors to use, None indicates no limit
-  'random_state' : None,
-  'verbose' : 0,
-  'warm_start': False}, 
-  cv = 10):
-  '''Conduct random Forest regressions on data, with k-fold cross-validation conducted independently 
-      across both years and pixels. 
-      Returns mean model MSE and R2 when predicting fire risk at 
-      A) locations outside of the training dataset
-      B) years outside of the training dataset
-      C) locations and years outside of the training dataset
+def XGBoostReg_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups, 
+                        DataFields, outPath, 
+                        params = None, cv = 10):
 
-    Returns a list of objects, consisting of:
-      0: Combined_Data file with testing/training groups labeled
-      1: Target Data file with testing/training groups labeled
-      2: summary dataFrame of MSE and R2 for each model run
-          (against holdout data representing either novel locations, novel years, or both)
-      3: list of random forest models for use in predicting Fires in further locations/years
-      4: list of list of years not used in model training for each run
-  '''
-
-  #param combined_Data: explanatory factors to be used in predicting fire risk
-  #param target_Data: observed fire occurrences
-  #param varsToGroupBy: list of (2) column names from combined_Data & target_Data to be used in creating randomized groups
-  #param groupVars: list of (2) desired column names for the resulting randomized groups
-  #param testGroups: number of distinct groups into which data sets should be divided (for each of two variables) 
-  
-  
-  #Create randomly assigned groups of equal size by which to separate out subsets of data 
-  #by years and by pixels for training and testing to (test against 
-  #A) temporally alien, B) spatially alien, and C) completely alien conditions)
-  combined_Data, target_Data = random.TestTrain_GroupMaker(combined_Data, target_Data, 
+    combined_Data, target_Data = random.TestTrain_GroupMaker(combined_Data, target_Data, 
                                                              varsToGroupBy, 
                                                              groupVars, 
                                                              testGroups)
 
+    #get list of group ids, since in cases where group # <10, may not begin at zero
+    pixel_testVals = list(set(combined_Data[groupVars[0]].tolist()))
+    year_testVals = list(set(combined_Data[groupVars[1]].tolist()))
 
-
-  #get list of group ids, since in cases where group # <10, may not begin at zero
-  pixel_testVals = list(set(combined_Data[groupVars[0]].tolist()))
-  year_testVals = list(set(combined_Data[groupVars[1]].tolist()))
-  
-  Models_Summary = pd.DataFrame([], columns = ['Pixels_Years_MSE', 'Pixels_MSE', 'Years_MSE', 
+    Models_Summary = pd.DataFrame([], columns = ['Pixels_Years_MSE', 'Pixels_MSE', 'Years_MSE', 
                                              'Pixels_Years_R2', 'Pixels_R2', 'Years_R2'])
-  
-  #used to create list of model runs
-  Models = []
+
+    #used to create list of model runs
+    Models = []
   
   #used to create data for entry as columns into summary DataFrame
-  pixels_years_MSEList = []
-  pixels_MSEList = []
-  years_MSEList = []
-  pixels_years_R2List = []
-  pixels_R2List = []
-  years_R2List = []
+    pixels_years_MSEList = []
+    pixels_MSEList = []
+    years_MSEList = []
+    pixels_years_R2List = []
+    pixels_R2List = []
+    years_R2List = []
 
   #used to create a list of lists of years that are excluded within each model run
-  excluded_Years = []
+    excluded_Years = []
 
 
-  #use randomized search to tune hyperparameters on entire dataset
-  #selectedParams = RandomSearch_Tuner(RandomForestRegressor(), combined_Data.loc[:, DataFields], target_Data['value'], params, cv)
-  selectedParams = params
-
-  for x in pixel_testVals:
-
-
-      for y in year_testVals:
-          trainData_X = combined_Data[combined_Data[groupVars[0]] != x]
-          trainData_X = trainData_X[trainData_X[groupVars[1]] != y]
-          trainData_X = trainData_X.loc[:, DataFields]
+     
+    selectedParams = params
+    
+    for x in pixel_testVals:
 
 
-          trainData_y = target_Data[target_Data[groupVars[0]] != x]
-          trainData_y = trainData_y[trainData_y[groupVars[1]] != y]
+        for y in year_testVals:
+            trainData_X = combined_Data[combined_Data[groupVars[0]] != x]
+            trainData_X = trainData_X[trainData_X[groupVars[1]] != y]
+            trainData_X = trainData_X.loc[:, DataFields]
 
 
-          testData_X_pixels_years = combined_Data[combined_Data[groupVars[0]] == x]
-          testData_X_pixels_years = testData_X_pixels_years[testData_X_pixels_years[groupVars[1]] == y]
-          testData_X_pixels_years = testData_X_pixels_years.loc[:, DataFields]
-
-          testData_X_pixels = combined_Data[combined_Data[groupVars[0]] == x]
-          testData_X_pixels = testData_X_pixels[testData_X_pixels[groupVars[1]] != y]
-          testData_X_pixels = testData_X_pixels.loc[:, DataFields]
-
-          testData_X_years = combined_Data[combined_Data[groupVars[0]] != x]
-          testData_X_years = testData_X_years[testData_X_years[groupVars[1]] == y]
-          testData_X_years = testData_X_years.loc[:, DataFields]
+            trainData_y = target_Data[target_Data[groupVars[0]] != x]
+            trainData_y = trainData_y[trainData_y[groupVars[1]] != y]
 
 
+            testData_X_pixels_years = combined_Data[combined_Data[groupVars[0]] == x]
+            testData_X_pixels_years = testData_X_pixels_years[testData_X_pixels_years[groupVars[1]] == y]
+            testData_X_pixels_years = testData_X_pixels_years.loc[:, DataFields]
 
-          testData_y_pixels_years = target_Data[target_Data[groupVars[0]] == x]
-          testData_y_pixels_years = testData_y_pixels_years[testData_y_pixels_years[groupVars[1]] == y]
-          
+            testData_X_pixels = combined_Data[combined_Data[groupVars[0]] == x]
+            testData_X_pixels = testData_X_pixels[testData_X_pixels[groupVars[1]] != y]
+            testData_X_pixels = testData_X_pixels.loc[:, DataFields]
 
-          testData_y_pixels = target_Data[target_Data[groupVars[0]] == x]
-          testData_y_pixels = testData_y_pixels[testData_y_pixels[groupVars[1]] != y]
-          
-
-          testData_y_years = target_Data[target_Data[groupVars[0]] != x]
-          testData_y_years = testData_y_years[testData_y_years[groupVars[1]] == y]
-          excluded_Years.append(list(set(testData_y_years[varsToGroupBy[1]].tolist())))
-          
+            testData_X_years = combined_Data[combined_Data[groupVars[0]] != x]
+            testData_X_years = testData_X_years[testData_X_years[groupVars[1]] == y]
+            testData_X_years = testData_X_years.loc[:, DataFields]
 
 
-          pixels_years_iterOutput = RandomForestReg(trainData_X, trainData_y['value'], testData_X_pixels_years, testData_y_pixels_years['value'], selectedParams)
-          pixels_iterOutput = RandomForestReg(trainData_X, trainData_y['value'], testData_X_pixels, testData_y_pixels['value'], selectedParams)
-          years_iterOutput = RandomForestReg(trainData_X, trainData_y['value'], testData_X_years, testData_y_years['value'], selectedParams)
 
-          
-          Models.append(pixels_years_iterOutput)
-          
+            testData_y_pixels_years = target_Data[target_Data[groupVars[0]] == x]
+            testData_y_pixels_years = testData_y_pixels_years[testData_y_pixels_years[groupVars[1]] == y]
 
-          pixels_years_MSEList.append(pixels_years_iterOutput[2])
-          pixels_MSEList.append(pixels_iterOutput[2])
-          years_MSEList.append(years_iterOutput[2])
 
-          pixels_years_R2List.append(pixels_years_iterOutput[3])
-          pixels_R2List.append(pixels_iterOutput[3])
-          years_R2List.append(years_iterOutput[3])
+            testData_y_pixels = target_Data[target_Data[groupVars[0]] == x]
+            testData_y_pixels = testData_y_pixels[testData_y_pixels[groupVars[1]] != y]
 
-  
-  
-  #combine MSE and R2 Lists into single DataFrame
-  Models_Summary['Pixels_Years_MSE'] = pixels_years_MSEList
-  Models_Summary['Pixels_MSE'] = pixels_MSEList
-  Models_Summary['Years_MSE'] = years_MSEList
-  
-  Models_Summary['Pixels_Years_R2'] = pixels_years_R2List
-  Models_Summary['Pixels_R2'] = pixels_R2List
-  Models_Summary['Years_R2'] = years_R2List
-  
-  
-  print("pixels_Years MSE Overall: ", sum(pixels_years_MSEList)/len(pixels_years_MSEList))
-  print("pixels_Years R2 Overall: ", sum(pixels_years_R2List)/len(pixels_years_R2List))
-  #print("pixels_Years R2 iterations: ", pixels_years_R2List)
-  print("\n")
-  print("pixels MSE Overall: ", sum(pixels_MSEList)/len(pixels_MSEList))
-  print("pixels R2 Overall: ", sum(pixels_R2List)/len(pixels_R2List))
-  #print("pixels R2 iterations: ", pixels_R2List)
-  print("\n")
-  print("years MSE Overall: ", sum(years_MSEList)/len(years_MSEList))
-  print("years R2 Overall: ", sum(years_R2List)/len(years_R2List))
-  #print("years R2 iterations: ", years_R2List)
-  print("\n")
-  
-  pickling_on = open(outPath + "elasticNet_2dim.pickle", "wb")
-  pickle.dump([combined_Data, target_Data, Models_Summary, Models, excluded_Years, selectedParams], pickling_on)
-  pickling_on.close
 
-  Models_Summary.to_csv(outPath + "Model_Summary.csv")
+            testData_y_years = target_Data[target_Data[groupVars[0]] != x]
+            testData_y_years = testData_y_years[testData_y_years[groupVars[1]] == y]
+            excluded_Years.append(list(set(testData_y_years[varsToGroupBy[1]].tolist())))
 
-  return combined_Data, target_Data, Models_Summary, Models, excluded_Years, selectedParams
+            pixels_years_iterOutput = XGBoostModel(trainData_X, trainData_y['value'], testData_X_pixels_years, testData_y_pixels_years['value'], selectedParams)
+            pixels_iterOutput = XGBoostModel(trainData_X, trainData_y['value'], testData_X_pixels, testData_y_pixels['value'], selectedParams)
+            years_iterOutput = XGBoostModel(trainData_X, trainData_y['value'], testData_X_years, testData_y_years['value'], selectedParams)
 
+
+            Models.append(pixels_years_iterOutput)
+
+
+            pixels_years_MSEList.append(pixels_years_iterOutput[1])
+            pixels_MSEList.append(pixels_iterOutput[1])
+            years_MSEList.append(years_iterOutput[1])
+
+            pixels_years_R2List.append(pixels_years_iterOutput[2])
+            pixels_R2List.append(pixels_iterOutput[2])
+            years_R2List.append(years_iterOutput[2])
+        
+    #combine MSE and R2 Lists into single DataFrame
+    Models_Summary['Pixels_Years_MSE'] = pixels_years_MSEList
+    Models_Summary['Pixels_MSE'] = pixels_MSEList
+    Models_Summary['Years_MSE'] = years_MSEList
+
+    Models_Summary['Pixels_Years_R2'] = pixels_years_R2List
+    Models_Summary['Pixels_R2'] = pixels_R2List
+    Models_Summary['Years_R2'] = years_R2List
+
+
+    print("pixels_Years MSE Overall: ", sum(pixels_years_MSEList)/len(pixels_years_MSEList))
+    print("pixels_Years R2 Overall: ", sum(pixels_years_R2List)/len(pixels_years_R2List))
+    #print("pixels_Years R2 iterations: ", pixels_years_R2List)
+    print("\n")
+    print("pixels MSE Overall: ", sum(pixels_MSEList)/len(pixels_MSEList))
+    print("pixels R2 Overall: ", sum(pixels_R2List)/len(pixels_R2List))
+    #print("pixels R2 iterations: ", pixels_R2List)
+    print("\n")
+    print("years MSE Overall: ", sum(years_MSEList)/len(years_MSEList))
+    print("years R2 Overall: ", sum(years_R2List)/len(years_R2List))
+    #print("years R2 iterations: ", years_R2List)
+    print("\n")
+
+    pickling_on = open(outPath + "XGBoost_2dim.pickle", "wb")
+    pickle.dump([combined_Data, target_Data, Models_Summary, Models, excluded_Years, selectedParams], pickling_on)
+    pickling_on.close
+
+    Models_Summary.to_csv(outPath + "Model_Summary_XGBOOST.csv")
+
+    return combined_Data, target_Data, Models_Summary, Models, excluded_Years, selectedParams
+ 
 
 def zeroMasker(row):
     ''' used as apply statement for masking in elastic_YearPredictor
@@ -758,7 +720,9 @@ def randomForestReg_YearPredictor(combined_Data_Training, target_Data_Training, 
         
     return model_List, year_List
 
-def XGBoostModel(X_train, y_train, X_test, y_test, string_output = False, selectedParams = {"learning_rate":0.1, "n_estimators":100}):
+def XGBoostModel(X_train, y_train, X_test, y_test, string_output = False, 
+                 selectedParams = {"learning_rate":0.1, "max_features": 5, 
+                                   "min_samples_split":15, "min_samples_leaf":33}):
     '''
     Conduct elastic net regression on training data and test predictive power against test data
 
@@ -767,7 +731,10 @@ def XGBoostModel(X_train, y_train, X_test, y_test, string_output = False, select
     :return: elastic net model, MSE, R-squared
     '''
 
-    xgbr = XGBRegressor(learning_rate = selectedParams["learning_rate"], n_estimators = selectedParams["n_estimators"])
+    xgbr = XGBRegressor(learning_rate = selectedParams["learning_rate"], 
+                        max_features = selectedParams['max_features'],
+                       min_samples_split = selectedParams['min_samples_split'],
+                       min_samples_leaf = selectedParams['min_samples_leaf'])
 
     model = xgbr.fit(X_train, y_train.values)  #must convert y_train to values to prevent an erroneous error warning
     predict_test = model.predict(data = X_test)
@@ -968,3 +935,66 @@ def XGBoostReg_YearPredictor(combined_Data_Training, target_Data_Training, preMa
         
         
     return model_List, year_List
+
+
+    def GBoost_skopt(X, y, outPath, n_calls = 50, n_estimators = 100, random_state = 0, n_jobs = 5):
+      '''conducts hyperparameter tuning using scikit-optimize
+      param X: multidimensional array of explanatory factors
+      param y: vector of response variable
+      n_calls: number of calls (evaluations) for gp_minimize
+      n_estimators: number of estimators (boosting stages) for gradientboosting
+      random state: random seed
+      n_jobs = number of jobs for parallellization
+      '''
+    
+    space  = [Integer(1, 5, name='max_depth'),
+          Real(10**-5, 10**0, "log-uniform", name='learning_rate'),
+          Integer(1, X.shape[1], name='max_features'),
+          Integer(2, 100, name='min_samples_split'),
+          Integer(1, 100, name='min_samples_leaf')]
+
+    @use_named_args(space)
+    def objective(**hyperParams):
+        reg.set_params(**hyperParams)
+        return -np.mean(cross_val_score(reg, X, y, cv = 5, n_jobs = n_jobs, scoring = "neg_mean_absolute_error"))
+
+
+    print(n_calls)
+    reg = GradientBoostingRegressor(n_estimators = n_estimators, random_state = random_state)
+    res_gp = gp_minimize(objective, space, n_calls= n_calls, random_state= random_state)
+    
+    outString = """"Best Score_Hyperopt = %.4f
+    
+    Best hyperparameters:
+    - max_depth=%d
+    - learning_rate=%.6f
+    - max_features=%d
+    - min_samples_split=%d
+    - min_samples_leaf=%d""" % (res_gp.fun, res_gp.x[0], res_gp.x[1], 
+                                res_gp.x[2], res_gp.x[3], 
+                                res_gp.x[4])
+    print(outString)
+    
+    text_file = open(outPath + "HyperParams.txt", "w+")
+    text_file.write(outString)
+    text_file.close()
+    
+    fig, ax = plt.subplots(figsize=(4,4))
+    plot_convergence(res_gp, ax=ax)
+    plt.tight_layout()
+    plt.savefig(outPath + 'forest_convergence_test.png')
+    
+    
+   
+    plt.clf()
+    fig = plot_evaluations(res_gp, dimensions = [space[0].name, space[1].name, space[2].name, space[3].name, space[4].name])
+    plt.savefig(outPath + 'forest_evaluations.png')
+    
+    plt.clf()
+    fig = plot_objective(res_gp, dimensions = [space[0].name, space[1].name, space[2].name, space[3].name, space[4].name])
+    plt.savefig(outPath + 'objectives.png')
+    
+    out_hyperParams = {'n_estimators': n_estimators, 'max_depth':res_gp.x[0], 'learning_rate':res_gp.x[1], 
+                       'max_features': res_gp.x[2], 'min_samples_split': res_gp.x[3],'min_samples_leaf': res_gp.x[4]}
+    
+    return (out_hyperParams)
