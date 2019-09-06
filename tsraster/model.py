@@ -938,20 +938,20 @@ def XGBoostReg_YearPredictor(combined_Data_Training, target_Data_Training, preMa
 
 
 def GBoost_skopt(X, y, outPath, n_calls = 50, n_estimators = 100, random_state = 0, n_jobs = 5):
-      '''conducts hyperparameter tuning using scikit-optimize
-      param X: multidimensional array of explanatory factors
-      param y: vector of response variable
-      n_calls: number of calls (evaluations) for gp_minimize
-      n_estimators: number of estimators (boosting stages) for gradientboosting
-      random state: random seed
-      n_jobs = number of jobs for parallellization
-      '''
+    '''conducts hyperparameter tuning using scikit-optimize
+    param X: multidimensional array of explanatory factors
+    param y: vector of response variable
+    n_calls: number of calls (evaluations) for gp_minimize
+    n_estimators: number of estimators (boosting stages) for gradientboosting
+    random state: random seed
+    n_jobs = number of jobs for parallellization
+    '''
     
     space  = [Integer(1, 5, name='max_depth'),
-          Real(10**-5, 10**0, "log-uniform", name='learning_rate'),
-          Integer(1, X.shape[1], name='max_features'),
-          Integer(2, 100, name='min_samples_split'),
-          Integer(1, 100, name='min_samples_leaf')]
+    Real(10**-5, 10**0, "log-uniform", name='learning_rate'),
+    Integer(1, X.shape[1], name='max_features'),
+    Integer(2, 100, name='min_samples_split'),
+    Integer(1, 100, name='min_samples_leaf')]
 
     @use_named_args(space)
     def objective(**hyperParams):
