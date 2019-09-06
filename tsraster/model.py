@@ -937,7 +937,7 @@ def XGBoostReg_YearPredictor(combined_Data_Training, target_Data_Training, preMa
     return model_List, year_List
 
 
-    def GBoost_skopt(X, y, outPath, n_calls = 50, n_estimators = 100, random_state = 0, n_jobs = 5):
+def GBoost_skopt(X, y, outPath, n_calls = 50, n_estimators = 100, random_state = 0, n_jobs = 5):
       '''conducts hyperparameter tuning using scikit-optimize
       param X: multidimensional array of explanatory factors
       param y: vector of response variable
@@ -957,6 +957,7 @@ def XGBoostReg_YearPredictor(combined_Data_Training, target_Data_Training, preMa
     def objective(**hyperParams):
         reg.set_params(**hyperParams)
         return -np.mean(cross_val_score(reg, X, y, cv = 5, n_jobs = n_jobs, scoring = "neg_mean_absolute_error"))
+            #may want to replace with different scorer - may even include custom scorers using make_scorer (https://scikit-learn.org/stable/modules/model_evaluation.html#scoring)
 
 
     print(n_calls)
