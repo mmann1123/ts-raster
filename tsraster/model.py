@@ -13,8 +13,8 @@ from tsraster.prep import set_common_index, set_df_index,set_df_mindex, image_to
 from tsraster import random
 import pickle
 import numpy as np
-from xgboost import XGBRegressor
-from sklearn.ensemble import GradientBoostingRegressor
+from xgboost import XGBRegressor , XGBClassifier
+from sklearn.ensemble import GradientBoostingRegressor, GradientBoostingClassifier
 from sklearn.model_selection import cross_val_score
 from skopt.space import Real, Integer
 from skopt.utils import use_named_args
@@ -22,6 +22,8 @@ from skopt import gp_minimize
 from skopt.plots import plot_convergence
 from skopt.plots import plot_evaluations
 from skopt.plots import plot_objective
+from sklearn.linear_model import LogisticRegression
+import matplotlib.pyplot as plt
 
 
 def get_data(obj, test_size=0.33,scale=False,stratify=None,groups=None):
@@ -948,10 +950,10 @@ def GBoost_skopt(X, y, outPath, n_calls = 50, n_estimators = 100, random_state =
     '''
     
     space  = [Integer(1, 5, name='max_depth'),
-    Real(10**-5, 10**0, "log-uniform", name='learning_rate'),
-    Integer(1, X.shape[1], name='max_features'),
-    Integer(2, 100, name='min_samples_split'),
-    Integer(1, 100, name='min_samples_leaf')]
+      Real(10**-5, 10**0, "log-uniform", name='learning_rate'),
+      Integer(1, X.shape[1], name='max_features'),
+      Integer(2, 100, name='min_samples_split'),
+      Integer(1, 100, name='min_samples_leaf')]
 
     @use_named_args(space)
     def objective(**hyperParams):
@@ -999,3 +1001,388 @@ def GBoost_skopt(X, y, outPath, n_calls = 50, n_estimators = 100, random_state =
                        'max_features': res_gp.x[2], 'min_samples_split': res_gp.x[3],'min_samples_leaf': res_gp.x[4]}
     
     return (out_hyperParams)
+
+def GBoost_skopt_classifier(X, y, outPath, n_calls = 50, n_estimators = 100, random_state = 0, n_jobs = 5):
+    
+    space  = [Integer(1, 5, name='max_depth'),
+          Real(10**-5, 10**0, "log-uniform", name='learning_rate'),
+          Integer(1, X.shape[1], name='max_features'),
+          Integer(2, 100, name='min_samples_split'),
+          Integer(1, 100, name='min_samples_leaf')]
+
+    @use_named_args(space)
+    def objective(**hyperParams):
+        reg.set_params(**hyperParams)
+        return -np.mean(cross_val_score(reg, X, y, cv = 5, n_jobs = n_jobs, scoring = "balanced_accuracy"))
+
+
+    print(n_calls)
+    reg = GradientBoostingClassifier(n_estimators = n_estimators, random_state = random_state)
+    res_gp = gp_minimize(objective, space, n_calls= n_calls, random_state= random_state)
+    
+    outString = """"Best Score_Hyperopt = %.4f
+    
+    Best hyperparameters:
+    - max_depth=%d
+    - learning_rate=%.6f
+    - max_features=%d
+    - min_samples_split=%d
+    - min_samples_leaf=%d""" % (res_gp.fun, res_gp.x[0], res_gp.x[1], 
+                                res_gp.x[2], res_gp.x[3], 
+                                res_gp.x[4])
+    print(outString)
+    
+    text_file = open(outPath + "HyperParams.txt", "w+")
+    text_file.write(outString)
+    text_file.close()
+    
+    fig, ax = plt.subplots(figsize=(4,4))
+    plot_convergence(res_gp, ax=ax)
+    plt.tight_layout()
+    plt.savefig(outPath + 'forest_convergence_test.png')
+    
+    
+   
+    plt.clf()
+    fig = plot_evaluations(res_gp, dimensions = [space[0].name, space[1].name, space[2].name, space[3].name, space[4].name])
+    plt.savefig(outPath + 'forest_evaluations.png')
+    
+    plt.clf()
+    fig = plot_objective(res_gp, dimensions = [space[0].name, space[1].name, space[2].name, space[3].name, space[4].name])
+    plt.savefig(outPath + 'objectives.png')
+    
+    out_hyperParams = {'n_estimators': n_estimators, 'max_depth':res_gp.x[0], 'learning_rate':res_gp.x[1], 
+                       'max_features': res_gp.x[2], 'min_samples_split': res_gp.x[3],'min_samples_leaf': res_gp.x[4]}
+    
+    return (out_hyperParams)
+
+def XGBoostReg_YearPredictor_Class(combined_Data_Training, target_Data_Training, 
+                             preMasked_Data_Path, outPath, year_List, periodLen, 
+                             DataFields, mask, params = None):
+    '''annually predict fire risk- train model on combined_Data across all available years except year of interest
+    save resulting predictions as csv and as tif to location 'outPath'
+    
+    :param combined_Data_Training: dataFrame including all desired explanatory factors 
+            across all locations & years to be used in training model
+    :param target_Data_Training: dataFrame including observed fire occurrences 
+            across all locations & years to be used in training model
+    :param preMasked_Data_Path: file path to location of files to use in predicting fire risk 
+                    (note - these files should not have undergone Poisson disk masking)
+    :param outPath: desired output location for predicted fire risk files (csv, pickle, and tif)
+    :param year_List: list of years for which predictions are desired
+    :param Datafields: list of explanatory factors to be intered into model
+    :param mask: filepath of raster mask to be used in masking output predictions, 
+            and as an example raster for choosing array shape and projections for .tif output files
+    :param params: parameters for XGBOOST regression (presumably developed from 2dimCrossval)
+    :return:  returns a list of all models, accompanied by a list of years being predicted 
+            - note - return output is equivalent to data exported as models.pickle
+    '''
+    
+    model_List = []
+    
+    for iterYear in year_List:
+        print(iterYear)
+        combined_Data_iter_train = combined_Data_Training[combined_Data_Training['year'] != iterYear]
+        combined_Data_iter_train = combined_Data_iter_train.loc[:, DataFields]
+        
+        target_Data_iter_train = target_Data_Training[target_Data_Training['year'] != iterYear]
+        
+        
+        iter_Model = XGBClassifier(learning_rate = params["learning_rate"], 
+                        max_features = params['max_features'],
+                       min_samples_split = params['min_samples_split'],
+                       min_samples_leaf = params['min_samples_leaf'])
+        
+        iter_Fit = iter_Model.fit(combined_Data_iter_train, target_Data_iter_train['value'].values)
+        
+        
+        
+        #seriesToRaster(predict_iter, templateRasterPath, outPath + "Pred_FireRisk_" + str(iterYear) + ".tif")
+
+        full_X = pd.read_csv(preMasked_Data_Path + "CD_" + str(iterYear) + "_" + str(iterYear + periodLen - 1) + ".csv")
+        full_X = full_X.loc[:, DataFields]
+
+        data = iter_Fit.predict(full_X)
+        
+        
+        
+        data = pd.DataFrame(data, columns = ['PredClass_Masked'])
+        #index_mask = image_to_series_simple(mask)             ###########
+        #data['mask'] = index_mask
+        #data['PredClass_Masked'] = data.apply(zeroMasker, axis =1)
+        
+        data.to_csv(outPath + "PredClass_" + str(iterYear) + ".csv")
+        
+        #output predicted risk as tiff
+        seriesToRaster(data['PredClass_Masked'], mask, outPath + "PredClass_" + str(iterYear) + "_" + str(iterYear + periodLen - 1) + "XGBoost_Class.tif")
+        
+        data_risk = iter_Fit.predict_proba(full_X)
+        
+        # data_risk[1]represents predictedprobability  risk of fire, 
+        #data_risk[2] represents probability of no fire
+        data = pd.DataFrame(data_risk[:, 1], columns = ['PredRisk'])  
+        index_mask = image_to_series_simple(mask)             ###########
+        data['mask'] = index_mask
+        data['PredRisk_Masked'] = data.apply(zeroMasker, axis =1)
+        
+        data.to_csv(outPath + "PredRisk_" + str(iterYear) + ".csv")
+        
+        #output predicted risk as tiff
+        seriesToRaster(data['PredRisk_Masked'], mask, outPath + "PredRisk_" + str(iterYear) + "_" + str(iterYear + periodLen - 1) + "XGBoost_Class.tif")
+        
+        
+        
+        model_List.append([iter_Fit])
+        
+    pickling_on = open(outPath + "models.pickle", "wb")
+    pickle.dump([model_List, year_List], pickling_on)
+    pickling_on.close
+        
+        
+    return model_List, year_List
+       
+
+def LogisticModel(X_train, y_train, X_test, y_test, string_output = False, 
+                 selectedParams = {"penalty":'l2', "class_weight": 'balanced', # may also be none, or custom weights using 'dict'
+                                  "solver": 'saga', "max_iter": 100, "n_jobs": -1}):
+    '''
+    Conduct logistic regression on training data and test predictive power against test data
+
+    :param X_train: dataframe containing training data features
+    :param y_train: dataframe containing training data responses
+    :return: elastic net model, MSE, R-squared
+    '''
+
+    logReg = LogisticRegression(penalty = selectedParams["penalty"], 
+                        class_weight = selectedParams['class_weight'],
+                       solver = selectedParams['solver'],
+                       max_iter = selectedParams['max_iter'],
+                       n_jobs = selectedParams['n_jobs'])
+
+    model = logReg.fit(X_train, y_train.values)  #must convert y_train to values to prevent an erroneous error warning
+    predict_test = model.predict(X_test)
+
+    MSE = model.score(X_test, y_test)
+    R_Squared = r2_score(predict_test, y_test)
+    
+    if string_output == True:
+      MSE = ("MSE = {}".format(MSE))
+      R_Squared = ("R-Squared = {}".format(R_Squared))
+    
+
+    return logReg, MSE, R_Squared, predict_test
+
+def LogReg_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups, 
+                        DataFields, outPath, 
+                        params = None, cv = 10):
+
+    combined_Data, target_Data = random.TestTrain_GroupMaker(combined_Data, target_Data, 
+                                                             varsToGroupBy, 
+                                                             groupVars, 
+                                                             testGroups)
+
+    #get list of group ids, since in cases where group # <10, may not begin at zero
+    pixel_testVals = list(set(combined_Data[groupVars[0]].tolist()))
+    year_testVals = list(set(combined_Data[groupVars[1]].tolist()))
+
+    Models_Summary = pd.DataFrame([], columns = ['Pixels_Years_MSE', 'Pixels_MSE', 'Years_MSE', 
+                                             'Pixels_Years_R2', 'Pixels_R2', 'Years_R2'])
+
+    #used to create list of model runs
+    Models = []
+  
+  #used to create data for entry as columns into summary DataFrame
+    pixels_years_MSEList = []
+    pixels_MSEList = []
+    years_MSEList = []
+    pixels_years_R2List = []
+    pixels_R2List = []
+    years_R2List = []
+
+  #used to create a list of lists of years that are excluded within each model run
+    excluded_Years = []
+
+
+     
+    selectedParams = params
+    
+    for x in pixel_testVals:
+
+
+        for y in year_testVals:
+            trainData_X = combined_Data[combined_Data[groupVars[0]] != x]
+            trainData_X = trainData_X[trainData_X[groupVars[1]] != y]
+            trainData_X = trainData_X.loc[:, DataFields]
+
+
+            trainData_y = target_Data[target_Data[groupVars[0]] != x]
+            trainData_y = trainData_y[trainData_y[groupVars[1]] != y]
+
+
+            testData_X_pixels_years = combined_Data[combined_Data[groupVars[0]] == x]
+            testData_X_pixels_years = testData_X_pixels_years[testData_X_pixels_years[groupVars[1]] == y]
+            testData_X_pixels_years = testData_X_pixels_years.loc[:, DataFields]
+
+            testData_X_pixels = combined_Data[combined_Data[groupVars[0]] == x]
+            testData_X_pixels = testData_X_pixels[testData_X_pixels[groupVars[1]] != y]
+            testData_X_pixels = testData_X_pixels.loc[:, DataFields]
+
+            testData_X_years = combined_Data[combined_Data[groupVars[0]] != x]
+            testData_X_years = testData_X_years[testData_X_years[groupVars[1]] == y]
+            testData_X_years = testData_X_years.loc[:, DataFields]
+
+
+
+            testData_y_pixels_years = target_Data[target_Data[groupVars[0]] == x]
+            testData_y_pixels_years = testData_y_pixels_years[testData_y_pixels_years[groupVars[1]] == y]
+
+
+            testData_y_pixels = target_Data[target_Data[groupVars[0]] == x]
+            testData_y_pixels = testData_y_pixels[testData_y_pixels[groupVars[1]] != y]
+
+
+            testData_y_years = target_Data[target_Data[groupVars[0]] != x]
+            testData_y_years = testData_y_years[testData_y_years[groupVars[1]] == y]
+            excluded_Years.append(list(set(testData_y_years[varsToGroupBy[1]].tolist())))
+
+            pixels_years_iterOutput = LogisticModel(trainData_X, trainData_y['value'], testData_X_pixels_years, testData_y_pixels_years['value'], selectedParams)
+            pixels_iterOutput = LogisticModel(trainData_X, trainData_y['value'], testData_X_pixels, testData_y_pixels['value'], selectedParams)
+            years_iterOutput = LogisticModel(trainData_X, trainData_y['value'], testData_X_years, testData_y_years['value'], selectedParams)
+
+
+            Models.append(pixels_years_iterOutput)
+
+
+            pixels_years_MSEList.append(pixels_years_iterOutput[1])
+            pixels_MSEList.append(pixels_iterOutput[1])
+            years_MSEList.append(years_iterOutput[1])
+
+            pixels_years_R2List.append(pixels_years_iterOutput[2])
+            pixels_R2List.append(pixels_iterOutput[2])
+            years_R2List.append(years_iterOutput[2])
+        
+    #combine MSE and R2 Lists into single DataFrame
+    Models_Summary['Pixels_Years_MSE'] = pixels_years_MSEList
+    Models_Summary['Pixels_MSE'] = pixels_MSEList
+    Models_Summary['Years_MSE'] = years_MSEList
+
+    Models_Summary['Pixels_Years_R2'] = pixels_years_R2List
+    Models_Summary['Pixels_R2'] = pixels_R2List
+    Models_Summary['Years_R2'] = years_R2List
+
+
+    print("pixels_Years MSE Overall: ", sum(pixels_years_MSEList)/len(pixels_years_MSEList))
+    print("pixels_Years R2 Overall: ", sum(pixels_years_R2List)/len(pixels_years_R2List))
+    #print("pixels_Years R2 iterations: ", pixels_years_R2List)
+    print("\n")
+    print("pixels MSE Overall: ", sum(pixels_MSEList)/len(pixels_MSEList))
+    print("pixels R2 Overall: ", sum(pixels_R2List)/len(pixels_R2List))
+    #print("pixels R2 iterations: ", pixels_R2List)
+    print("\n")
+    print("years MSE Overall: ", sum(years_MSEList)/len(years_MSEList))
+    print("years R2 Overall: ", sum(years_R2List)/len(years_R2List))
+    #print("years R2 iterations: ", years_R2List)
+    print("\n")
+
+    pickling_on = open(outPath + "LogisticModel_2dim.pickle", "wb")
+    pickle.dump([combined_Data, target_Data, Models_Summary, Models, excluded_Years, selectedParams], pickling_on)
+    pickling_on.close
+
+    Models_Summary.to_csv(outPath + "Model_Summary_LogisticModel.csv")
+
+    return combined_Data, target_Data, Models_Summary, Models, excluded_Years, selectedParams
+
+def LogReg_YearPredictor(combined_Data_Training, target_Data_Training, 
+                             preMasked_Data_Path, outPath, year_List, periodLen, 
+                             DataFields, mask, params = None):
+    '''annually predict fire risk- train model on combined_Data across all available years except year of interest
+    save resulting predictions as csv and as tif to location 'outPath'
+    
+    :param combined_Data_Training: dataFrame including all desired explanatory factors 
+            across all locations & years to be used in training model
+    :param target_Data_Training: dataFrame including observed fire occurrences 
+            across all locations & years to be used in training model
+    :param preMasked_Data_Path: file path to location of files to use in predicting fire risk 
+                    (note - these files should not have undergone Poisson disk masking)
+    :param outPath: desired output location for predicted fire risk files (csv, pickle, and tif)
+    :param year_List: list of years for which predictions are desired
+    :param Datafields: list of explanatory factors to be intered into model
+    :param mask: filepath of raster mask to be used in masking output predictions, 
+            and as an example raster for choosing array shape and projections for .tif output files
+    :param params: parameters for logistic regression
+    :return:  returns a list of all models, accompanied by a list of years being predicted 
+            - note - return output is equivalent to data exported as models.pickle
+    '''
+    
+    model_List = []
+    
+    for iterYear in year_List:
+        print(iterYear)
+        combined_Data_iter_train = combined_Data_Training[combined_Data_Training['year'] != iterYear]
+        combined_Data_iter_train = combined_Data_iter_train.loc[:, DataFields]
+        
+        target_Data_iter_train = target_Data_Training[target_Data_Training['year'] != iterYear]
+        
+        
+        iter_Model = LogisticRegression(penalty = params['penalty'],
+                                       class_weight = params['class_weight'],
+                                       solver = params['solver'],
+                                       max_iter = params['max_iter'],
+                                       n_jobs = params['n_jobs'])
+        
+        
+        
+        
+        
+        
+        
+        iter_Fit = iter_Model.fit(combined_Data_iter_train, target_Data_iter_train['value'].values)
+        
+        
+        
+        #seriesToRaster(predict_iter, templateRasterPath, outPath + "Pred_FireRisk_" + str(iterYear) + ".tif")
+
+        full_X = pd.read_csv(preMasked_Data_Path + "CD_" + str(iterYear) + "_" + str(iterYear + periodLen - 1) + ".csv")
+        full_X = full_X.loc[:, DataFields]
+
+        data = iter_Fit.predict(full_X)
+        
+        
+        
+        data = pd.DataFrame(data, columns = ['PredClass_Masked'])
+        #index_mask = image_to_series_simple(mask)             ###########
+        #data['mask'] = index_mask
+        #data['PredClass_Masked'] = data.apply(zeroMasker, axis =1)
+        
+        data.to_csv(outPath + "PredClass_" + str(iterYear) + ".csv")
+        
+        #output predicted risk as tiff
+        seriesToRaster(data['PredClass_Masked'], mask, outPath + "LogReg_PredClass_" + str(iterYear) + "_" + str(iterYear + periodLen - 1) + "XGBoost.tif")
+        
+        data_risk = iter_Fit.predict_proba(full_X)
+        
+        # data_risk[1]represents predictedprobability  risk of fire, 
+        #data_risk[2] represents probability of no fire
+        data = pd.DataFrame(data_risk[:, 1], columns = ['PredRisk'])  
+        index_mask = image_to_series_simple(mask)             ###########
+        data['mask'] = index_mask
+        data['PredRisk_Masked'] = data.apply(zeroMasker, axis =1)
+        
+        data.to_csv(outPath + "LogReg_PredRisk_" + str(iterYear) + ".csv")
+        
+        #output predicted risk as tiff
+        seriesToRaster(data['PredRisk_Masked'], mask, outPath + "LogReg_PredRisk_" + str(iterYear) + "_" + str(iterYear + periodLen - 1) + "XGBoost.tif")
+        
+        
+        
+        model_List.append([iter_Fit])
+        
+    pickling_on = open(outPath + "logRegModels.pickle", "wb")
+    pickle.dump([model_List, year_List], pickling_on)
+    pickling_on.close
+        
+        
+    return model_List, year_List
+    
+ 
+
