@@ -996,7 +996,7 @@ def mask_df(raster_mask, original_df, missing_value = -9999, reset_index = True,
     return combined_Data, target_Data'''
 
 
-def multiYear_Mask(startYears, filePath, maskFile, outPath, length = 1):
+def multiYear_Mask(startYears, filePath, maskFile, outPath, length = 1, missing_value = None):
     '''mask multiple years of data, export the resulting files annually and as multiyear csvs
 
     :param startYears: years on which to begin
@@ -1029,7 +1029,7 @@ def multiYear_Mask(startYears, filePath, maskFile, outPath, length = 1):
         #read in mask data generated using poisson disk regression as mask
         target_Data_iter,  combined_Data_iter  = mask_df(maskFile,
                                        original_df=[target_Data_iter, combined_Data_iter],
-                                       missing_value = None,
+                                       missing_value = missing_value,
                                        reset_index = False)
 
         combined_Data_iter['year'] = x  #year needs to remain startyear rather than a string to facilitate the random group sampling later on
