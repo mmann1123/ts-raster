@@ -1310,62 +1310,53 @@ def XGBoostClass_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, 
             
         
     #combine MSE and R2 Lists into single DataFrame
-    Models_Summary['Pixels_Years_MSE'] = pixels_years_MSEList
-    Models_Summary['Pixels_MSE'] = pixels_MSEList
-    Models_Summary['Years_MSE'] = years_MSEList
-
-    Models_Summary['Pixels_Years_R2'] = pixels_years_R2List
-    Models_Summary['Pixels_R2'] = pixels_R2List
-    Models_Summary['Years_R2'] = years_R2List
+    Models_Summary['Pixels_Years_F1_binary'] = pixels_years_F1_binaryList
+    Models_Summary['Pixels_F1_binary'] = pixels_F1_binaryList
+    Models_Summary['Years_F1_binary'] = years_F1_binaryList
     
-    Models_Summary['Pixels_Years_F1_binaryList'] = pixels_years_F1_binaryList
-    Models_Summary['Pixels_F1_binaryList'] = pixels_F1_binaryList
-    Models_Summary['Years_F1_binaryList'] = years_F1_binaryList
+    Models_Summary['Pixels_Years_F1_Macro'] = pixels_years_F1_MacroList
+    Models_Summary['Pixels_F1_Macro'] = pixels_F1_MacroList
+    Models_Summary['Years_F1_Macro'] = years_F1_MacroList
     
-    Models_Summary['Pixels_Years_F1_MacroList'] = pixels_years_F1_MacroList
-    Models_Summary['Pixels_F1_MacroList'] = pixels_F1_MacroList
-    Models_Summary['Years_F1_MacroList'] = years_F1_MacroList
-    
-    Models_Summary['Pixels_Years_F1_MicroList'] = pixels_years_F1_MicroList
-    Models_Summary['Pixels_F1_MicroList'] = pixels_F1_MicroList
-    Models_Summary['Years_F1_MicroList'] = years_F1_MicroList
+    Models_Summary['Pixels_Years_F1_Micro'] = pixels_years_F1_MicroList
+    Models_Summary['Pixels_F1_Micro'] = pixels_F1_MicroList
+    Models_Summary['Years_F1_Micro'] = years_F1_MicroList
 
     Models_Summary['Pixels_Years_log_loss'] = pixels_years_logLossList
     Models_Summary['Pixels_log_loss'] = pixels_logLossList
     Models_Summary['Years_log_loss'] = years_logLossList
     
-    Models_Summary['Pixels_Years_recall_binaryList'] = pixels_years_recall_binaryList
-    Models_Summary['Pixels_recall_binaryList'] = pixels_recall_binaryList
-    Models_Summary['Years_recall_binaryList'] = years_recall_binaryList
+    Models_Summary['Pixels_Years_recall_binary'] = pixels_years_recall_binaryList
+    Models_Summary['Pixels_recall_binary'] = pixels_recall_binaryList
+    Models_Summary['Years_recall_binary'] = years_recall_binaryList
     
-    Models_Summary['Pixels_Years_recall_MacroList'] = pixels_years_recall_MacroList
-    Models_Summary['Pixels_recall_MacroList'] = pixels_recall_MacroList
-    Models_Summary['Years_recall_MacroList'] = years_recall_MacroList
+    Models_Summary['Pixels_Years_recall_Macro'] = pixels_years_recall_MacroList
+    Models_Summary['Pixels_recall_Macro'] = pixels_recall_MacroList
+    Models_Summary['Years_recall_Macro'] = years_recall_MacroList
     
-    Models_Summary['Pixels_Years_recall_MicroList'] = pixels_years_recall_MicroList
-    Models_Summary['Pixels_recall_MicroList'] = pixels_recall_MicroList
-    Models_Summary['Years_recall_MicroList'] = years_recall_MicroList
+    Models_Summary['Pixels_Years_recall_Micro'] = pixels_years_recall_MicroList
+    Models_Summary['Pixels_recall_Micro'] = pixels_recall_MicroList
+    Models_Summary['Years_recall_Micro'] = years_recall_MicroList
     
-    Models_Summary['Pixels_Years_jaccard_binaryList'] = pixels_years_jaccard_binaryList
-    Models_Summary['Pixels_jaccard_binaryList'] = pixels_jaccard_binaryList
-    Models_Summary['Years_jaccard_binaryList'] = years_jaccard_binaryList
+    Models_Summary['Pixels_Years_jaccard_binary'] = pixels_years_jaccard_binaryList
+    Models_Summary['Pixels_jaccard_binary'] = pixels_jaccard_binaryList
+    Models_Summary['Years_jaccard_binary'] = years_jaccard_binaryList
     
-    Models_Summary['Pixels_Years_jaccard_MacroList'] = pixels_years_jaccard_MacroList
-    Models_Summary['Pixels_jaccard_MacroList'] = pixels_jaccard_MacroList
-    Models_Summary['Years_jaccard_MacroList'] = years_jaccard_MacroList
+    Models_Summary['Pixels_Years_jaccard_Macro'] = pixels_years_jaccard_MacroList
+    Models_Summary['Pixels_jaccard_Macro'] = pixels_jaccard_MacroList
+    Models_Summary['Years_jaccard_Macro'] = years_jaccard_MacroList
     
-    Models_Summary['Pixels_Years_jaccard_MicroList'] = pixels_years_jaccard_MicroList
-    Models_Summary['Pixels_jaccard_MicroList'] = pixels_jaccard_MicroList
-    Models_Summary['Years_jaccard_MicroList'] = years_jaccard_MicroList
+    Models_Summary['Pixels_Years_jaccard_Micro'] = pixels_years_jaccard_MicroList
+    Models_Summary['Pixels_jaccard_Micro'] = pixels_jaccard_MicroList
+    Models_Summary['Years_jaccard_Micro'] = years_jaccard_MicroList
     
-    Models_Summary['Pixels_Years_roc_auc_MacroList'] = pixels_years_roc_auc_MacroList
-    Models_Summary['Pixels_roc_auc_MacroList'] = pixels_roc_auc_MacroList
-    Models_Summary['Years_roc_auc_MacroList'] = years_roc_auc_MacroList
+    Models_Summary['Pixels_Years_roc_auc_Macro'] = pixels_years_roc_auc_MacroList
+    Models_Summary['Pixels_roc_auc_Macro'] = pixels_roc_auc_MacroList
+    Models_Summary['Years_roc_auc_Macro'] = years_roc_auc_MacroList
     
-    Models_Summary['Pixels_Years_roc_auc_MicroList'] = pixels_years_roc_auc_MicroList
-    Models_Summary['Pixels_roc_auc_MicroList'] = pixels_roc_auc_MicroList
-    Models_Summary['Years_roc_auc_MicroList'] = years_roc_auc_MicroList
-    
+    Models_Summary['Pixels_Years_roc_auc_Micro'] = pixels_years_roc_auc_MicroList
+    Models_Summary['Pixels_roc_auc_Micro'] = pixels_roc_auc_MicroList
+    Models_Summary['Years_roc_auc_Micro'] = years_roc_auc_MicroList 
 
     print("pixels_Years MSE Overall: ", sum(pixels_years_MSEList)/len(pixels_years_MSEList))
     print("pixels_Years R2 Overall: ", sum(pixels_years_R2List)/len(pixels_years_R2List))
@@ -1736,53 +1727,53 @@ def LogReg_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGr
     Models_Summary['Pixels_R2'] = pixels_R2List
     Models_Summary['Years_R2'] = years_R2List
     
-    Models_Summary['Pixels_Years_F1_binaryList'] = pixels_years_F1_binaryList
-    Models_Summary['Pixels_F1_binaryList'] = pixels_F1_binaryList
-    Models_Summary['Years_F1_binaryList'] = years_F1_binaryList
+    Models_Summary['Pixels_Years_F1_binary'] = pixels_years_F1_binaryList
+    Models_Summary['Pixels_F1_binary'] = pixels_F1_binaryList
+    Models_Summary['Years_F1_binary'] = years_F1_binaryList
     
-    Models_Summary['Pixels_Years_F1_MacroList'] = pixels_years_F1_MacroList
-    Models_Summary['Pixels_F1_MacroList'] = pixels_F1_MacroList
-    Models_Summary['Years_F1_MacroList'] = years_F1_MacroList
+    Models_Summary['Pixels_Years_F1_Macro'] = pixels_years_F1_MacroList
+    Models_Summary['Pixels_F1_Macro'] = pixels_F1_MacroList
+    Models_Summary['Years_F1_Macro'] = years_F1_MacroList
     
-    Models_Summary['Pixels_Years_F1_MicroList'] = pixels_years_F1_MicroList
-    Models_Summary['Pixels_F1_MicroList'] = pixels_F1_MicroList
-    Models_Summary['Years_F1_MicroList'] = years_F1_MicroList
+    Models_Summary['Pixels_Years_F1_Micro'] = pixels_years_F1_MicroList
+    Models_Summary['Pixels_F1_Micro'] = pixels_F1_MicroList
+    Models_Summary['Years_F1_Micro'] = years_F1_MicroList
 
     Models_Summary['Pixels_Years_log_loss'] = pixels_years_logLossList
     Models_Summary['Pixels_log_loss'] = pixels_logLossList
     Models_Summary['Years_log_loss'] = years_logLossList
     
-    Models_Summary['Pixels_Years_recall_binaryList'] = pixels_years_recall_binaryList
-    Models_Summary['Pixels_recall_binaryList'] = pixels_recall_binaryList
-    Models_Summary['Years_recall_binaryList'] = years_recall_binaryList
+    Models_Summary['Pixels_Years_recall_binary'] = pixels_years_recall_binaryList
+    Models_Summary['Pixels_recall_binary'] = pixels_recall_binaryList
+    Models_Summary['Years_recall_binary'] = years_recall_binaryList
     
-    Models_Summary['Pixels_Years_recall_MacroList'] = pixels_years_recall_MacroList
-    Models_Summary['Pixels_recall_MacroList'] = pixels_recall_MacroList
-    Models_Summary['Years_recall_MacroList'] = years_recall_MacroList
+    Models_Summary['Pixels_Years_recall_Macro'] = pixels_years_recall_MacroList
+    Models_Summary['Pixels_recall_Macro'] = pixels_recall_MacroList
+    Models_Summary['Years_recall_Macro'] = years_recall_MacroList
     
-    Models_Summary['Pixels_Years_recall_MicroList'] = pixels_years_recall_MicroList
-    Models_Summary['Pixels_recall_MicroList'] = pixels_recall_MicroList
-    Models_Summary['Years_recall_MicroList'] = years_recall_MicroList
+    Models_Summary['Pixels_Years_recall_Micro'] = pixels_years_recall_MicroList
+    Models_Summary['Pixels_recall_Micro'] = pixels_recall_MicroList
+    Models_Summary['Years_recall_Micro'] = years_recall_MicroList
     
-    Models_Summary['Pixels_Years_jaccard_binaryList'] = pixels_years_jaccard_binaryList
-    Models_Summary['Pixels_jaccard_binaryList'] = pixels_jaccard_binaryList
-    Models_Summary['Years_jaccard_binaryList'] = years_jaccard_binaryList
+    Models_Summary['Pixels_Years_jaccard_binary'] = pixels_years_jaccard_binaryList
+    Models_Summary['Pixels_jaccard_binary'] = pixels_jaccard_binaryList
+    Models_Summary['Years_jaccard_binary'] = years_jaccard_binaryList
     
-    Models_Summary['Pixels_Years_jaccard_MacroList'] = pixels_years_jaccard_MacroList
-    Models_Summary['Pixels_jaccard_MacroList'] = pixels_jaccard_MacroList
-    Models_Summary['Years_jaccard_MacroList'] = years_jaccard_MacroList
+    Models_Summary['Pixels_Years_jaccard_Macro'] = pixels_years_jaccard_MacroList
+    Models_Summary['Pixels_jaccard_Macro'] = pixels_jaccard_MacroList
+    Models_Summary['Years_jaccard_Macro'] = years_jaccard_MacroList
     
-    Models_Summary['Pixels_Years_jaccard_MicroList'] = pixels_years_jaccard_MicroList
-    Models_Summary['Pixels_jaccard_MicroList'] = pixels_jaccard_MicroList
-    Models_Summary['Years_jaccard_MicroList'] = years_jaccard_MicroList
+    Models_Summary['Pixels_Years_jaccard_Micro'] = pixels_years_jaccard_MicroList
+    Models_Summary['Pixels_jaccard_Micro'] = pixels_jaccard_MicroList
+    Models_Summary['Years_jaccard_Micro'] = years_jaccard_MicroList
     
-    Models_Summary['Pixels_Years_roc_auc_MacroList'] = pixels_years_roc_auc_MacroList
-    Models_Summary['Pixels_roc_auc_MacroList'] = pixels_roc_auc_MacroList
-    Models_Summary['Years_roc_auc_MacroList'] = years_roc_auc_MacroList
+    Models_Summary['Pixels_Years_roc_auc_Macro'] = pixels_years_roc_auc_MacroList
+    Models_Summary['Pixels_roc_auc_Macro'] = pixels_roc_auc_MacroList
+    Models_Summary['Years_roc_auc_Macro'] = years_roc_auc_MacroList
     
-    Models_Summary['Pixels_Years_roc_auc_MicroList'] = pixels_years_roc_auc_MicroList
-    Models_Summary['Pixels_roc_auc_MicroList'] = pixels_roc_auc_MicroList
-    Models_Summary['Years_roc_auc_MicroList'] = years_roc_auc_MicroList
+    Models_Summary['Pixels_Years_roc_auc_Micro'] = pixels_years_roc_auc_MicroList
+    Models_Summary['Pixels_roc_auc_Micro'] = pixels_roc_auc_MicroList
+    Models_Summary['Years_roc_auc_Micro'] = years_roc_auc_MicroList
     
 
 
