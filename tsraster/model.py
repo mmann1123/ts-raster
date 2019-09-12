@@ -16,6 +16,7 @@ import numpy as np
 from xgboost import XGBRegressor , XGBClassifier
 from sklearn.ensemble import GradientBoostingRegressor, GradientBoostingClassifier
 from sklearn.model_selection import cross_val_score
+import sklearn.metrics as skmetrics
 from skopt.space import Real, Integer
 from skopt.utils import use_named_args
 from skopt import gp_minimize
@@ -752,8 +753,9 @@ def XGBoostModel(X_train, y_train, X_test, y_test, string_output = False,
     return xgbr, MSE, R_Squared, predict_test
 
 
-def XGBoostReg_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups, DataFields, outPath, params = {'eta': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], #step size shrinkage used in updates to prevent overfitting (also called learning_rate)
-         'n_estimators': [10, 50, 100, 200, 300]}, cv = 10):
+def XGBoostReg_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups, 
+                        DataFields, outPath, 
+                        params = None, cv = 10):
 
     combined_Data, target_Data = random.TestTrain_GroupMaker(combined_Data, target_Data, 
                                                              varsToGroupBy, 
@@ -782,11 +784,8 @@ def XGBoostReg_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, te
     excluded_Years = []
 
 
-     #use randomized search to tune hyperparameters on entire dataset
-    if ((type(params['eta']) == list) or (type(params['n_estimators']) == list)):
-        selectedParams = RandomSearch_Tuner(XGBRegressor(), combined_Data.loc[:, DataFields], target_Data['value'].values, params, cv)
-    else:
-        selectedParams = params
+     
+    selectedParams = params
     
     for x in pixel_testVals:
 
@@ -873,7 +872,7 @@ def XGBoostReg_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, te
     Models_Summary.to_csv(outPath + "Model_Summary_XGBOOST.csv")
 
     return combined_Data, target_Data, Models_Summary, Models, excluded_Years, selectedParams
-
+ 
 
 
 def XGBoostReg_YearPredictor(combined_Data_Training, target_Data_Training, preMasked_Data_Path, outPath, year_List, periodLen, DataFields, mask, params = {'eta': 0.3, #step size shrinkage used in updates to prevent overfitting (also called learning_rate)
@@ -1056,6 +1055,341 @@ def GBoost_skopt_classifier(X, y, outPath, n_calls = 50, n_estimators = 100, ran
     
     return (out_hyperParams)
 
+
+
+def XGBoostModel_Class(X_train, y_train, X_test, y_test, string_output = False, 
+                 params = {"learning_rate":0.1, "max_features": 5, 
+                                   "min_samples_split":15, "min_samples_leaf":33}):
+    '''
+    Conduct elastic net regression on training data and test predictive power against test data
+
+    :param X_train: dataframe containing training data features
+    :param y_train: dataframe containing training data responses
+    :return: elastic net model, MSE, R-squared
+    '''
+
+    xgbr = XGBClassifier(learning_rate = params["learning_rate"], 
+                        max_features = params['max_features'],
+                       min_samples_split = params['min_samples_split'],
+                       min_samples_leaf = params['min_samples_leaf'])
+
+    model = xgbr.fit(X_train, y_train.values)  #must convert y_train to values to prevent an erroneous error warning
+    predict_test = model.predict(data = X_test)
+    predict_risk = model.predict_proba(X_test)
+    predict_risk =  predict_risk[:, 1]
+
+    MSE = model.score(X_test, y_test)
+    R_Squared = r2_score(predict_test, y_test)
+    
+    Accuracy = skmetrics.accuracy_score(y_test, predict_test)
+    BalancedAccuracy = skmetrics.balanced_accuracy_score(y_test, predict_test)
+    f1_binary = skmetrics.f1_score(y_test, predict_test, average = 'binary')
+    f1_macro = skmetrics.f1_score(y_test, predict_test, average = 'macro')
+    f1_micro = skmetrics.f1_score(y_test, predict_test, average = 'micro')
+    log_loss = skmetrics.log_loss(y_test, predict_test, labels = [0,1])
+    recall_binary = skmetrics.recall_score(y_test, predict_test, average = 'binary')
+    recall_macro = skmetrics.recall_score(y_test, predict_test, average = 'macro')
+    recall_micro = skmetrics.recall_score(y_test, predict_test, average = 'micro')
+    jaccard_binary = skmetrics.jaccard_score(y_test, predict_test,average = 'binary')
+    jaccard_macro = skmetrics.jaccard_score(y_test, predict_test, average = 'macro')
+    jaccard_micro = skmetrics.jaccard_score(y_test, predict_test, average = 'micro')
+    roc_auc_macro = skmetrics.roc_auc_score(y_test, predict_risk, average = 'macro')
+    roc_auc_micro = skmetrics.roc_auc_score(y_test, predict_risk, average = 'micro')
+    
+    
+    
+    if string_output == True:
+      MSE = ("MSE = {}".format(MSE))
+      R_Squared = ("R-Squared = {}".format(R_Squared))
+    
+
+    return xgbr, MSE, R_Squared, f1_binary, f1_macro, f1_micro, log_loss, recall_binary, recall_macro, recall_micro, jaccard_binary, jaccard_macro, jaccard_micro, roc_auc_macro, roc_auc_micro, predict_test
+
+
+
+def XGBoostClass_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups, 
+                        DataFields, outPath, 
+                        params = None, cv = 10):
+
+    combined_Data, target_Data = random.TestTrain_GroupMaker(combined_Data, target_Data, 
+                                                             varsToGroupBy, 
+                                                             groupVars, 
+                                                             testGroups)
+
+    #get list of group ids, since in cases where group # <10, may not begin at zero
+    pixel_testVals = list(set(combined_Data[groupVars[0]].tolist()))
+    year_testVals = list(set(combined_Data[groupVars[1]].tolist()))
+
+    Models_Summary = pd.DataFrame([], columns = ['Pixels_Years_MSE', 'Pixels_MSE', 'Years_MSE', 
+                                             'Pixels_Years_R2', 'Pixels_R2', 'Years_R2',
+                                                'Pixels_Years_Accuracy', 'Pixels_Accuracy', 'Years_Accuracy',
+                                                'Pixels_Years_BalancedAccuracy', 'Pixels_BalancedAccuracy', 'Years_BalancedAccuracy',
+                                                'Pixels_Years_F1_binary', 'Pixels_F1_binary', 'Years_F1_binary',
+                                                'Pixels_Years_F1_Macro', 'Pixels_F1_Macro', 'Years_F1_Macro',
+                                                'Pixels_Years_F1_Micro', 'Pixels_F1_Micro', 'Years_F1_Micro',
+                                                'Pixels_Years_logLoss', 'Pixels_logLoss', 'Years_logLoss',
+                                                'Pixels_Years_recall_binary', 'Pixels_recall_binary', 'Years_recall_binary',
+                                                'Pixels_Years_recall_Macro', 'Pixels_recall_Macro', 'Years_recall_Macro',
+                                                'Pixels_Years_recall_Micro', 'Pixels_recall_Micro', 'Years_recall_Micro',
+                                                'Pixels_Years_jaccard_binary', 'Pixels_jaccard_binary', 'Years_jaccard_binary',
+                                                'Pixels_Years_jaccard_Macro', 'Pixels_jaccard_Macro', 'Years_jaccard_Macro',
+                                                'Pixels_Years_jaccard_Micro', 'Pixels_jaccard_Micro', 'Years_jaccard_Micro',
+                                                'Pixels_Years_roc_auc_Macro', 'Pixels_jaccard_roc_auc_Macro', 'Years_jaccard_roc_auc_Macro',
+                                                 'Pixels_Years_roc_auc_Micro', 'Pixels_jaccard_roc_auc_Micro', 'Years_jaccard_roc_auc_Micro'])
+
+    #used to create list of model runs
+    Models = []
+  
+  #used to create data for entry as columns into summary DataFrame
+    pixels_years_MSEList = []
+    pixels_MSEList = []
+    years_MSEList = []
+    pixels_years_R2List = []
+    pixels_R2List = []
+    years_R2List = []
+    
+    pixels_years_F1_binaryList = []
+    pixels_F1_binaryList = []
+    years_F1_binaryList = []
+    
+    pixels_years_F1_MacroList = []
+    pixels_F1_MacroList = []
+    years_F1_MacroList = []
+    
+    pixels_years_F1_MicroList = []
+    pixels_F1_MicroList = []
+    years_F1_MicroList = []
+    
+    pixels_years_logLossList = []
+    pixels_logLossList = []
+    years_logLossList = []
+    
+    pixels_years_recall_binaryList = []
+    pixels_recall_binaryList = []
+    years_recall_binaryList = []
+    
+    pixels_years_recall_MacroList = []
+    pixels_recall_MacroList = []
+    years_recall_MacroList = []
+    
+    pixels_years_recall_MicroList = []
+    pixels_recall_MicroList = []
+    years_recall_MicroList = []
+    
+    pixels_years_jaccard_binaryList = []
+    pixels_jaccard_binaryList = []
+    years_jaccard_binaryList = []
+    
+    pixels_years_jaccard_MacroList = []
+    pixels_jaccard_MacroList = []
+    years_jaccard_MacroList = []
+    
+    pixels_years_jaccard_MicroList = []
+    pixels_jaccard_MicroList = []
+    years_jaccard_MicroList = []
+    
+    pixels_years_roc_auc_MacroList = []
+    pixels_roc_auc_MacroList = []
+    years_roc_auc_MacroList = []
+    
+    pixels_years_roc_auc_MicroList = []
+    pixels_roc_auc_MicroList = []
+    years_roc_auc_MicroList = []
+
+    
+    
+  #used to create a list of lists of years that are excluded within each model run
+    excluded_Years = []
+
+
+     
+    selectedParams = params
+    
+    for x in pixel_testVals:
+
+
+        for y in year_testVals:
+            trainData_X = combined_Data[combined_Data[groupVars[0]] != x]
+            trainData_X = trainData_X[trainData_X[groupVars[1]] != y]
+            trainData_X = trainData_X.loc[:, DataFields]
+
+
+            trainData_y = target_Data[target_Data[groupVars[0]] != x]
+            trainData_y = trainData_y[trainData_y[groupVars[1]] != y]
+
+
+            testData_X_pixels_years = combined_Data[combined_Data[groupVars[0]] == x]
+            testData_X_pixels_years = testData_X_pixels_years[testData_X_pixels_years[groupVars[1]] == y]
+            testData_X_pixels_years = testData_X_pixels_years.loc[:, DataFields]
+
+            testData_X_pixels = combined_Data[combined_Data[groupVars[0]] == x]
+            testData_X_pixels = testData_X_pixels[testData_X_pixels[groupVars[1]] != y]
+            testData_X_pixels = testData_X_pixels.loc[:, DataFields]
+
+            testData_X_years = combined_Data[combined_Data[groupVars[0]] != x]
+            testData_X_years = testData_X_years[testData_X_years[groupVars[1]] == y]
+            testData_X_years = testData_X_years.loc[:, DataFields]
+
+
+
+            testData_y_pixels_years = target_Data[target_Data[groupVars[0]] == x]
+            testData_y_pixels_years = testData_y_pixels_years[testData_y_pixels_years[groupVars[1]] == y]
+
+
+            testData_y_pixels = target_Data[target_Data[groupVars[0]] == x]
+            testData_y_pixels = testData_y_pixels[testData_y_pixels[groupVars[1]] != y]
+
+
+            testData_y_years = target_Data[target_Data[groupVars[0]] != x]
+            testData_y_years = testData_y_years[testData_y_years[groupVars[1]] == y]
+            excluded_Years.append(list(set(testData_y_years[varsToGroupBy[1]].tolist())))
+
+            pixels_years_iterOutput = XGBoostModel_Class(trainData_X, trainData_y['value'], testData_X_pixels_years, testData_y_pixels_years['value'], selectedParams)
+            pixels_iterOutput = XGBoostModel_Class(trainData_X, trainData_y['value'], testData_X_pixels, testData_y_pixels['value'], selectedParams)
+            years_iterOutput = XGBoostModel_Class(trainData_X, trainData_y['value'], testData_X_years, testData_y_years['value'], selectedParams)
+
+
+            Models.append(pixels_years_iterOutput)
+
+
+            pixels_years_MSEList.append(pixels_years_iterOutput[1])
+            pixels_MSEList.append(pixels_iterOutput[1])
+            years_MSEList.append(years_iterOutput[1])
+
+            pixels_years_R2List.append(pixels_years_iterOutput[2])
+            pixels_R2List.append(pixels_iterOutput[2])
+            years_R2List.append(years_iterOutput[2])
+            
+            pixels_years_F1_binaryList.append(pixels_years_iterOutput[3])
+            pixels_F1_binaryList.append(pixels_iterOutput[3])
+            years_F1_binaryList.append(years_iterOutput[3])
+            
+            pixels_years_F1_MacroList.append(pixels_years_iterOutput[4])
+            pixels_F1_MacroList.append(pixels_iterOutput[4])
+            years_F1_MacroList.append(years_iterOutput[4])
+            
+            pixels_years_F1_MicroList.append(pixels_years_iterOutput[5])
+            pixels_F1_MicroList.append(pixels_iterOutput[5])
+            years_F1_MicroList.append(years_iterOutput[5])
+            
+            pixels_years_logLossList.append(pixels_years_iterOutput[6])
+            pixels_logLossList.append(pixels_iterOutput[6])
+            years_logLossList.append(years_iterOutput[6])
+            
+            pixels_years_recall_binaryList.append(pixels_years_iterOutput[7])
+            pixels_recall_binaryList.append(pixels_iterOutput[7])
+            years_recall_binaryList.append(years_iterOutput[7])
+            
+            pixels_years_recall_MacroList.append(pixels_years_iterOutput[8])
+            pixels_recall_MacroList.append(pixels_iterOutput[8])
+            years_recall_MacroList.append(years_iterOutput[8])
+            
+            pixels_years_recall_MicroList.append(pixels_years_iterOutput[9])
+            pixels_recall_MicroList.append(pixels_iterOutput[9])
+            years_recall_MicroList.append(years_iterOutput[9])
+            
+            pixels_years_jaccard_binaryList.append(pixels_years_iterOutput[10])
+            pixels_jaccard_binaryList.append(pixels_iterOutput[10])
+            years_jaccard_binaryList.append(years_iterOutput[10])
+            
+            pixels_years_jaccard_MacroList.append(pixels_years_iterOutput[10])
+            pixels_jaccard_MacroList.append(pixels_iterOutput[10])
+            years_jaccard_MacroList.append(years_iterOutput[10])
+            
+            pixels_years_jaccard_MicroList.append(pixels_years_iterOutput[10])
+            pixels_jaccard_MicroList.append(pixels_iterOutput[10])
+            years_jaccard_MicroList.append(years_iterOutput[10])
+            
+            pixels_years_roc_auc_MacroList.append(pixels_years_iterOutput[11])
+            pixels_roc_auc_MacroList.append(pixels_iterOutput[11])
+            years_roc_auc_MacroList.append(years_iterOutput[11])
+            
+            pixels_years_roc_auc_MicroList.append(pixels_years_iterOutput[11])
+            pixels_roc_auc_MicroList.append(pixels_iterOutput[11])
+            years_roc_auc_MicroList.append(years_iterOutput[11])
+            
+        
+    #combine MSE and R2 Lists into single DataFrame
+    Models_Summary['Pixels_Years_MSE'] = pixels_years_MSEList
+    Models_Summary['Pixels_MSE'] = pixels_MSEList
+    Models_Summary['Years_MSE'] = years_MSEList
+
+    Models_Summary['Pixels_Years_R2'] = pixels_years_R2List
+    Models_Summary['Pixels_R2'] = pixels_R2List
+    Models_Summary['Years_R2'] = years_R2List
+    
+    Models_Summary['Pixels_Years_F1_binaryList'] = pixels_years_F1_binaryList
+    Models_Summary['Pixels_F1_binaryList'] = pixels_F1_binaryList
+    Models_Summary['Years_F1_binaryList'] = years_F1_binaryList
+    
+    Models_Summary['Pixels_Years_F1_MacroList'] = pixels_years_F1_MacroList
+    Models_Summary['Pixels_F1_MacroList'] = pixels_F1_MacroList
+    Models_Summary['Years_F1_MacroList'] = years_F1_MacroList
+    
+    Models_Summary['Pixels_Years_F1_MicroList'] = pixels_years_F1_MicroList
+    Models_Summary['Pixels_F1_MicroList'] = pixels_F1_MicroList
+    Models_Summary['Years_F1_MicroList'] = years_F1_MicroList
+
+    Models_Summary['Pixels_Years_log_loss'] = pixels_years_logLossList
+    Models_Summary['Pixels_log_loss'] = pixels_logLossList
+    Models_Summary['Years_log_loss'] = years_logLossList
+    
+    Models_Summary['Pixels_Years_recall_binaryList'] = pixels_years_recall_binaryList
+    Models_Summary['Pixels_recall_binaryList'] = pixels_recall_binaryList
+    Models_Summary['Years_recall_binaryList'] = years_recall_binaryList
+    
+    Models_Summary['Pixels_Years_recall_MacroList'] = pixels_years_recall_MacroList
+    Models_Summary['Pixels_recall_MacroList'] = pixels_recall_MacroList
+    Models_Summary['Years_recall_MacroList'] = years_recall_MacroList
+    
+    Models_Summary['Pixels_Years_recall_MicroList'] = pixels_years_recall_MicroList
+    Models_Summary['Pixels_recall_MicroList'] = pixels_recall_MicroList
+    Models_Summary['Years_recall_MicroList'] = years_recall_MicroList
+    
+    Models_Summary['Pixels_Years_jaccard_binaryList'] = pixels_years_jaccard_binaryList
+    Models_Summary['Pixels_jaccard_binaryList'] = pixels_jaccard_binaryList
+    Models_Summary['Years_jaccard_binaryList'] = years_jaccard_binaryList
+    
+    Models_Summary['Pixels_Years_jaccard_MacroList'] = pixels_years_jaccard_MacroList
+    Models_Summary['Pixels_jaccard_MacroList'] = pixels_jaccard_MacroList
+    Models_Summary['Years_jaccard_MacroList'] = years_jaccard_MacroList
+    
+    Models_Summary['Pixels_Years_jaccard_MicroList'] = pixels_years_jaccard_MicroList
+    Models_Summary['Pixels_jaccard_MicroList'] = pixels_jaccard_MicroList
+    Models_Summary['Years_jaccard_MicroList'] = years_jaccard_MicroList
+    
+    Models_Summary['Pixels_Years_roc_auc_MacroList'] = pixels_years_roc_auc_MacroList
+    Models_Summary['Pixels_roc_auc_MacroList'] = pixels_roc_auc_MacroList
+    Models_Summary['Years_roc_auc_MacroList'] = years_roc_auc_MacroList
+    
+    Models_Summary['Pixels_Years_roc_auc_MicroList'] = pixels_years_roc_auc_MicroList
+    Models_Summary['Pixels_roc_auc_MicroList'] = pixels_roc_auc_MicroList
+    Models_Summary['Years_roc_auc_MicroList'] = years_roc_auc_MicroList
+    
+
+    print("pixels_Years MSE Overall: ", sum(pixels_years_MSEList)/len(pixels_years_MSEList))
+    print("pixels_Years R2 Overall: ", sum(pixels_years_R2List)/len(pixels_years_R2List))
+    #print("pixels_Years R2 iterations: ", pixels_years_R2List)
+    print("\n")
+    print("pixels MSE Overall: ", sum(pixels_MSEList)/len(pixels_MSEList))
+    print("pixels R2 Overall: ", sum(pixels_R2List)/len(pixels_R2List))
+    #print("pixels R2 iterations: ", pixels_R2List)
+    print("\n")
+    print("years MSE Overall: ", sum(years_MSEList)/len(years_MSEList))
+    print("years R2 Overall: ", sum(years_R2List)/len(years_R2List))
+    #print("years R2 iterations: ", years_R2List)
+    print("\n")
+
+    pickling_on = open(outPath + "XGBoost_2dim.pickle", "wb")
+    pickle.dump([combined_Data, target_Data, Models_Summary, Models, excluded_Years, selectedParams], pickling_on)
+    pickling_on.close
+
+    Models_Summary.to_csv(outPath + "Model_Summary_XGBOOST.csv")
+
+    return combined_Data, target_Data, Models_Summary, Models, excluded_Years, selectedParams
+ 
+
+
 def XGBoostReg_YearPredictor_Class(combined_Data_Training, target_Data_Training, 
                              preMasked_Data_Path, outPath, year_List, periodLen, 
                              DataFields, mask, params = None):
@@ -1161,16 +1495,34 @@ def LogisticModel(X_train, y_train, X_test, y_test, string_output = False,
 
     model = logReg.fit(X_train, y_train.values)  #must convert y_train to values to prevent an erroneous error warning
     predict_test = model.predict(X_test)
+    predict_risk = model.predict_proba(X_test)
+    predict_risk =  predict_risk[:, 1]
 
     MSE = model.score(X_test, y_test)
     R_Squared = r2_score(predict_test, y_test)
+    
+    Accuracy = skmetrics.accuracy_score(y_test, predict_test)
+    BalancedAccuracy = skmetrics.balanced_accuracy_score(y_test, predict_test)
+    f1_binary = skmetrics.f1_score(y_test, predict_test, average = 'binary')
+    f1_macro = skmetrics.f1_score(y_test, predict_test, average = 'macro')
+    f1_micro = skmetrics.f1_score(y_test, predict_test, average = 'micro')
+    log_loss = skmetrics.log_loss(y_test, predict_test, labels = [0,1])
+    recall_binary = skmetrics.recall_score(y_test, predict_test, average = 'binary')
+    recall_macro = skmetrics.recall_score(y_test, predict_test, average = 'macro')
+    recall_micro = skmetrics.recall_score(y_test, predict_test, average = 'micro')
+    jaccard_binary = skmetrics.jaccard_score(y_test, predict_test,average = 'binary')
+    jaccard_macro = skmetrics.jaccard_score(y_test, predict_test, average = 'macro')
+    jaccard_micro = skmetrics.jaccard_score(y_test, predict_test, average = 'micro')
+    roc_auc_macro = skmetrics.roc_auc_score(y_test, predict_risk, average = 'macro')
+    roc_auc_micro = skmetrics.roc_auc_score(y_test, predict_risk, average = 'micro')
     
     if string_output == True:
       MSE = ("MSE = {}".format(MSE))
       R_Squared = ("R-Squared = {}".format(R_Squared))
     
 
-    return logReg, MSE, R_Squared, predict_test
+    return logReg, MSE, R_Squared, f1_binary, f1_macro, f1_micro, log_loss, recall_binary, recall_macro, recall_micro, jaccard_binary, jaccard_macro, jaccard_micro, roc_auc_macro, roc_auc_micro, predict_test
+
 
 def LogReg_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups, 
                         DataFields, outPath, 
@@ -1186,7 +1538,22 @@ def LogReg_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGr
     year_testVals = list(set(combined_Data[groupVars[1]].tolist()))
 
     Models_Summary = pd.DataFrame([], columns = ['Pixels_Years_MSE', 'Pixels_MSE', 'Years_MSE', 
-                                             'Pixels_Years_R2', 'Pixels_R2', 'Years_R2'])
+                                             'Pixels_Years_R2', 'Pixels_R2', 'Years_R2',
+                                                'Pixels_Years_Accuracy', 'Pixels_Accuracy', 'Years_Accuracy',
+                                                'Pixels_Years_BalancedAccuracy', 'Pixels_BalancedAccuracy', 'Years_BalancedAccuracy',
+                                                'Pixels_Years_F1_binary', 'Pixels_F1_binary', 'Years_F1_binary',
+                                                'Pixels_Years_F1_Macro', 'Pixels_F1_Macro', 'Years_F1_Macro',
+                                                'Pixels_Years_F1_Micro', 'Pixels_F1_Micro', 'Years_F1_Micro',
+                                                'Pixels_Years_logLoss', 'Pixels_logLoss', 'Years_logLoss',
+                                                'Pixels_Years_recall_binary', 'Pixels_recall_binary', 'Years_recall_binary',
+                                                'Pixels_Years_recall_Macro', 'Pixels_recall_Macro', 'Years_recall_Macro',
+                                                'Pixels_Years_recall_Micro', 'Pixels_recall_Micro', 'Years_recall_Micro',
+                                                'Pixels_Years_jaccard_binary', 'Pixels_jaccard_binary', 'Years_jaccard_binary',
+                                                'Pixels_Years_jaccard_Macro', 'Pixels_jaccard_Macro', 'Years_jaccard_Macro',
+                                                'Pixels_Years_jaccard_Micro', 'Pixels_jaccard_Micro', 'Years_jaccard_Micro',
+                                                'Pixels_Years_roc_auc_Macro', 'Pixels_jaccard_roc_auc_Macro', 'Years_jaccard_roc_auc_Macro',
+                                                 'Pixels_Years_roc_auc_Micro', 'Pixels_jaccard_roc_auc_Micro', 'Years_jaccard_roc_auc_Micro'])
+
 
     #used to create list of model runs
     Models = []
@@ -1198,6 +1565,56 @@ def LogReg_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGr
     pixels_years_R2List = []
     pixels_R2List = []
     years_R2List = []
+    
+    pixels_years_F1_binaryList = []
+    pixels_F1_binaryList = []
+    years_F1_binaryList = []
+    
+    pixels_years_F1_MacroList = []
+    pixels_F1_MacroList = []
+    years_F1_MacroList = []
+    
+    pixels_years_F1_MicroList = []
+    pixels_F1_MicroList = []
+    years_F1_MicroList = []
+    
+    pixels_years_logLossList = []
+    pixels_logLossList = []
+    years_logLossList = []
+    
+    pixels_years_recall_binaryList = []
+    pixels_recall_binaryList = []
+    years_recall_binaryList = []
+    
+    pixels_years_recall_MacroList = []
+    pixels_recall_MacroList = []
+    years_recall_MacroList = []
+    
+    pixels_years_recall_MicroList = []
+    pixels_recall_MicroList = []
+    years_recall_MicroList = []
+    
+    pixels_years_jaccard_binaryList = []
+    pixels_jaccard_binaryList = []
+    years_jaccard_binaryList = []
+    
+    pixels_years_jaccard_MacroList = []
+    pixels_jaccard_MacroList = []
+    years_jaccard_MacroList = []
+    
+    pixels_years_jaccard_MicroList = []
+    pixels_jaccard_MicroList = []
+    years_jaccard_MicroList = []
+    
+    pixels_years_roc_auc_MacroList = []
+    pixels_roc_auc_MacroList = []
+    years_roc_auc_MacroList = []
+    
+    pixels_years_roc_auc_MicroList = []
+    pixels_roc_auc_MicroList = []
+    years_roc_auc_MicroList = []
+
+    
 
   #used to create a list of lists of years that are excluded within each model run
     excluded_Years = []
@@ -1260,6 +1677,55 @@ def LogReg_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGr
             pixels_years_R2List.append(pixels_years_iterOutput[2])
             pixels_R2List.append(pixels_iterOutput[2])
             years_R2List.append(years_iterOutput[2])
+            
+            pixels_years_F1_binaryList.append(pixels_years_iterOutput[3])
+            pixels_F1_binaryList.append(pixels_iterOutput[3])
+            years_F1_binaryList.append(years_iterOutput[3])
+            
+            pixels_years_F1_MacroList.append(pixels_years_iterOutput[4])
+            pixels_F1_MacroList.append(pixels_iterOutput[4])
+            years_F1_MacroList.append(years_iterOutput[4])
+            
+            pixels_years_F1_MicroList.append(pixels_years_iterOutput[5])
+            pixels_F1_MicroList.append(pixels_iterOutput[5])
+            years_F1_MicroList.append(years_iterOutput[5])
+            
+            pixels_years_logLossList.append(pixels_years_iterOutput[6])
+            pixels_logLossList.append(pixels_iterOutput[6])
+            years_logLossList.append(years_iterOutput[6])
+            
+            pixels_years_recall_binaryList.append(pixels_years_iterOutput[7])
+            pixels_recall_binaryList.append(pixels_iterOutput[7])
+            years_recall_binaryList.append(years_iterOutput[7])
+            
+            pixels_years_recall_MacroList.append(pixels_years_iterOutput[8])
+            pixels_recall_MacroList.append(pixels_iterOutput[8])
+            years_recall_MacroList.append(years_iterOutput[8])
+            
+            pixels_years_recall_MicroList.append(pixels_years_iterOutput[9])
+            pixels_recall_MicroList.append(pixels_iterOutput[9])
+            years_recall_MicroList.append(years_iterOutput[9])
+            
+            pixels_years_jaccard_binaryList.append(pixels_years_iterOutput[10])
+            pixels_jaccard_binaryList.append(pixels_iterOutput[10])
+            years_jaccard_binaryList.append(years_iterOutput[10])
+            
+            pixels_years_jaccard_MacroList.append(pixels_years_iterOutput[10])
+            pixels_jaccard_MacroList.append(pixels_iterOutput[10])
+            years_jaccard_MacroList.append(years_iterOutput[10])
+            
+            pixels_years_jaccard_MicroList.append(pixels_years_iterOutput[10])
+            pixels_jaccard_MicroList.append(pixels_iterOutput[10])
+            years_jaccard_MicroList.append(years_iterOutput[10])
+            
+            pixels_years_roc_auc_MacroList.append(pixels_years_iterOutput[11])
+            pixels_roc_auc_MacroList.append(pixels_iterOutput[11])
+            years_roc_auc_MacroList.append(years_iterOutput[11])
+            
+            pixels_years_roc_auc_MicroList.append(pixels_years_iterOutput[11])
+            pixels_roc_auc_MicroList.append(pixels_iterOutput[11])
+            years_roc_auc_MicroList.append(years_iterOutput[11])
+            
         
     #combine MSE and R2 Lists into single DataFrame
     Models_Summary['Pixels_Years_MSE'] = pixels_years_MSEList
@@ -1269,6 +1735,56 @@ def LogReg_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGr
     Models_Summary['Pixels_Years_R2'] = pixels_years_R2List
     Models_Summary['Pixels_R2'] = pixels_R2List
     Models_Summary['Years_R2'] = years_R2List
+    
+    Models_Summary['Pixels_Years_F1_binaryList'] = pixels_years_F1_binaryList
+    Models_Summary['Pixels_F1_binaryList'] = pixels_F1_binaryList
+    Models_Summary['Years_F1_binaryList'] = years_F1_binaryList
+    
+    Models_Summary['Pixels_Years_F1_MacroList'] = pixels_years_F1_MacroList
+    Models_Summary['Pixels_F1_MacroList'] = pixels_F1_MacroList
+    Models_Summary['Years_F1_MacroList'] = years_F1_MacroList
+    
+    Models_Summary['Pixels_Years_F1_MicroList'] = pixels_years_F1_MicroList
+    Models_Summary['Pixels_F1_MicroList'] = pixels_F1_MicroList
+    Models_Summary['Years_F1_MicroList'] = years_F1_MicroList
+
+    Models_Summary['Pixels_Years_log_loss'] = pixels_years_logLossList
+    Models_Summary['Pixels_log_loss'] = pixels_logLossList
+    Models_Summary['Years_log_loss'] = years_logLossList
+    
+    Models_Summary['Pixels_Years_recall_binaryList'] = pixels_years_recall_binaryList
+    Models_Summary['Pixels_recall_binaryList'] = pixels_recall_binaryList
+    Models_Summary['Years_recall_binaryList'] = years_recall_binaryList
+    
+    Models_Summary['Pixels_Years_recall_MacroList'] = pixels_years_recall_MacroList
+    Models_Summary['Pixels_recall_MacroList'] = pixels_recall_MacroList
+    Models_Summary['Years_recall_MacroList'] = years_recall_MacroList
+    
+    Models_Summary['Pixels_Years_recall_MicroList'] = pixels_years_recall_MicroList
+    Models_Summary['Pixels_recall_MicroList'] = pixels_recall_MicroList
+    Models_Summary['Years_recall_MicroList'] = years_recall_MicroList
+    
+    Models_Summary['Pixels_Years_jaccard_binaryList'] = pixels_years_jaccard_binaryList
+    Models_Summary['Pixels_jaccard_binaryList'] = pixels_jaccard_binaryList
+    Models_Summary['Years_jaccard_binaryList'] = years_jaccard_binaryList
+    
+    Models_Summary['Pixels_Years_jaccard_MacroList'] = pixels_years_jaccard_MacroList
+    Models_Summary['Pixels_jaccard_MacroList'] = pixels_jaccard_MacroList
+    Models_Summary['Years_jaccard_MacroList'] = years_jaccard_MacroList
+    
+    Models_Summary['Pixels_Years_jaccard_MicroList'] = pixels_years_jaccard_MicroList
+    Models_Summary['Pixels_jaccard_MicroList'] = pixels_jaccard_MicroList
+    Models_Summary['Years_jaccard_MicroList'] = years_jaccard_MicroList
+    
+    Models_Summary['Pixels_Years_roc_auc_MacroList'] = pixels_years_roc_auc_MacroList
+    Models_Summary['Pixels_roc_auc_MacroList'] = pixels_roc_auc_MacroList
+    Models_Summary['Years_roc_auc_MacroList'] = years_roc_auc_MacroList
+    
+    Models_Summary['Pixels_Years_roc_auc_MicroList'] = pixels_years_roc_auc_MicroList
+    Models_Summary['Pixels_roc_auc_MicroList'] = pixels_roc_auc_MicroList
+    Models_Summary['Years_roc_auc_MicroList'] = years_roc_auc_MicroList
+    
+
 
 
     print("pixels_Years MSE Overall: ", sum(pixels_years_MSEList)/len(pixels_years_MSEList))
@@ -1291,6 +1807,7 @@ def LogReg_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGr
     Models_Summary.to_csv(outPath + "Model_Summary_LogisticModel.csv")
 
     return combined_Data, target_Data, Models_Summary, Models, excluded_Years, selectedParams
+ 
 
 def LogReg_YearPredictor(combined_Data_Training, target_Data_Training, 
                              preMasked_Data_Path, outPath, year_List, periodLen, 
@@ -1357,7 +1874,7 @@ def LogReg_YearPredictor(combined_Data_Training, target_Data_Training,
         data.to_csv(outPath + "PredClass_" + str(iterYear) + ".csv")
         
         #output predicted risk as tiff
-        seriesToRaster(data['PredClass_Masked'], mask, outPath + "LogReg_PredClass_" + str(iterYear) + "_" + str(iterYear + periodLen - 1) + "XGBoost.tif")
+        seriesToRaster(data['PredClass_Masked'], mask, outPath + "LogReg_PredClass_" + str(iterYear) + "_" + str(iterYear + periodLen - 1) + ".tif")
         
         data_risk = iter_Fit.predict_proba(full_X)
         
@@ -1371,7 +1888,7 @@ def LogReg_YearPredictor(combined_Data_Training, target_Data_Training,
         data.to_csv(outPath + "LogReg_PredRisk_" + str(iterYear) + ".csv")
         
         #output predicted risk as tiff
-        seriesToRaster(data['PredRisk_Masked'], mask, outPath + "LogReg_PredRisk_" + str(iterYear) + "_" + str(iterYear + periodLen - 1) + "XGBoost.tif")
+        seriesToRaster(data['PredRisk_Masked'], mask, outPath + "LogReg_PredRisk_" + str(iterYear) + "_" + str(iterYear + periodLen - 1) + ".tif")
         
         
         
