@@ -1310,6 +1310,14 @@ def XGBoostClass_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, 
             
         
     #combine MSE and R2 Lists into single DataFrame
+    Models_Summary['Pixels_Years_MSE'] = pixels_years_MSEList
+    Models_Summary['Pixels_MSE'] = pixels_MSEList
+    Models_Summary['Years_MSE'] = years_MSEList
+
+    Models_Summary['Pixels_Years_R2'] = pixels_years_R2List
+    Models_Summary['Pixels_R2'] = pixels_R2List
+    Models_Summary['Years_R2'] = years_R2List
+
     Models_Summary['Pixels_Years_F1_binary'] = pixels_years_F1_binaryList
     Models_Summary['Pixels_F1_binary'] = pixels_F1_binaryList
     Models_Summary['Years_F1_binary'] = years_F1_binaryList
