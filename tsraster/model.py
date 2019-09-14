@@ -1415,7 +1415,7 @@ def XGBoostReg_YearPredictor_Class(combined_Data_Training, target_Data_Training,
     :param Datafields: list of explanatory factors to be intered into model
     :param mask: filepath of raster mask to be used in masking output predictions, 
             and as an example raster for choosing array shape and projections for .tif output files
-    :param params: parameters for XGBOOST regression (presumably developed from 2dimCrossval)
+    :param params: hyperparameters for XGBOOST regression (presumably developed from 2dimCrossval)
     :return:  returns a list of all models, accompanied by a list of years being predicted 
             - note - return output is equivalent to data exported as models.pickle
     '''
@@ -1535,7 +1535,39 @@ def LogisticModel(X_train, y_train, X_test, y_test, string_output = False,
 
 def LogReg_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups, 
                         DataFields, outPath, 
-                        params = None, cv = 10):
+                        params = None):
+
+'''Conduct logistic regressions on the data, with k-fold cross-validation conducted independently 
+      across both years and pixels. 
+      Returns a variety of diagnostics of model performance (including f1 scores, recall, and average precision) 
+      when predicting fire risk at 
+      A) locations outside of the training dataset
+      B) years outside of the training dataset
+      C) locations and years outside of the training dataset
+
+    Returns a list of objects, consisting of:
+      0: Combined_Data file with testing/training groups labeled
+      1: Target Data file with testing/training groups labeled
+      2: summary dataFrame of MSE and R2 for each model run
+          (against holdout data representing either novel locations, novel years, or both)
+      3: list of elastic net models for use in predicting Fires in further locations/years
+      4: list of list of years not used in model training for each run
+  
+
+  :param combined_Data: explanatory factors to be used in predicting fire risk
+  :param target_Data: observed fire occurrences
+  :param varsToGroupBy: list of (2) column names from combined_Data & target_Data to be used in creating randomized groups
+  :param groupVars: list of (2) desired column names for the resulting randomized groups
+  :param testGroups: number of distinct groups into which data sets should be divided (for each of two variables) 
+  :param DataFields: list of data fields to be included for consideration in model construction
+  :param outPath: path in which to place generated files
+  :param params: hyperparameters to be used in model construction
+  
+  
+  #Create randomly assigned groups of equal size by which to separate out subsets of data 
+  #by years and by pixels for training and testing to (test against 
+  #A) temporally alien, B) spatially alien, and C) completely alien conditions)
+'''
 
     combined_Data, target_Data = random.TestTrain_GroupMaker(combined_Data, target_Data, 
                                                              varsToGroupBy, 
