@@ -1103,8 +1103,16 @@ def XGBoostModel_Class(X_train, y_train, X_test, y_test, string_output = False,
       MSE = ("MSE = {}".format(MSE))
       R_Squared = ("R-Squared = {}".format(R_Squared))
     
+    #feature importances:
+    gain = pd.DataFrame([X_train.columns, model.get_booster().get_score(importance_type = 'gain')]) #average gain
+    t_gain = pd.DataFrame([X_train.columns, model.get_booster().get_score(importance_type = 'total_gain')])  #total gain
+    cover = pd.DataFrame([X_train.columns, model.get_booster().get_score(importance_type = 'cover')]) # coverage - mean quantity of observations concerned by a feature
+    t_cover = pd.DataFrame([X_train.columns, model.get_booster().get_score(importance_type = 'total_cover')]) # total quantity of observations concerned by a feature
+    weight = pd.DataFrame([X_train.columns, model.get_booster().get_score(importance_type = 'weight')]) # % representing the number of times a particular feature occurs in the trees of the model
+    f_importances = {'gain': gain, 't_gain': t_gain, 'cover':cover, 't_cover': t_cover, 'weight':weight}
+        
 
-    return xgbr, MSE, R_Squared, f1_binary, f1_macro, f1_micro, log_loss, recall_binary, recall_macro, recall_micro, jaccard_binary, jaccard_macro, jaccard_micro, roc_auc_macro, roc_auc_micro, average_precision, predict_test
+    return xgbr, MSE, R_Squared, f1_binary, f1_macro, f1_micro, log_loss, recall_binary, recall_macro, recall_micro, jaccard_binary, jaccard_macro, jaccard_micro, roc_auc_macro, roc_auc_micro, average_precision, f_importances, predict_test
 
 
 def XGBoostClass_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups, 
@@ -1140,6 +1148,8 @@ def XGBoostClass_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, 
 
     #used to create list of model runs
     Models = []
+    
+    
   
   #used to create data for entry as columns into summary DataFrame
     pixels_years_MSEList = []
@@ -1295,23 +1305,40 @@ def XGBoostClass_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, 
             pixels_jaccard_binaryList.append(pixels_iterOutput[10])
             years_jaccard_binaryList.append(years_iterOutput[10])
             
-            pixels_years_jaccard_MacroList.append(pixels_years_iterOutput[10])
-            pixels_jaccard_MacroList.append(pixels_iterOutput[10])
-            years_jaccard_MacroList.append(years_iterOutput[10])
+            pixels_years_jaccard_MacroList.append(pixels_years_iterOutput[11])
+            pixels_jaccard_MacroList.append(pixels_iterOutput[11])
+            years_jaccard_MacroList.append(years_iterOutput[11])
             
-            pixels_years_jaccard_MicroList.append(pixels_years_iterOutput[10])
-            pixels_jaccard_MicroList.append(pixels_iterOutput[10])
-            years_jaccard_MicroList.append(years_iterOutput[10])
+            pixels_years_jaccard_MicroList.append(pixels_years_iterOutput[12])
+            pixels_jaccard_MicroList.append(pixels_iterOutput[12])
+            years_jaccard_MicroList.append(years_iterOutput[12])
             
-            pixels_years_roc_auc_MacroList.append(pixels_years_iterOutput[11])
-            pixels_roc_auc_MacroList.append(pixels_iterOutput[11])
-            years_roc_auc_MacroList.append(years_iterOutput[11])
+            pixels_years_roc_auc_MacroList.append(pixels_years_iterOutput[13])
+            pixels_roc_auc_MacroList.append(pixels_iterOutput[13])
+            years_roc_auc_MacroList.append(years_iterOutput[13])
             
-            pixels_years_roc_auc_MicroList.append(pixels_years_iterOutput[11])
-            pixels_roc_auc_MicroList.append(pixels_iterOutput[11])
-            years_roc_auc_MicroList.append(years_iterOutput[11])
+            pixels_years_roc_auc_MicroList.append(pixels_years_iterOutput[14])
+            pixels_roc_auc_MicroList.append(pixels_iterOutput[14])
+            years_roc_auc_MicroList.append(years_iterOutput[14])
             
-            average_precisionList.append(years_iterOutput[12])
+            average_precisionList.append(years_iterOutput[15])
+            
+            
+            if((x==0) and (y==0)):
+                    
+                gainFrame = years_iterOutput[16]['gain']
+                t_gainFrame = years_iterOutput[16]['t_gain']
+                coverFrame = years_iterOutput[16]['cover']
+                t_coverFrame = years_iterOutput[16]['t_cover']
+                weightFrame = years_iterOutput[16]['weight']
+            
+            elif ((x!=0) | (y!=0)):
+                gainFrame.append(years_iterOutput[16]['gain'])
+                t_gainFrame.append(years_iterOutput[16]['t_gain'])
+                coverFrame.append(years_iterOutput[16]['cover'])
+                t_coverFrame.append(years_iterOutput[16]['t_cover'])
+                weightFrame.append(years_iterOutput[16]['weight'])
+                
             
         
     #combine MSE and R2 Lists into single DataFrame
@@ -1392,9 +1419,14 @@ def XGBoostClass_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, 
     pickling_on.close
 
     Models_Summary.to_csv(outPath + "Model_Summary_XGBOOST.csv")
+    
+    gainFrame.to_csv(outPath + "feature_gain_XGBOOST.csv")
+    t_gainFrame.to_csv(outPath + "feature_t_gain_XGBOOST.csv")
+    cover.to_csv(outPath + "feature_cover_XGBOOST.csv")
+    t_cover.to_csv(outPath + "feature_t_cover_XGBOOST.csv")
+    weight.to_csv(outPath + "feature_weight_XGBOOST.csv")
 
     return combined_Data, target_Data, Models_Summary, Models, excluded_Years, selectedParams
-
  
 
 
@@ -1537,37 +1569,37 @@ def LogReg_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGr
                         DataFields, outPath, 
                         params = None):
 
-'''Conduct logistic regressions on the data, with k-fold cross-validation conducted independently 
-      across both years and pixels. 
-      Returns a variety of diagnostics of model performance (including f1 scores, recall, and average precision) 
-      when predicting fire risk at 
-      A) locations outside of the training dataset
-      B) years outside of the training dataset
-      C) locations and years outside of the training dataset
+    '''Conduct logistic regressions on the data, with k-fold cross-validation conducted independently 
+        across both years and pixels. 
+        Returns a variety of diagnostics of model performance (including f1 scores, recall, and average precision) 
+        when predicting fire risk at 
+        A) locations outside of the training dataset
+        B) years outside of the training dataset
+        C) locations and years outside of the training dataset
 
-    Returns a list of objects, consisting of:
-      0: Combined_Data file with testing/training groups labeled
-      1: Target Data file with testing/training groups labeled
-      2: summary dataFrame of MSE and R2 for each model run
-          (against holdout data representing either novel locations, novel years, or both)
-      3: list of elastic net models for use in predicting Fires in further locations/years
-      4: list of list of years not used in model training for each run
-  
+      Returns a list of objects, consisting of:
+        0: Combined_Data file with testing/training groups labeled
+        1: Target Data file with testing/training groups labeled
+        2: summary dataFrame of MSE and R2 for each model run
+            (against holdout data representing either novel locations, novel years, or both)
+        3: list of elastic net models for use in predicting Fires in further locations/years
+        4: list of list of years not used in model training for each run
+    
 
-  :param combined_Data: explanatory factors to be used in predicting fire risk
-  :param target_Data: observed fire occurrences
-  :param varsToGroupBy: list of (2) column names from combined_Data & target_Data to be used in creating randomized groups
-  :param groupVars: list of (2) desired column names for the resulting randomized groups
-  :param testGroups: number of distinct groups into which data sets should be divided (for each of two variables) 
-  :param DataFields: list of data fields to be included for consideration in model construction
-  :param outPath: path in which to place generated files
-  :param params: hyperparameters to be used in model construction
-  
-  
-  #Create randomly assigned groups of equal size by which to separate out subsets of data 
-  #by years and by pixels for training and testing to (test against 
-  #A) temporally alien, B) spatially alien, and C) completely alien conditions)
-'''
+    :param combined_Data: explanatory factors to be used in predicting fire risk
+    :param target_Data: observed fire occurrences
+    :param varsToGroupBy: list of (2) column names from combined_Data & target_Data to be used in creating randomized groups
+    :param groupVars: list of (2) desired column names for the resulting randomized groups
+    :param testGroups: number of distinct groups into which data sets should be divided (for each of two variables) 
+    :param DataFields: list of data fields to be included for consideration in model construction
+    :param outPath: path in which to place generated files
+    :param params: hyperparameters to be used in model construction
+    
+    
+    #Create randomly assigned groups of equal size by which to separate out subsets of data 
+    #by years and by pixels for training and testing to (test against 
+    #A) temporally alien, B) spatially alien, and C) completely alien conditions)
+    '''
 
     combined_Data, target_Data = random.TestTrain_GroupMaker(combined_Data, target_Data, 
                                                              varsToGroupBy, 
