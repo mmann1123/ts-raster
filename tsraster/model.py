@@ -1104,16 +1104,15 @@ def XGBoostModel_Class(X_train, y_train, X_test, y_test, string_output = False,
       R_Squared = ("R-Squared = {}".format(R_Squared))
     
     #feature importances:
-    gain = pd.DataFrame([X_train.columns, model.get_booster().get_score(importance_type = 'gain')]) #average gain
-    t_gain = pd.DataFrame([X_train.columns, model.get_booster().get_score(importance_type = 'total_gain')])  #total gain
-    cover = pd.DataFrame([X_train.columns, model.get_booster().get_score(importance_type = 'cover')]) # coverage - mean quantity of observations concerned by a feature
-    t_cover = pd.DataFrame([X_train.columns, model.get_booster().get_score(importance_type = 'total_cover')]) # total quantity of observations concerned by a feature
-    weight = pd.DataFrame([X_train.columns, model.get_booster().get_score(importance_type = 'weight')]) # % representing the number of times a particular feature occurs in the trees of the model
+    gain = pd.DataFrame([ model.get_booster().get_score(importance_type = 'gain')]) #average gain
+    t_gain = pd.DataFrame([ model.get_booster().get_score(importance_type = 'total_gain')])  #total gain
+    cover = pd.DataFrame([ model.get_booster().get_score(importance_type = 'cover')]) # coverage - mean quantity of observations concerned by a feature
+    t_cover = pd.DataFrame([model.get_booster().get_score(importance_type = 'total_cover')]) # total quantity of observations concerned by a feature
+    weight = pd.DataFrame([ model.get_booster().get_score(importance_type = 'weight')]) # % representing the number of times a particular feature occurs in the trees of the model
     f_importances = {'gain': gain, 't_gain': t_gain, 'cover':cover, 't_cover': t_cover, 'weight':weight}
         
 
     return xgbr, MSE, R_Squared, f1_binary, f1_macro, f1_micro, log_loss, recall_binary, recall_macro, recall_micro, jaccard_binary, jaccard_macro, jaccard_micro, roc_auc_macro, roc_auc_micro, average_precision, f_importances, predict_test
-
 
 def XGBoostClass_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups, 
                         DataFields, outPath, 
@@ -1333,11 +1332,11 @@ def XGBoostClass_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, 
                 weightFrame = years_iterOutput[16]['weight']
             
             elif ((x!=0) | (y!=0)):
-                gainFrame.append(years_iterOutput[16]['gain'])
-                t_gainFrame.append(years_iterOutput[16]['t_gain'])
-                coverFrame.append(years_iterOutput[16]['cover'])
-                t_coverFrame.append(years_iterOutput[16]['t_cover'])
-                weightFrame.append(years_iterOutput[16]['weight'])
+                gainFrame = gainFrame.append(years_iterOutput[16]['gain'])
+                t_gainFrame = t_gainFrame.append(years_iterOutput[16]['t_gain'])
+                coverFrame = coverFrame.append(years_iterOutput[16]['cover'])
+                t_coverFrame = t_coverFrame.append(years_iterOutput[16]['t_cover'])
+                weightFrame = weightFrame.append(years_iterOutput[16]['weight'])
                 
             
         
@@ -1422,9 +1421,9 @@ def XGBoostClass_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, 
     
     gainFrame.to_csv(outPath + "feature_gain_XGBOOST.csv")
     t_gainFrame.to_csv(outPath + "feature_t_gain_XGBOOST.csv")
-    cover.to_csv(outPath + "feature_cover_XGBOOST.csv")
-    t_cover.to_csv(outPath + "feature_t_cover_XGBOOST.csv")
-    weight.to_csv(outPath + "feature_weight_XGBOOST.csv")
+    coverFrame.to_csv(outPath + "feature_cover_XGBOOST.csv")
+    t_coverFrame.to_csv(outPath + "feature_t_cover_XGBOOST.csv")
+    weightFrame.to_csv(outPath + "feature_weight_XGBOOST.csv")
 
     return combined_Data, target_Data, Models_Summary, Models, excluded_Years, selectedParams
  
