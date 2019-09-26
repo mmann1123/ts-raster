@@ -1556,13 +1556,14 @@ def LogisticModel(X_train, y_train, X_test, y_test, string_output = False,
     roc_auc_micro = skmetrics.roc_auc_score(y_test, predict_risk, average = 'micro')
     average_precision = skmetrics.roc_auc_score(y_test, predict_risk)
     
+    coef_Frame  = pd.DataFrame(model.coef_, columns = X_train.columns)
+    
     if string_output == True:
       MSE = ("MSE = {}".format(MSE))
       R_Squared = ("R-Squared = {}".format(R_Squared))
     
 
-    return logReg, MSE, R_Squared, f1_binary, f1_macro, f1_micro, log_loss, recall_binary, recall_macro, recall_micro, jaccard_binary, jaccard_macro, jaccard_micro, roc_auc_macro, roc_auc_micro, average_precision, predict_test
-
+    return logReg, MSE, R_Squared, f1_binary, f1_macro, f1_micro, log_loss, recall_binary, recall_macro, recall_micro, jaccard_binary, jaccard_macro, jaccard_micro, roc_auc_macro, roc_auc_micro, average_precision, predict_test, coef_Frame
 
 def LogReg_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups, 
                         DataFields, outPath, 
@@ -1651,6 +1652,244 @@ def LogReg_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGr
     pixels_F1_MicroList = []
     years_F1_MicroList = []
     
+    pixels_years_logLossList = []
+    pixels_logLossList = []
+    years_logLossList = []
+    
+    pixels_years_recall_binaryList = []
+    pixels_recall_binaryList = []
+    years_recall_binaryList = []
+    
+    pixels_years_recall_MacroList = []
+    pixels_recall_MacroList = []
+    years_recall_MacroList = []
+    
+    pixels_years_recall_MicroList = []
+    pixels_recall_MicroList = []
+    years_recall_MicroList = []
+    
+    pixels_years_jaccard_binaryList = []
+    pixels_jaccard_binaryList = []
+    years_jaccard_binaryList = []
+    
+    pixels_years_jaccard_MacroList = []
+    pixels_jaccard_MacroList = []
+    years_jaccard_MacroList = []
+    
+    pixels_years_jaccard_MicroList = []
+    pixels_jaccard_MicroList = []
+    years_jaccard_MicroList = []
+    
+    pixels_years_roc_auc_MacroList = []
+    pixels_roc_auc_MacroList = []
+    years_roc_auc_MacroList = []
+    
+    pixels_years_roc_auc_MicroList = []
+    pixels_roc_auc_MicroList = []
+    years_roc_auc_MicroList = []
+    
+    average_precisionList = []
+
+    coef_Frame = pd.DataFrame([], columns = combined_Data.columns)
+
+  #used to create a list of lists of years that are excluded within each model run
+    excluded_Years = []
+
+
+     
+    selectedParams = params
+    
+    for x in pixel_testVals:
+
+
+        for y in year_testVals:
+            trainData_X = combined_Data[combined_Data[groupVars[0]] != x]
+            trainData_X = trainData_X[trainData_X[groupVars[1]] != y]
+            trainData_X = trainData_X.loc[:, DataFields]
+
+
+            trainData_y = target_Data[target_Data[groupVars[0]] != x]
+            trainData_y = trainData_y[trainData_y[groupVars[1]] != y]
+
+
+            testData_X_pixels_years = combined_Data[combined_Data[groupVars[0]] == x]
+            testData_X_pixels_years = testData_X_pixels_years[testData_X_pixels_years[groupVars[1]] == y]
+            testData_X_pixels_years = testData_X_pixels_years.loc[:, DataFields]
+
+            testData_X_pixels = combined_Data[combined_Data[groupVars[0]] == x]
+            testData_X_pixels = testData_X_pixels[testData_X_pixels[groupVars[1]] != y]
+            testData_X_pixels = testData_X_pixels.loc[:, DataFields]
+
+            testData_X_years = combined_Data[combined_Data[groupVars[0]] != x]
+            testData_X_years = testData_X_years[testData_X_years[groupVars[1]] == y]
+            testData_X_years = testData_X_years.loc[:, DataFields]
+
+
+
+            testData_y_pixels_years = target_Data[target_Data[groupVars[0]] == x]
+            testData_y_pixels_years = testData_y_pixels_years[testData_y_pixels_years[groupVars[1]] == y]
+
+
+            testData_y_pixels = target_Data[target_Data[groupVars[0]] == x]
+            testData_y_pixels = testData_y_pixels[testData_y_pixels[groupVars[1]] != y]
+
+
+            testData_y_years = target_Data[target_Data[groupVars[0]] != x]
+            testData_y_years = testData_y_years[testData_y_years[groupVars[1]] == y]
+            excluded_Years.append(list(set(testData_y_years[varsToGroupBy[1]].tolist())))
+
+            pixels_years_iterOutput = LogisticModel(trainData_X, trainData_y['value'], testData_X_pixels_years, testData_y_pixels_years['value'], selectedParams)
+            pixels_iterOutput = LogisticModel(trainData_X, trainData_y['value'], testData_X_pixels, testData_y_pixels['value'], selectedParams)
+            years_iterOutput = LogisticModel(trainData_X, trainData_y['value'], testData_X_years, testData_y_years['value'], selectedParams)
+
+
+            Models.append(pixels_years_iterOutput)
+
+
+            pixels_years_MSEList.append(pixels_years_iterOutput[1])
+            pixels_MSEList.append(pixels_iterOutput[1])
+            years_MSEList.append(years_iterOutput[1])
+
+            pixels_years_R2List.append(pixels_years_iterOutput[2])
+            pixels_R2List.append(pixels_iterOutput[2])
+            years_R2List.append(years_iterOutput[2])
+            
+            pixels_years_F1_binaryList.append(pixels_years_iterOutput[3])
+            pixels_F1_binaryList.append(pixels_iterOutput[3])
+            years_F1_binaryList.append(years_iterOutput[3])
+            
+            pixels_years_F1_MacroList.append(pixels_years_iterOutput[4])
+            pixels_F1_MacroList.append(pixels_iterOutput[4])
+            years_F1_MacroList.append(years_iterOutput[4])
+            
+            pixels_years_F1_MicroList.append(pixels_years_iterOutput[5])
+            pixels_F1_MicroList.append(pixels_iterOutput[5])
+            years_F1_MicroList.append(years_iterOutput[5])
+            
+            pixels_years_logLossList.append(pixels_years_iterOutput[6])
+            pixels_logLossList.append(pixels_iterOutput[6])
+            years_logLossList.append(years_iterOutput[6])
+            
+            pixels_years_recall_binaryList.append(pixels_years_iterOutput[7])
+            pixels_recall_binaryList.append(pixels_iterOutput[7])
+            years_recall_binaryList.append(years_iterOutput[7])
+            
+            pixels_years_recall_MacroList.append(pixels_years_iterOutput[8])
+            pixels_recall_MacroList.append(pixels_iterOutput[8])
+            years_recall_MacroList.append(years_iterOutput[8])
+            
+            pixels_years_recall_MicroList.append(pixels_years_iterOutput[9])
+            pixels_recall_MicroList.append(pixels_iterOutput[9])
+            years_recall_MicroList.append(years_iterOutput[9])
+            
+            pixels_years_jaccard_binaryList.append(pixels_years_iterOutput[10])
+            pixels_jaccard_binaryList.append(pixels_iterOutput[10])
+            years_jaccard_binaryList.append(years_iterOutput[10])
+            
+            pixels_years_jaccard_MacroList.append(pixels_years_iterOutput[11])
+            pixels_jaccard_MacroList.append(pixels_iterOutput[11])
+            years_jaccard_MacroList.append(years_iterOutput[11])
+            
+            pixels_years_jaccard_MicroList.append(pixels_years_iterOutput[12])
+            pixels_jaccard_MicroList.append(pixels_iterOutput[12])
+            years_jaccard_MicroList.append(years_iterOutput[12])
+            
+            pixels_years_roc_auc_MacroList.append(pixels_years_iterOutput[13])
+            pixels_roc_auc_MacroList.append(pixels_iterOutput[13])
+            years_roc_auc_MacroList.append(years_iterOutput[13])
+            
+            pixels_years_roc_auc_MicroList.append(pixels_years_iterOutput[14])
+            pixels_roc_auc_MicroList.append(pixels_iterOutput[14])
+            years_roc_auc_MicroList.append(years_iterOutput[14])
+
+            average_precisionList.append(years_iterOutput[15])
+            
+            
+            coef_Frame = coef_Frame.append(years_iterOutput[17])
+            
+        
+    #combine MSE and R2 Lists into single DataFrame
+    Models_Summary['Pixels_Years_MSE'] = pixels_years_MSEList
+    Models_Summary['Pixels_MSE'] = pixels_MSEList
+    Models_Summary['Years_MSE'] = years_MSEList
+
+    Models_Summary['Pixels_Years_R2'] = pixels_years_R2List
+    Models_Summary['Pixels_R2'] = pixels_R2List
+    Models_Summary['Years_R2'] = years_R2List
+    
+    Models_Summary['Pixels_Years_F1_binary'] = pixels_years_F1_binaryList
+    Models_Summary['Pixels_F1_binary'] = pixels_F1_binaryList
+    Models_Summary['Years_F1_binary'] = years_F1_binaryList
+    
+    Models_Summary['Pixels_Years_F1_Macro'] = pixels_years_F1_MacroList
+    Models_Summary['Pixels_F1_Macro'] = pixels_F1_MacroList
+    Models_Summary['Years_F1_Macro'] = years_F1_MacroList
+    
+    Models_Summary['Pixels_Years_F1_Micro'] = pixels_years_F1_MicroList
+    Models_Summary['Pixels_F1_Micro'] = pixels_F1_MicroList
+    Models_Summary['Years_F1_Micro'] = years_F1_MicroList
+
+    Models_Summary['Pixels_Years_log_loss'] = pixels_years_logLossList
+    Models_Summary['Pixels_log_loss'] = pixels_logLossList
+    Models_Summary['Years_log_loss'] = years_logLossList
+    
+    Models_Summary['Pixels_Years_recall_binary'] = pixels_years_recall_binaryList
+    Models_Summary['Pixels_recall_binary'] = pixels_recall_binaryList
+    Models_Summary['Years_recall_binary'] = years_recall_binaryList
+    
+    Models_Summary['Pixels_Years_recall_Macro'] = pixels_years_recall_MacroList
+    Models_Summary['Pixels_recall_Macro'] = pixels_recall_MacroList
+    Models_Summary['Years_recall_Macro'] = years_recall_MacroList
+    
+    Models_Summary['Pixels_Years_recall_Micro'] = pixels_years_recall_MicroList
+    Models_Summary['Pixels_recall_Micro'] = pixels_recall_MicroList
+    Models_Summary['Years_recall_Micro'] = years_recall_MicroList
+    
+    Models_Summary['Pixels_Years_jaccard_binary'] = pixels_years_jaccard_binaryList
+    Models_Summary['Pixels_jaccard_binary'] = pixels_jaccard_binaryList
+    Models_Summary['Years_jaccard_binary'] = years_jaccard_binaryList
+    
+    Models_Summary['Pixels_Years_jaccard_Macro'] = pixels_years_jaccard_MacroList
+    Models_Summary['Pixels_jaccard_Macro'] = pixels_jaccard_MacroList
+    Models_Summary['Years_jaccard_Macro'] = years_jaccard_MacroList
+    
+    Models_Summary['Pixels_Years_jaccard_Micro'] = pixels_years_jaccard_MicroList
+    Models_Summary['Pixels_jaccard_Micro'] = pixels_jaccard_MicroList
+    Models_Summary['Years_jaccard_Micro'] = years_jaccard_MicroList
+    
+    Models_Summary['Pixels_Years_roc_auc_Macro'] = pixels_years_roc_auc_MacroList
+    Models_Summary['Pixels_roc_auc_Macro'] = pixels_roc_auc_MacroList
+    Models_Summary['Years_roc_auc_Macro'] = years_roc_auc_MacroList
+    
+    Models_Summary['Pixels_Years_roc_auc_Micro'] = pixels_years_roc_auc_MicroList
+    Models_Summary['Pixels_roc_auc_Micro'] = pixels_roc_auc_MicroList
+    Models_Summary['Years_roc_auc_Micro'] = years_roc_auc_MicroList
+    
+
+
+
+    print("pixels_Years MSE Overall: ", sum(pixels_years_MSEList)/len(pixels_years_MSEList))
+    print("pixels_Years R2 Overall: ", sum(pixels_years_R2List)/len(pixels_years_R2List))
+    #print("pixels_Years R2 iterations: ", pixels_years_R2List)
+    print("\n")
+    print("pixels MSE Overall: ", sum(pixels_MSEList)/len(pixels_MSEList))
+    print("pixels R2 Overall: ", sum(pixels_R2List)/len(pixels_R2List))
+    #print("pixels R2 iterations: ", pixels_R2List)
+    print("\n")
+    print("years MSE Overall: ", sum(years_MSEList)/len(years_MSEList))
+    print("years R2 Overall: ", sum(years_R2List)/len(years_R2List))
+    #print("years R2 iterations: ", years_R2List)
+    print("\n")
+
+    pickling_on = open(outPath + "LogisticModel_2dim.pickle", "wb")
+    pickle.dump([combined_Data, target_Data, Models_Summary, Models, excluded_Years, selectedParams], pickling_on)
+    pickling_on.close
+
+    Models_Summary.to_csv(outPath + "Model_Summary_LogisticModel.csv")
+    coef_Frame.to_csv(outPath + "Model_Summary_LogisticModel_Coefs.csv")
+
+    return combined_Data, target_Data, Models_Summary, Models, excluded_Years, selectedParams
+   
     pixels_years_logLossList = []
     pixels_logLossList = []
     years_logLossList = []
