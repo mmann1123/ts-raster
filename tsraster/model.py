@@ -25,6 +25,8 @@ from skopt.plots import plot_evaluations
 from skopt.plots import plot_objective
 from sklearn.linear_model import LogisticRegression
 import matplotlib.pyplot as plt
+import shap
+import copy
 
 
 def get_data(obj, test_size=0.33,scale=False,stratify=None,groups=None):
@@ -1097,7 +1099,12 @@ def XGBoostModel_Class(X_train, y_train, X_test, y_test, string_output = False,
     roc_auc_micro = skmetrics.roc_auc_score(y_test, predict_risk, average = 'micro')
     average_precision = skmetrics.roc_auc_score(y_test, predict_risk)
     
+    explainerXGB = shap.TreeExplainer(model)
+    #shap_values_XGB_test = explainerXGB.shap_values(X_test)
+    shap_values_train = explainerXGB.shap_values(X_train)
     
+    #df_shap_XGB_test = pd.DataFrame(shap_values_XGB_test, columns = x_test.columns.values)
+    #df_shap_train = pd.DataFrame(shap_values_train, columns = x_train.columns.values)
     
     if string_output == True:
       MSE = ("MSE = {}".format(MSE))
@@ -1112,7 +1119,7 @@ def XGBoostModel_Class(X_train, y_train, X_test, y_test, string_output = False,
     f_importances = {'gain': gain, 't_gain': t_gain, 'cover':cover, 't_cover': t_cover, 'weight':weight}
         
 
-    return xgbr, MSE, R_Squared, f1_binary, f1_macro, f1_micro, log_loss, recall_binary, recall_macro, recall_micro, jaccard_binary, jaccard_macro, jaccard_micro, roc_auc_macro, roc_auc_micro, average_precision, f_importances, predict_test
+    return xgbr, MSE, R_Squared, f1_binary, f1_macro, f1_micro, log_loss, recall_binary, recall_macro, recall_micro, jaccard_binary, jaccard_macro, jaccard_micro, roc_auc_macro, roc_auc_micro, average_precision, f_importances, predict_test, shap_values_train 
 
 def XGBoostClass_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups, 
                         DataFields, outPath, 
@@ -1260,7 +1267,17 @@ def XGBoostClass_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, 
             pixels_iterOutput = XGBoostModel_Class(trainData_X, trainData_y['value'], testData_X_pixels, testData_y_pixels['value'], selectedParams)
             years_iterOutput = XGBoostModel_Class(trainData_X, trainData_y['value'], testData_X_years, testData_y_years['value'], selectedParams)
 
-
+            
+            #shap setup
+            if ((x == 0) and (y ==0)):
+                trainData_X_concat = copy.deepcopy(trainData_X)
+                shap_values_concat = copy.deepcopy(pixels_years_iterOutput[18])
+                print("initial Shap shape: ", shap_values_concat.shape)
+            elif ((x >0) |(y > 0)):
+                trainData_X_concat = trainData_X_concat.append(trainData_X)
+                print("Shap shape: ", pixels_years_iterOutput[18].shape)
+                shap_values_concat = np.vstack((shap_values_concat, pixels_years_iterOutput[18]))
+            
             Models.append(pixels_years_iterOutput)
 
 
@@ -1338,7 +1355,20 @@ def XGBoostClass_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, 
                 t_coverFrame = t_coverFrame.append(years_iterOutput[16]['t_cover'])
                 weightFrame = weightFrame.append(years_iterOutput[16]['weight'])
                 
-            
+    
+    #create summary shap figures
+    shap.summary_plot(shap_values_concat, trainData_X_concat,  plot_type="bar", show=False)
+    f = plt.gcf()
+    plt.tight_layout()
+    f.savefig(outPath + "shap_summary_bar.tif", dpi = 300)
+    
+    plt.clf()
+    shap.summary_plot(shap_values_concat, trainData_X_concat, show=False)
+    f = plt.gcf()
+    plt.tight_layout()
+    f.savefig(outPath + "shap_summary.tif", dpi = 300)
+    
+    
         
     #combine MSE and R2 Lists into single DataFrame
     Models_Summary['Pixels_Years_MSE'] = pixels_years_MSEList
@@ -1424,10 +1454,14 @@ def XGBoostClass_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, 
     coverFrame.to_csv(outPath + "feature_cover_XGBOOST.csv")
     t_coverFrame.to_csv(outPath + "feature_t_cover_XGBOOST.csv")
     weightFrame.to_csv(outPath + "feature_weight_XGBOOST.csv")
+    
+    #export data for shap as csvs, in case we want interaction graphs later
+    trainData_X_concat.to_csv(outPath + "shap_trainData_X_ConcatData.csv")
+    df_shap_train = pd.DataFrame(shap_values_concat, columns=trainData_X.columns.values)
+    df_shap_train.to_csv(outPath + "shap_XGB_train_ConcatData.csv")
 
     return combined_Data, target_Data, Models_Summary, Models, excluded_Years, selectedParams
  
-
 
 def XGBoostReg_YearPredictor_Class(combined_Data_Training, target_Data_Training, 
                              preMasked_Data_Path, outPath, year_List, periodLen, 
