@@ -1357,6 +1357,7 @@ def XGBoostClass_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, 
                 
     
     #create summary shap figures
+    plt.clf()
     shap.summary_plot(shap_values_concat, trainData_X_concat,  plot_type="bar", show=False)
     f = plt.gcf()
     plt.tight_layout()
