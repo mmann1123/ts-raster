@@ -554,10 +554,12 @@ def annual_Data_Merge(startYear, endYear, feature_path, dataDict, other_Data_pat
         
         feature_Data_iter.to_csv(outPath + "CD_" + str(x) + ".csv")
 
-def badDataRemoval(dataFile, badData == -9999.0):
+def badDataRemoval(dataFile1, dataFile2, badData == -9999.0):
     columnList = dataFile.columns.tolist()
     for x in columnList:
         dataFile = dataFile[dataFile[x] != badData]
+        dataFile2 = dataFile2[dataFile[x] != badData]
+    return dataFile, dataFile2
 
 
 def period_Data_Merge(startYears, feature_data, dataDict, other_Data_path, dataNameList, outPath, length = 1, feature_offset = 0, feature_length = 1):
@@ -631,8 +633,6 @@ def period_Data_Merge(startYears, feature_data, dataDict, other_Data_path, dataN
             other_Data_iter.rename(dataNameList[y], inplace = True)
             other_Data_iter.to_csv(outPath + 'testo.csv')
             merged_Data_iter = pd.concat([merged_Data_iter, other_Data_iter], axis = 1)
-        
-        merged_Data_iter = badDataRemoval(merged_Data_iter)
 
         merged_Data_iter.to_csv(outPath + "CD_" + str(x) + "_" + str(x + length -1) + ".csv")
     
@@ -1003,7 +1003,7 @@ def mask_df(raster_mask, original_df, missing_value = -9999, reset_index = True,
     return combined_Data, target_Data'''
 
 
-def multiYear_Mask(startYears, filePath, maskFile, outPath, length = 1, missing_value = None):
+def multiYear_Mask(startYears, filePath, maskFile, outPath, length = 1, missing_value = None, badDataRemoval = True):
     '''mask multiple years of data, export the resulting files annually and as multiyear csvs
 
     :param startYears: years on which to begin
@@ -1040,9 +1040,12 @@ def multiYear_Mask(startYears, filePath, maskFile, outPath, length = 1, missing_
                                        reset_index = False)
 
         combined_Data_iter['year'] = x  #year needs to remain startyear rather than a string to facilitate the random group sampling later on
-        combined_Data_iter.to_csv(outPath + "CD_" + iterPeriod + "_Masked.csv")
-
         target_Data_iter['year'] = x
+
+        if(badDataRemoval   == True):
+                combined_Data_iter, target_Data_iter = badDataRemoval(combined_Data_iter, target_Data_iter, badData == -9999.0)
+
+        combined_Data_iter.to_csv(outPath + "CD_" + iterPeriod + "_Masked.csv")
         target_Data_iter.to_csv(outPath + "TD_" + iterPeriod + "_Masked.csv")
 
         
