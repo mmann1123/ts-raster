@@ -554,6 +554,11 @@ def annual_Data_Merge(startYear, endYear, feature_path, dataDict, other_Data_pat
         
         feature_Data_iter.to_csv(outPath + "CD_" + str(x) + ".csv")
 
+def badDataRemoval(dataFile, badData == -9999.0):
+    columnList = dataFile.columns.tolist()
+    for x in columnList:
+        dataFile = dataFile[dataFile[x] != badData]
+
 
 def period_Data_Merge(startYears, feature_data, dataDict, other_Data_path, dataNameList, outPath, length = 1, feature_offset = 0, feature_length = 1):
     '''merge additional annually repeating data into feature data, as well as time-invariant data
@@ -627,6 +632,8 @@ def period_Data_Merge(startYears, feature_data, dataDict, other_Data_path, dataN
             other_Data_iter.to_csv(outPath + 'testo.csv')
             merged_Data_iter = pd.concat([merged_Data_iter, other_Data_iter], axis = 1)
         
+        merged_Data_iter = badDataRemoval(merged_Data_iter)
+
         merged_Data_iter.to_csv(outPath + "CD_" + str(x) + "_" + str(x + length -1) + ".csv")
     
     
