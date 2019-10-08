@@ -554,7 +554,7 @@ def annual_Data_Merge(startYear, endYear, feature_path, dataDict, other_Data_pat
         
         feature_Data_iter.to_csv(outPath + "CD_" + str(x) + ".csv")
 
-def badDataRemoval(dataFile1, dataFile2, badData == -9999.0):
+def badDataRemoval(dataFile1, dataFile2, badData = -9999.0):
     columnList = dataFile.columns.tolist()
     for x in columnList:
         dataFile = dataFile[dataFile[x] != badData]
@@ -1043,7 +1043,7 @@ def multiYear_Mask(startYears, filePath, maskFile, outPath, length = 1, missing_
         target_Data_iter['year'] = x
 
         if(badDataRemoval   == True):
-                combined_Data_iter, target_Data_iter = badDataRemoval(combined_Data_iter, target_Data_iter, badData == -9999.0)
+                combined_Data_iter, target_Data_iter = badDataRemoval(combined_Data_iter, target_Data_iter, badData = -9999.0)
 
         combined_Data_iter.to_csv(outPath + "CD_" + iterPeriod + "_Masked.csv")
         target_Data_iter.to_csv(outPath + "TD_" + iterPeriod + "_Masked.csv")
