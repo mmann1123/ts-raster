@@ -1003,7 +1003,7 @@ def mask_df(raster_mask, original_df, missing_value = -9999, reset_index = True,
     return combined_Data, target_Data'''
 
 
-def multiYear_Mask(startYears, filePath, maskFile, outPath, length = 1, missing_value = None, badDataRemoval = True):
+def multiYear_Mask(startYears, filePath, maskFile, outPath, length = 1, missing_value = None):
     '''mask multiple years of data, export the resulting files annually and as multiyear csvs
 
     :param startYears: years on which to begin
@@ -1042,8 +1042,8 @@ def multiYear_Mask(startYears, filePath, maskFile, outPath, length = 1, missing_
         combined_Data_iter['year'] = x  #year needs to remain startyear rather than a string to facilitate the random group sampling later on
         target_Data_iter['year'] = x
 
-        if(badDataRemoval   == True):
-                combined_Data_iter, target_Data_iter = badDataRemoval(combined_Data_iter, target_Data_iter, badData = -9999.0)
+        
+        combined_Data_iter, target_Data_iter = badDataRemoval(combined_Data_iter, target_Data_iter, badData = -9999.0)
 
         combined_Data_iter.to_csv(outPath + "CD_" + iterPeriod + "_Masked.csv")
         target_Data_iter.to_csv(outPath + "TD_" + iterPeriod + "_Masked.csv")
