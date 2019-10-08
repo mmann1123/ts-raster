@@ -555,11 +555,11 @@ def annual_Data_Merge(startYear, endYear, feature_path, dataDict, other_Data_pat
         feature_Data_iter.to_csv(outPath + "CD_" + str(x) + ".csv")
 
 def badDataRemoval(dataFile1, dataFile2, badData = -9999.0):
-    columnList = dataFile.columns.tolist()
+    columnList = dataFile1.columns.tolist()
     for x in columnList:
-        dataFile = dataFile[dataFile[x] != badData]
-        dataFile2 = dataFile2[dataFile[x] != badData]
-    return dataFile, dataFile2
+        dataFile1 = dataFile1[dataFile1[x] != badData]
+        dataFile2 = dataFile2[dataFile1[x] != badData]
+    return dataFile1, dataFile2
 
 
 def period_Data_Merge(startYears, feature_data, dataDict, other_Data_path, dataNameList, outPath, length = 1, feature_offset = 0, feature_length = 1):
