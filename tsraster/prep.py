@@ -1591,8 +1591,77 @@ def poly_rasterizer_year_group_subsampler(poly,raster_exmpl,raster_path_prefix,
             threshCull.write(out_arr,1)
 
 
-def years_Since_Fire(file_Path, startYear, endYear, templateRasterPath, outPath, earliestFireRecord = 1930, maxDist = 9999):
+def years_since_fire(inpath, endYear, outPath, maxTime = 100, fireClass = None, startYear = 1978):
     '''Iterate annually across a period of years using annual fire data to create a series of rasters
+            indicating the number of years since the previous fire within each pixel
+            (relative to that year).  Fires in the year of interest are ignored, 
+            as these represent the response variable for subsequent analysis.
+            In pixels where no prior fires are recorded, the locatioon will be assumed to have burned prior to the earliest observed year
+            However, th number of years since fire may also be capped at a maximum value by setting the maxDist parameter
+        :param inpath:  filepath (including filename) of example file for each annually repeating parameter to be added
+                         - replace the 4-digit year within each filename with XXXX in each filePath 
+                            (i.e. fire_XXXX_XXXX.tif rather than fire_1981_1981.tif)
+        
+        :param endYear: latest year on which to create an annual raster
+        :param outPath: folder in which to output the annual rasters documenting the number of years since fire throughout the area of interest
+        
+        :param maxTime: maximum number of years since prior fire.  Defaults to 100
+            
+        :param fireClass: list of breakpoints within which to classify time since last fire
+            -if present, should consist of a dictionary in which each entry represents output_class_number : Max_time_since_fire_in_class
+        :param startYear: year on which to begin creating annual rasters, defaults to 1878
+        :return: returns .tif rasters for each year documenting the observed number of years since each pixel burned for each year of interest 
+    '''     
+    
+    
+    
+    
+    for iterYear in range(startYear, endYear+1):
+        
+        #open file,
+        iterPath = inpath + "fire_" + str(iterYear) + "_" + str(iterYear) + ".tif"
+        print(iterYear)
+        try:
+            iterRaster = gdal.Open(iterPath, gdal.GA_ReadOnly)
+            annRast = iterRaster.ReadAsArray()
+
+
+            #reclass na into 0, 1 into iterYear
+            annRast[annRast == 1.0] = iterYear
+
+
+            if iterYear == startYear:
+                yearStack = annRast
+            elif iterYear >startYear:
+                yearStack = np.maximum(yearStack, annRast)#get latest fire year for each pixel
+                timeSince = (yearStack - (iterYear+1)) * -1 #convert into time since last fire
+
+                if fireClass != None:
+                    sinceClass = copy.deepcopy(timeSince)
+                    prevMax = 0 #used to set upper bound of previous class, now used as lower bound of next class
+                    for iterClass in fireClass: #iterate through classes  to classify time since fire
+                        
+                        
+                        sinceClass[((timeSince <= fireClass[iterClass])&(timeSince > prevMax))] = iterClass
+                        prevMax = fireClass[iterClass]
+                        
+                    arrayToRaster(sinceClass, iterPath, outPath + "timeSinceFireCl_" + str(iterYear+1) + ".tif")
+                            
+
+                
+                
+                timeSince[timeSince > maxTime] = maxTime #enforce upper bound on time since last fire
+
+                arrayToRaster(timeSince, iterPath, outPath + "timeSinceFire_" + str(iterYear+1) + ".tif")
+                
+            
+                    
+        except:
+            print("year issue (likely missing):", iterYear )
+
+
+'''def years_Since_Fire_old(file_Path, startYear, endYear, templateRasterPath, outPath, earliestFireRecord = 1930, maxDist = 9999):
+    Iterate annually across a period of years using annual fire data to create a series of rasters
             indicating the number of years since the previous fire within each pixel
             (relative to that year).  Fires in the year of interest are ignored, 
             as these represent the response variable for subsequent analysis.
@@ -1612,7 +1681,7 @@ def years_Since_Fire(file_Path, startYear, endYear, templateRasterPath, outPath,
             the maximum # of years since fire relative to each year will be calculated based on the assumption that all locations 
             burned in the year prior to the year of earliest record (earliestFireRecord)
         :return: returns .tif rasters for each year documenting the observed number of years since each pixel burned for each year of interest 
-    '''     
+         
 
     #read in all fires prior to startYear, set up 3dim Array
     for iterYear in range(earliestFireRecord, endYear):
@@ -1635,13 +1704,14 @@ def years_Since_Fire(file_Path, startYear, endYear, templateRasterPath, outPath,
                 out_Array[out_Array > maxDist] = maxDist #prevent years since fire from exceeding maxDist
                 outPath_Raster = outPath + "YearsSinceFire_" + str(iterYear + 1) + ".tif"
                 arrayToRaster(out_Array, templateRasterPath, outPath_Raster)
-    
+'''    
 
-def reproject_raster(inpath, outpath, example_raster):
+def reproject_raster(inpath, outpath, example_raster, resampling = "nearest"):
     '''reprojects a raster to match an existing raster
     :param inpath: filepath to input raster (to be reprojected)
     :param outpath: filepath and name to output raster
     :param example_raster: filepath to example raster (to match the projection of)
+    :param resampling: determines type of resampling - if nearest pixel is desired, set to "nearest", if average pixel value is desired, set to "average"
     :return: creates .tif file consisting of the input raster reprojected to match the example raster
     '''
     
@@ -1662,16 +1732,28 @@ def reproject_raster(inpath, outpath, example_raster):
             'height': height
         })
 
-        with rasterio.open(outpath, 'w', **kwargs) as dst:
-            for i in range(1, src.count + 1):
-                reproject(
-                    source=rasterio.band(src, i),
-                    destination=rasterio.band(dst, i),
-                    src_transform=src.transform,
-                    src_crs=src.crs,
-                    dst_transform=transform,
-                    dst_crs=dst_crs,
-                    resampling=Resampling.nearest)
+        if resampling == "nearest":
+            with rasterio.open(outpath, 'w', **kwargs) as dst:
+                for i in range(1, src.count + 1):
+                    reproject(
+                        source=rasterio.band(src, i),
+                        destination=rasterio.band(dst, i),
+                        src_transform=src.transform,
+                        src_crs=src.crs,
+                        dst_transform=transform,
+                        dst_crs=dst_crs,
+                        resampling=Resampling.nearest)
+        elif resampling == "average":
+            with rasterio.open(outpath, 'w', **kwargs) as dst:
+                for i in range(1, src.count + 1):
+                    reproject(
+                        source=rasterio.band(src, i),
+                        destination=rasterio.band(dst, i),
+                        src_transform=src.transform,
+                        src_crs=src.crs,
+                        dst_transform=transform,
+                        dst_crs=dst_crs,
+                        resampling=Resampling.average)
 
 def getFeatures(gdf):
     """Function to parse features from GeoDataFrame in such a manner that rasterio wants them - used in clip_raster_to_raster"""

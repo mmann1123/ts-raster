@@ -1369,6 +1369,14 @@ def XGBoostClass_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, 
     plt.tight_layout()
     f.savefig(outPath + "shap_summary.tif", dpi = 300)
     
+
+    for q in range(shap_values_concat.shape[1]):
+      f = plt.clf()
+      iter_plotVar = "rank(" + str(q) + ")"
+      shp_plt = shap.dependence_plot(iter_plotVar, shap_values_concat, trainData_X_concat)
+      f = plt.gcf()
+      plt.tight_layout()
+      f.savefig(outPath + "shap_curve_" + str(q) + ".tif", dpi = 300)
     
         
     #combine MSE and R2 Lists into single DataFrame
