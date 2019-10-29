@@ -16,6 +16,7 @@ from tsfresh.feature_selection.relevance import calculate_relevance_table as crt
 from tsraster.prep import image_to_series, image_to_array, read_images, image_to_series_window, image_to_array_window, read_images_window
 import tsraster.prep  as tr
 import dask as dask
+import copy
 #from tsfresh.utilities.distribution import LocalDaskDistributor
 
 
@@ -985,3 +986,72 @@ def multiModel_Window_Extraction(startYears,
                 for dataType in dataTypes:
                     for feature in feature_params:
                         tr.seriesToRaster(extracted_features_iter.loc[:, [dataType + "_"+ feature] ], exampleRasterPath, out_Path + feature + "/" + dataType + "-" +  str(x) + y + '.tif', noData = -9999)
+
+
+
+def multi_year_Annual_Summaries(inpath, outpath, startYear, endYear, length, 
+                         id_val = 'pixel_id', 
+                         timeCode = 'time',
+                         mean_out = True,
+                         max_out = True,
+                         min_out = True):
+    '''Extract multi-year minima, maxima, and mean values from annual features that have been previously exracted
+    :param inpath: filepath to annual data, including filename with 4-digit years replaced by XXXX
+        example - inpath = "C:/Users/isaac/Documents/wildfire_FRAP_working/wildfire_FRAP/Data/Examples/HadGES2_oneYear_Examples/extracted_featuresXXXX_XXXX.csv"
+    :param outpath: filepath to output files (requires that subfolders Annual_means, Annual_maxima, and Annual minima have also been created within it)
+    :param startYear: year on which to begin iterating
+    :param endYear: year on which to cease iterating
+    :param length: length of time (i.e. # of years, hind-looking) over which to calculate minima, maxima, and means
+    :param id_val: column name used to identify pixels in extracted features
+    :param timecode: column name used to identify timecode for extracted features in original data
+    :param mean_out: Boolean value to determine whether multiYear means should be calculated
+    :param max_out: Boolean value to determine whether multiYear maxima should be calculated
+    :param min_out: Boolean value to determine whether multiYear minima should be calculated
+
+
+
+
+    '''
+    
+    for iterYear in range(startYear, endYear+1, 1):
+        
+        for y in range(length):
+            inpath_iter = inpath.replace('XXXX', str(iterYear - y))
+            annData = pd.read_csv(inpath_iter)
+            columns = annData.columns.tolist()
+            del annData[timeCode]
+            
+            if y ==0:
+                stackData = copy.deepcopy(annData)
+            elif y>0:
+                stackData = pd.concat([stackData, copy.deepcopy(annData)])
+            
+            if mean_out ==True:
+                meanData = stackData.groupby(by = [id_val]).mean()
+                meanData[timeCode] = str(iterYear-y) + '01_' + str(iterYear) + '12'
+                meanData.reset_index(inplace = True)
+                meanData = meanData[columns]
+                iter_outpath = outpath + 'Annual_means/extracted_features' + str(iterYear - length+1) + '_' + str(iterYear) + '.csv'
+                meanData.to_csv(iter_outpath, index = False)
+            
+            if mean_out ==True:
+                maxData = stackData.groupby(by = [id_val]).max()
+                maxData[timeCode] = str(iterYear-y) + '01_' + str(iterYear) + '12'
+                maxData.reset_index(inplace = True)
+                maxData = meanData[columns]
+                iter_outpath = outpath + 'Annual_maxima/extracted_features' + str(iterYear - length+1) + '_' + str(iterYear) + '.csv'
+                maxData.to_csv(iter_outpath, index = False)
+                
+            if min_out == True:
+                minData = stackData.groupby(by = [id_val]).min()
+                minData[timeCode] = str(iterYear-y) + '01_' + str(iterYear) + '12'
+                minData.reset_index(inplace = True)
+                minData = meanData[columns]
+                iter_outpath = outpath + 'Annual_minima/extracted_features' + str(iterYear - length+1) + '_' + str(iterYear) + '.csv'
+                minData.to_csv(iter_outpath, index = False)
+            
+            
+    
+            
+
+
