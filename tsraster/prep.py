@@ -557,8 +557,9 @@ def annual_Data_Merge(startYear, endYear, feature_path, dataDict, other_Data_pat
 def badDataRemoval(dataFile1, dataFile2, badData = -9999.0):
     columnList = dataFile1.columns.tolist()
     for x in columnList:
-        dataFile1 = dataFile1[dataFile1[x] != badData]
         dataFile2 = dataFile2[dataFile1[x] != badData]
+        dataFile1 = dataFile1[dataFile1[x] != badData]
+        
     return dataFile1, dataFile2
 
 
