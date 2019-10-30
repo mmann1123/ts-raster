@@ -605,7 +605,10 @@ def period_Data_Merge(startYears, feature_data, dataDict, other_Data_path, dataN
                 print("feature Dates must include at least one year")
                 sys.exit()
             feature_dates.sort()
-            feature_Data_Iter = pd.read_csv(feature_path + "FD_Window_" + str(feature_dates[0]) +"_" + str(feature_dates[1]) + ".csv", index_col = 'pixel_id')
+            try:
+                feature_Data_Iter = pd.read_csv(feature_path + "FD_Window_" + str(feature_dates[0]) +"_" + str(feature_dates[1]) + ".csv", index_col = 'pixel_id')
+            except:
+                feature_Data_Iter = pd.read_csv(feature_path + "extracted_features_" + str(feature_dates[0]) +"_" + str(feature_dates[1]) + ".csv", index_col = 'pixel_id')
             for columnName in list(feature_Data_Iter.columns):
                 feature_Data_Iter[columnName + feature_suffix] = feature_Data_Iter[columnName]
                 del feature_Data_Iter[columnName]
