@@ -29,6 +29,7 @@ import shap
 import copy
 import pygam
 from pygam import LogisticGAM
+from contextlib import redirect_stdout
 
 
 def get_data(obj, test_size=0.33,scale=False,stratify=None,groups=None):
@@ -2264,12 +2265,17 @@ def LogReg_YearPredictor(combined_Data_Training, target_Data_Training,
 
 
 def logGAM(X_train, y_train, X_test, y_test, 
-            max_smoothing =  50, penalty_space = [0.01, 5, 100]):
+            max_smoothing =  100, penalty_space = [0.01, 5, 100]):
     '''
     Conduct elastic net regression on training data and test predictive power against test data
 
     :param X_train: dataframe containing training data features
     :param y_train: dataframe containing training data responses
+    :param X_test: dataframe containing training data features for testing
+    :param y_test: dataframe containing training data responses for testing
+    :param max_smoothing: max amount of smoothing to be allowed in the model
+    :param penalty_space: space through which to search for optimal penaliztion 
+        - list consisting of min penalization value, max penalization value, and number of points within that space to test
     :return: elastic net model, MSE, R-squared
     '''
     print(type(X_train))
@@ -2319,7 +2325,38 @@ def logGAM_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGr
                         penalty_space = [0.01, 10, 4], # list for creating space for identifing optimal wifggliness penalization:
                         #where first value indicates minimum penalty, second indicates max penalty, and 3rd value indicates number of values
                         cv = 10):
+    '''Conduct logistic regressions on the data, with k-fold cross-validation conducted independently 
+        across both years and pixels. 
+        Returns a variety of diagnostics of model performance (including f1 scores, recall, and average precision) 
+        when predicting fire risk at 
+        A) locations outside of the training dataset
+        B) years outside of the training dataset
+        C) locations and years outside of the training dataset
 
+      Returns a list of objects, consisting of:
+        0: Combined_Data file with testing/training groups labeled
+        1: Target Data file with testing/training groups labeled
+        2: summary dataFrame of MSE and R2 for each model run
+            (against holdout data representing either novel locations, novel years, or both)
+        3: list of elastic net models for use in predicting Fires in further locations/years
+        4: list of list of years not used in model training for each run
+    :param combined_Data: dataFrame including all desired explanatory factors 
+            across all locations & years to be used in training model
+    :param target_Data: dataFrame including observed fire occurrences 
+            across all locations & years to be used in training model
+    :param varsToGroupBy: list of (2) column names from combined_Data & target_Data to be used in creating randomized groups
+    :param groupVars: list of (2) desired column names for the resulting randomized groups
+    :param testGroups: number of distinct groups into which data sets should be divided (for each of two variables) 
+    :param Datafields: list of explanatory factors to be intered into model
+    :param outPath: desired output location for predicted fire risk files (csv, pickle, and tif)
+    :param max_smoothing: maximum amount of smoothing to conduct in GAMs
+    :param penalty_space: space to scan for amount of L2 penalization terms
+        -list consisting of min penalization, max penalization, number of points within that range to test
+    :return:  returns a list of all models, accompanied by a list of years being predicted 
+            - note - return output is equivalent to data exported as models.pickle
+    '''
+    
+    
     combined_Data, target_Data = random.TestTrain_GroupMaker(combined_Data, target_Data, 
                                                              varsToGroupBy, 
                                                              groupVars, 
@@ -2534,7 +2571,10 @@ def logGAM_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGr
                                                             target_Data['value'], 
                                                             lam =  penalty_space_forGAM)
     
-   
+    #save model summary to text file
+    with open(outPath +'modelDetails.txt', 'w') as f:
+        with redirect_stdout(f):
+            gam.summary()
     
     for j in range(len(DataFields)):
         plt.clf()
@@ -2653,7 +2693,7 @@ def logGAM_YearPredictor_Class(combined_Data_Training, target_Data_Training,
         
         
         penalty_space_forGAM = np.random.uniform(penalty_space[0], penalty_space[1], (penalty_space[2],len(DataFields)))
-    
+        
         iter_gam = LogisticGAM(n_splines = max_smoothing).gridsearch(combined_Data_iter_train.values, 
                                                             target_Data_iter_train['value'].values, 
                                                             lam =  penalty_space_forGAM)
@@ -2679,7 +2719,7 @@ def logGAM_YearPredictor_Class(combined_Data_Training, target_Data_Training,
         data.to_csv(outPath + "PredClass_" + str(iterYear) + ".csv")
         
         #output predicted risk as tiff
-        seriesToRaster(data['PredClass_Masked'], mask, outPath + "PredClass_" + str(iterYear) + "_" + str(iterYear + periodLen - 1) + "XGBoost_Class.tif")
+        seriesToRaster(data['PredClass_Masked'], mask, outPath + "PredClass_" + str(iterYear) + "_" + str(iterYear + periodLen - 1) + "LogGam_Class.tif")
         
         data_risk = iter_Fit.predict_proba(full_X)
         print(data_risk.shape)
@@ -2693,7 +2733,7 @@ def logGAM_YearPredictor_Class(combined_Data_Training, target_Data_Training,
         data.to_csv(outPath + "PredRisk_" + str(iterYear) + ".csv")
         
         #output predicted risk as tiff
-        seriesToRaster(data['PredRisk_Masked'], mask, outPath + "PredRisk_" + str(iterYear) + "_" + str(iterYear + periodLen - 1) + "XGBoost_Class.tif")
+        seriesToRaster(data['PredRisk_Masked'], mask, outPath + "PredRisk_" + str(iterYear) + "_" + str(iterYear + periodLen - 1) + "LogGam_Class.tif")
         
         
         
