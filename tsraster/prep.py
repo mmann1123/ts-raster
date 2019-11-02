@@ -614,7 +614,7 @@ def period_Data_Merge(startYears, feature_data, dataDict, other_Data_path, dataN
                 del feature_Data_Iter[columnName]
             feature_Data_Iter.reset_index(inplace = True)
 
-            merged_Data_iter = pd.merge(merged_Data, feature_Data_Iter, on = ['pixel_id'], suffixes = (False, False))
+            merged_Data = pd.merge(merged_Data, feature_Data_Iter, on = ['pixel_id'], suffixes = (False, False))
 
         
         # assemble multiple annual files acrossthe period of interest, by mean value
@@ -636,9 +636,9 @@ def period_Data_Merge(startYears, feature_data, dataDict, other_Data_path, dataN
 
             other_Data_iter.rename(dataNameList[y], inplace = True)
             other_Data_iter.to_csv(outPath + 'testo.csv')
-            merged_Data_iter = pd.concat([merged_Data_iter, other_Data_iter], axis = 1)
+            merged_Data = pd.concat([merged_Data, other_Data_iter], axis = 1)
 
-        merged_Data_iter.to_csv(outPath + "CD_" + str(x) + "_" + str(x + length -1) + ".csv")
+        merged_Data.to_csv(outPath + "CD_" + str(x) + "_" + str(x + length -1) + ".csv")
     
     
 def target_Data_to_csv_multiYear(startYears, length, file_Path, out_Path, output_type = "Count"):
