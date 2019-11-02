@@ -609,12 +609,12 @@ def period_Data_Merge(startYears, feature_data, dataDict, other_Data_path, dataN
                 feature_Data_Iter = pd.read_csv(feature_path + "FD_Window_" + str(feature_dates[0]) +"_" + str(feature_dates[1]) + ".csv", index_col = 'pixel_id')
             except:
                 feature_Data_Iter = pd.read_csv(feature_path + "extracted_features" + str(feature_dates[0]) +"_" + str(feature_dates[1]) + ".csv", index_col = 'pixel_id')
-            for columnName in list(feature_Data_Iter.columns):
-                feature_Data_Iter[columnName + feature_suffix] = feature_Data_Iter[columnName]
-                del feature_Data_Iter[columnName]
+            #for columnName in list(feature_Data_Iter.columns):
+            #    feature_Data_Iter[columnName + feature_suffix] = feature_Data_Iter[columnName]
+            #    del feature_Data_Iter[columnName]
             feature_Data_Iter.reset_index(inplace = True)
 
-            merged_Data = pd.merge(merged_Data, feature_Data_Iter, on = ['pixel_id'], suffixes = (False, False))
+            merged_Data = pd.merge(merged_Data, feature_Data_Iter, on = ['pixel_id'], suffixes = (False, feature_suffix))
 
         
         # assemble multiple annual files acrossthe period of interest, by mean value
