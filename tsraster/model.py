@@ -2315,10 +2315,25 @@ def logGAM(X_train, y_train, X_test, y_test,
     average_precision = skmetrics.roc_auc_score(y_test, predict_risk)
     
     
+    output_dict = {"model": model, 
+                   "McFadden_r2":McFadden_r2, "McFadden_r2_adj": McFadden_r2_adj,
+                   "BalancedAccuracy": BalancedAccuracy,
+                   "f1_binary": f1_binary, 
+                   "f1_macro": f1_macro, "f1_micro": f1_micro,
+                   "log_loss": log_loss, 
+                   "recall_binary": recall_binary, "recall_macro": recall_macro, "recall_micro": recall_micro,
+                   "jaccard_binary":jaccard_binary, "jaccard_macro": jaccard_macro, "jaccard_micro": jaccard_micro,
+                   "roc_auc_macro": roc_auc_macro, "roc_auc_micro": roc_auc_micro, 
+                   "average_precision": average_precision,
+                   "predict_test": predict_test}
+
     
+   
+    
+    
+    return output_dict
 
-    return model, McFadden_r2, McFadden_r2_adj, f1_binary, f1_macro, f1_micro, log_loss, recall_binary, recall_macro, recall_micro, jaccard_binary, jaccard_macro, jaccard_micro, roc_auc_macro, roc_auc_micro, average_precision, predict_test
-
+    
 def logGAM_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups, 
                         DataFields, outPath,
                         max_smoothing = 50,
@@ -2366,23 +2381,7 @@ def logGAM_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGr
     pixel_testVals = list(set(combined_Data[groupVars[0]].tolist()))
     year_testVals = list(set(combined_Data[groupVars[1]].tolist()))
 
-    Models_Summary = pd.DataFrame([], columns = ['Pixels_Years_MSE', 'Pixels_MSE', 'Years_MSE', 
-                                             'Pixels_Years_R2', 'Pixels_R2', 'Years_R2',
-                                                'Pixels_Years_Accuracy', 'Pixels_Accuracy', 'Years_Accuracy',
-                                                'Pixels_Years_BalancedAccuracy', 'Pixels_BalancedAccuracy', 'Years_BalancedAccuracy',
-                                                'Pixels_Years_F1_binary', 'Pixels_F1_binary', 'Years_F1_binary',
-                                                'Pixels_Years_F1_Macro', 'Pixels_F1_Macro', 'Years_F1_Macro',
-                                                'Pixels_Years_F1_Micro', 'Pixels_F1_Micro', 'Years_F1_Micro',
-                                                'Pixels_Years_logLoss', 'Pixels_logLoss', 'Years_logLoss',
-                                                'Pixels_Years_recall_binary', 'Pixels_recall_binary', 'Years_recall_binary',
-                                                'Pixels_Years_recall_Macro', 'Pixels_recall_Macro', 'Years_recall_Macro',
-                                                'Pixels_Years_recall_Micro', 'Pixels_recall_Micro', 'Years_recall_Micro',
-                                                'Pixels_Years_jaccard_binary', 'Pixels_jaccard_binary', 'Years_jaccard_binary',
-                                                'Pixels_Years_jaccard_Macro', 'Pixels_jaccard_Macro', 'Years_jaccard_Macro',
-                                                'Pixels_Years_jaccard_Micro', 'Pixels_jaccard_Micro', 'Years_jaccard_Micro',
-                                                'Pixels_Years_roc_auc_Macro', 'Pixels_jaccard_roc_auc_Macro', 'Years_jaccard_roc_auc_Macro',
-                                                 'Pixels_Years_roc_auc_Micro', 'Pixels_jaccard_roc_auc_Micro', 'Years_jaccard_roc_auc_Micro',
-                                                'average_precision'])
+    Models_Summary = pd.DataFrame([], columns = [])
 
     #used to create list of model runs
     Models = []
@@ -2396,6 +2395,11 @@ def logGAM_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGr
     pixels_years_McFadden_adjList = []
     pixels_McFadden_adjList = []
     years_McFadden_adjList = []
+    
+    
+    pixels_years_BalancedAccuracyList = []
+    pixels_BalancedAccuracyList = []
+    years_BalancedAccuracyList = []
     
     pixels_years_F1_binaryList = []
     pixels_F1_binaryList = []
@@ -2503,63 +2507,67 @@ def logGAM_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGr
             Models.append(pixels_years_iterOutput)
 
 
-            pixels_years_McFaddenList.append(pixels_years_iterOutput[1])
-            pixels_McFaddenList.append(pixels_iterOutput[1])
-            years_McFaddenList.append(years_iterOutput[1])
+            pixels_years_McFaddenList.append(pixels_years_iterOutput["McFadden_r2"])
+            pixels_McFaddenList.append(pixels_iterOutput["McFadden_r2"])
+            years_McFaddenList.append(years_iterOutput["McFadden_r2"])
 
-            pixels_years_McFadden_adjList.append(pixels_years_iterOutput[2])
-            pixels_McFadden_adjList.append(pixels_iterOutput[2])
-            years_McFadden_adjList.append(years_iterOutput[2])
+            pixels_years_McFadden_adjList.append(pixels_years_iterOutput["McFadden_r2_adj"])
+            pixels_McFadden_adjList.append(pixels_iterOutput["McFadden_r2_adj"])
+            years_McFadden_adjList.append(years_iterOutput["McFadden_r2_adj"])
             
-            pixels_years_F1_binaryList.append(pixels_years_iterOutput[3])
-            pixels_F1_binaryList.append(pixels_iterOutput[3])
-            years_F1_binaryList.append(years_iterOutput[3])
+            pixels_years_BalancedAccuracyList.append(pixels_years_iterOutput["BalancedAccuracy"])
+            pixels_BalancedAccuracyList.append(pixels_iterOutput["BalancedAccuracy"])
+            years_BalancedAccuracyList.append(years_iterOutput["BalancedAccuracy"])
             
-            pixels_years_F1_MacroList.append(pixels_years_iterOutput[4])
-            pixels_F1_MacroList.append(pixels_iterOutput[4])
-            years_F1_MacroList.append(years_iterOutput[4])
+            pixels_years_F1_binaryList.append(pixels_years_iterOutput["f1_binary"])
+            pixels_F1_binaryList.append(pixels_iterOutput["f1_binary"])
+            years_F1_binaryList.append(years_iterOutput["f1_binary"])
             
-            pixels_years_F1_MicroList.append(pixels_years_iterOutput[5])
-            pixels_F1_MicroList.append(pixels_iterOutput[5])
-            years_F1_MicroList.append(years_iterOutput[5])
+            pixels_years_F1_MacroList.append(pixels_years_iterOutput["f1_macro"])
+            pixels_F1_MacroList.append(pixels_iterOutput["f1_macro"])
+            years_F1_MacroList.append(years_iterOutput["f1_macro"])
             
-            pixels_years_logLossList.append(pixels_years_iterOutput[6])
-            pixels_logLossList.append(pixels_iterOutput[6])
-            years_logLossList.append(years_iterOutput[6])
+            pixels_years_F1_MicroList.append(pixels_years_iterOutput["f1_micro"])
+            pixels_F1_MicroList.append(pixels_iterOutput["f1_micro"])
+            years_F1_MicroList.append(years_iterOutput["f1_micro"])
             
-            pixels_years_recall_binaryList.append(pixels_years_iterOutput[7])
-            pixels_recall_binaryList.append(pixels_iterOutput[7])
-            years_recall_binaryList.append(years_iterOutput[7])
+            pixels_years_logLossList.append(pixels_years_iterOutput["log_loss"])
+            pixels_logLossList.append(pixels_iterOutput["log_loss"])
+            years_logLossList.append(years_iterOutput["log_loss"])
             
-            pixels_years_recall_MacroList.append(pixels_years_iterOutput[8])
-            pixels_recall_MacroList.append(pixels_iterOutput[8])
-            years_recall_MacroList.append(years_iterOutput[8])
+            pixels_years_recall_binaryList.append(pixels_years_iterOutput["recall_binary"])
+            pixels_recall_binaryList.append(pixels_iterOutput["recall_binary"])
+            years_recall_binaryList.append(years_iterOutput["recall_binary"])
             
-            pixels_years_recall_MicroList.append(pixels_years_iterOutput[9])
-            pixels_recall_MicroList.append(pixels_iterOutput[9])
-            years_recall_MicroList.append(years_iterOutput[9])
+            pixels_years_recall_MacroList.append(pixels_years_iterOutput["recall_macro"])
+            pixels_recall_MacroList.append(pixels_iterOutput["recall_macro"])
+            years_recall_MacroList.append(years_iterOutput["recall_macro"])
             
-            pixels_years_jaccard_binaryList.append(pixels_years_iterOutput[10])
-            pixels_jaccard_binaryList.append(pixels_iterOutput[10])
-            years_jaccard_binaryList.append(years_iterOutput[10])
+            pixels_years_recall_MicroList.append(pixels_years_iterOutput["recall_micro"])
+            pixels_recall_MicroList.append(pixels_iterOutput["recall_micro"])
+            years_recall_MicroList.append(years_iterOutput["recall_micro"])
             
-            pixels_years_jaccard_MacroList.append(pixels_years_iterOutput[11])
-            pixels_jaccard_MacroList.append(pixels_iterOutput[11])
-            years_jaccard_MacroList.append(years_iterOutput[11])
+            pixels_years_jaccard_binaryList.append(pixels_years_iterOutput["jaccard_binary"])
+            pixels_jaccard_binaryList.append(pixels_iterOutput["jaccard_binary"])
+            years_jaccard_binaryList.append(years_iterOutput["jaccard_binary"])
             
-            pixels_years_jaccard_MicroList.append(pixels_years_iterOutput[12])
-            pixels_jaccard_MicroList.append(pixels_iterOutput[12])
-            years_jaccard_MicroList.append(years_iterOutput[12])
+            pixels_years_jaccard_MacroList.append(pixels_years_iterOutput["jaccard_macro"])
+            pixels_jaccard_MacroList.append(pixels_iterOutput["jaccard_macro"])
+            years_jaccard_MacroList.append(years_iterOutput["jaccard_macro"])
             
-            pixels_years_roc_auc_MacroList.append(pixels_years_iterOutput[13])
-            pixels_roc_auc_MacroList.append(pixels_iterOutput[13])
-            years_roc_auc_MacroList.append(years_iterOutput[13])
+            pixels_years_jaccard_MicroList.append(pixels_years_iterOutput["jaccard_micro"])
+            pixels_jaccard_MicroList.append(pixels_iterOutput["jaccard_micro"])
+            years_jaccard_MicroList.append(years_iterOutput["jaccard_micro"])
             
-            pixels_years_roc_auc_MicroList.append(pixels_years_iterOutput[14])
-            pixels_roc_auc_MicroList.append(pixels_iterOutput[14])
-            years_roc_auc_MicroList.append(years_iterOutput[14])
+            pixels_years_roc_auc_MacroList.append(pixels_years_iterOutput["roc_auc_macro"])
+            pixels_roc_auc_MacroList.append(pixels_iterOutput["roc_auc_macro"])
+            years_roc_auc_MacroList.append(years_iterOutput["roc_auc_macro"])
             
-            average_precisionList.append(years_iterOutput[15])
+            pixels_years_roc_auc_MicroList.append(pixels_years_iterOutput["roc_auc_micro"])
+            pixels_roc_auc_MicroList.append(pixels_iterOutput["roc_auc_micro"])
+            years_roc_auc_MicroList.append(years_iterOutput["roc_auc_micro"])
+            
+            average_precisionList.append(years_iterOutput["average_precision"])
             
             
                 
@@ -2596,6 +2604,10 @@ def logGAM_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGr
     Models_Summary['Pixels_Years_McFaddenAdj'] = pixels_years_McFadden_adjList
     Models_Summary['Pixels_McFaddenAdj'] = pixels_McFadden_adjList
     Models_Summary['Years_McFaddenAdj'] = years_McFadden_adjList
+    
+    Models_Summary['Pixels_Years_BalancedAccuracy'] = pixels_years_BalancedAccuracyList
+    Models_Summary['Pixels_BalancedAccuracy'] = pixels_BalancedAccuracyList
+    Models_Summary['Years_BalancedAccuracy'] = years_BalancedAccuracyList
     
     Models_Summary['Pixels_Years_F1_binaryList'] = pixels_years_F1_binaryList
     Models_Summary['Pixels_F1_binaryList'] = pixels_F1_binaryList
