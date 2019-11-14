@@ -583,12 +583,13 @@ def period_Data_Merge(startYears, feature_data, dataDict, other_Data_path, dataN
     :param length: length of period
     :return: no objects returned.  Instead, each annual dataFrame will be saved as a .csv file in the outPath folder
             with filename CD_XXXX.csv 
-'''
+    '''
     
-    merged_Data = multi_image_to_dataframe(dataDict, outPath)
+    merged_Data_baseline = multi_image_to_dataframe(dataDict, outPath)
 
 
     for x in startYears:
+        merged_Data = copy.deepcopy(merged_Data_baseline)
 
         print(x)
         for feature_suffix in feature_data:
@@ -609,13 +610,16 @@ def period_Data_Merge(startYears, feature_data, dataDict, other_Data_path, dataN
                 feature_Data_Iter = pd.read_csv(feature_path + "FD_Window_" + str(feature_dates[0]) +"_" + str(feature_dates[1]) + ".csv", index_col = 'pixel_id')
             except:
                 feature_Data_Iter = pd.read_csv(feature_path + "extracted_features" + str(feature_dates[0]) +"_" + str(feature_dates[1]) + ".csv", index_col = 'pixel_id')
-            #for columnName in list(feature_Data_Iter.columns):
-            #    feature_Data_Iter[columnName + feature_suffix] = feature_Data_Iter[columnName]
-            #    del feature_Data_Iter[columnName]
+            
+            for columnName in list(feature_Data_Iter.columns):
+                feature_Data_Iter[columnName + feature_suffix] = feature_Data_Iter[columnName]
+                del feature_Data_Iter[columnName]
+            
             feature_Data_Iter.reset_index(inplace = True)
 
-            merged_Data = pd.merge(merged_Data, feature_Data_Iter, on = ['pixel_id'], suffixes = (False, feature_suffix))
-
+            
+            merged_Data = pd.merge(merged_Data, feature_Data_Iter, on = ['pixel_id'])
+            
         
         # assemble multiple annual files acrossthe period of interest, by mean value
         for y in range(len(other_Data_path)):
