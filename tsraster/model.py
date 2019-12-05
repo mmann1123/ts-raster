@@ -35,6 +35,7 @@ from rpy2 .robjects.packages import importr
 import rpy2.robjects as robjects
 import rpy2.robjects.packages as rpackages
 from rpy2.robjects.vectors import StrVector
+import pyautogui
 
 
 
@@ -3326,3 +3327,103 @@ def R_logGAM_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, test
 
     return combined_Data, target_Data, Models_Summary, models, excluded_Years
 
+
+def R_Gam_Summary(combined_Data, target_Data,
+                        DataFields, outPath,
+                        splineType = 'cs', # list for creating space for identifing optimal wifggliness penalization:
+                        familyType = "binomial" #where first value indicates minimum penalty, second indicates max penalty, and 3rd value indicates number of values
+                        ):
+    '''Conduct logistic regressions on the data, with k-fold cross-validation conducted independently 
+        across both years and pixels. 
+        Returns a variety of diagnostics of model performance (including f1 scores, recall, and average precision) 
+        when predicting fire risk at 
+        A) locations outside of the training dataset
+        B) years outside of the training dataset
+        C) locations and years outside of the training dataset
+
+      Returns a list of objects, consisting of:
+        0: Combined_Data file with testing/training groups labeled
+        1: Target Data file with testing/training groups labeled
+        2: summary dataFrame of MSE and R2 for each model run
+            (against holdout data representing either novel locations, novel years, or both)
+        3: list of elastic net models for use in predicting Fires in further locations/years
+        4: list of list of years not used in model training for each run
+    :param combined_Data: dataFrame including all desired explanatory factors 
+            across all locations & years to be used in training model
+    :param target_Data: dataFrame including observed fire occurrences 
+            across all locations & years to be used in training model
+    :param Datafields: list of explanatory factors to be intered into model
+    :param outPath: desired output location for predicted fire risk files (csv, pickle, and tif)
+    :return:  returns a list of all models, accompanied by a list of years being predicted 
+            - note - return output is equivalent to data exported as models.pickle
+    '''
+    
+    mgcv = importr('mgcv') # import mgcv library from r
+    stats = importr('stats') # import stats library from r
+    base = importr('base') # import base library from r
+    
+    formula = 'value~'
+    for iterparam in DataFields:
+        formula += " + s(" + iterparam + ', bs = \"' + splineType + '")'
+    
+    
+    combined_Data['value'] = target_Data['value']
+    r_train = dataFrame_to_r(combined_Data)
+    
+    model = mgcv.gam(formula = base.eval(base.parse(text=formula)),family = base.eval(base.parse(text=familyType)), data = r_train)
+    
+    
+    #print model summary as text file
+    summary =str(base.summary(model))
+    #print(type(summary))
+    text_file = open(outPath + "summary.txt", "w")
+    n = text_file.write(summary)
+    text_file.close()
+    
+    
+    #get plot output and convert it into graphs
+    rplot = robjects.r('plot.gam')
+    q = rplot(model)
+    
+    '''each set will be one item in the list - 
+         within each set, the items will then be ordered as follows: 
+    0: x values corresponding to fit & se
+    1: True/False value pertaining to scale (ignore)
+    2: standard error (2* se)
+    3: raw (for all pixels)
+    4: string of X label
+    5: string of y label
+    6: ignore
+    7: multiplier of SE (ignore, defaults to 2)
+    8: x limits (ignore?)
+    9: fit (actual values to use)
+    10: True/False value indicating whether it should be plotted (ignore)
+'''
+    
+    for i in range(0,len(q)):
+    
+        x_Data=np.asarray(q[i][0])
+        y_Data=np.asarray(q[i][9]).flatten()
+        se_Data = np.asarray(q[i][2])
+        upper_Data = np.add(y_Data, se_Data)
+        lower_Data = np.subtract(y_Data, se_Data)
+        print(x_Data.shape)
+        print(y_Data.shape)
+        print(se_Data.shape)
+        print(upper_Data.shape)
+        x_label = str(q[i][4])
+        x_label= x_label[5:-2]
+        y_label = str(q[i][5])
+        y_label= y_label[5:-2]
+        plt.clf()
+
+        plt.plot(x_Data, y_Data, color = 'red', linewidth = 2)
+        plt.plot(x_Data, upper_Data, linewidth = 2, color = 'blue', alpha = 0.5, linestyle = "--")
+        plt.plot(x_Data, lower_Data, linewidth = 2, color = 'blue', alpha = 0.5, linestyle = "--")
+        plt.xlabel(x_label, fontsize = '16', fontweight = 'bold')
+        plt.ylabel(y_label, fontsize = '16', fontweight = 'bold')
+        plt.yticks(fontsize = '12', fontweight = 'bold')
+        plt.xticks(fontsize = '12', fontweight = 'bold')
+        plt.tight_layout()
+        plt.savefig(outPath + "Marginal_Response_"+ DataFields[i] + ".tif")
+    
