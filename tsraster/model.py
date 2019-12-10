@@ -2893,8 +2893,8 @@ def predict_Test(model, testData, threshold, suffix = ''):
     
     r_summary = base.summary(model)
     
-    r2 = np.array(r_summary.rx('r.sq'))
-    se = np.array(r_summary.rx('se'))
+    r2 = np.array(r_summary.rx('r.sq')[0])[0]
+    se = np.array(r_summary.rx('se')[0])[0]
     
     Accuracy = skmetrics.accuracy_score(y_test, predict_test)
     BalancedAccuracy = skmetrics.balanced_accuracy_score(y_test, predict_test)
