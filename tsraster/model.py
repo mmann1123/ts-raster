@@ -3431,8 +3431,9 @@ def R_Gam_Summary(combined_Data, target_Data,
                         DataFields, outPath,
                         fullDataPath = None,
                         exampleRasterPath = None,
-                        splineType = 'cs', # list for creating space for identifing optimal wifggliness penalization:
-                        familyType = "binomial" #where first value indicates minimum penalty, second indicates max penalty, and 3rd value indicates number of values
+                        marginalMask = True,
+                        splineType = 'cs', 
+                        familyType = "binomial" 
                         ):
     '''Conduct logistic regressions on the data, with k-fold cross-validation conducted independently 
         across both years and pixels. 
@@ -3455,6 +3456,10 @@ def R_Gam_Summary(combined_Data, target_Data,
             across all locations & years to be used in training model
     :param Datafields: list of explanatory factors to be intered into model
     :param outPath: desired output location for predicted fire risk files (csv, pickle, and tif)
+    :param exampleRasterPath: example raster path for creating marginal maps - should be the mask used to mask out bad values if marginalMask is set to true
+    :param marginalMask: determines whether marginal maps should be masked.  If so, they will be masked using file specified in exampleDataRasterPath (assuming values of 1 are valid and of 0 are to be masked out)
+    :param splineType: determines type of spline for GAM
+    :param familytype: determines family of GAm to be used
     :return:  returns a list of all models, accompanied by a list of years being predicted 
             - note - return output is equivalent to data exported as models.pickle
     '''
@@ -3535,6 +3540,12 @@ def R_Gam_Summary(combined_Data, target_Data,
     r_full = dataFrame_to_r(fullData)
     fullTest = stats.predict(model,r_full, type = 'terms')
     fullTest = np.asarray(fullTest)
+
+    if marginalMask == True:
+      mask = image_to_array(exampleRasterPath)
+      fullTest = np.where(mask ==1, fullTest, -9999)   
+
+
     for j in range(0, len(DataFields), 1):
 
         arrayToRaster(fullTest[:, j], templateRasterPath = exampleRasterPath, outPath = outPath+ "Marginal_Map_"+ DataFields[j] + ".tif")
