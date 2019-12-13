@@ -3543,7 +3543,7 @@ def R_Gam_Summary(combined_Data, target_Data,
 
     if marginalMask == True:
       mask = image_to_array(exampleRasterPath)
-      mask = mask.reshape(fullTest.shape[0])
+      mask = mask.reshape(fullTest.shape[0], 1)
       fullTest = np.where(mask ==1, fullTest, -9999)   
 
 
