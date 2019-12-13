@@ -3431,9 +3431,8 @@ def R_Gam_Summary(combined_Data, target_Data,
                         DataFields, outPath,
                         fullDataPath = None,
                         exampleRasterPath = None,
-                        marginalMask = True,
-                        splineType = 'cs', 
-                        familyType = "binomial" 
+                        splineType = 'cs', # list for creating space for identifing optimal wifggliness penalization:
+                        familyType = "binomial" #where first value indicates minimum penalty, second indicates max penalty, and 3rd value indicates number of values
                         ):
     '''Conduct logistic regressions on the data, with k-fold cross-validation conducted independently 
         across both years and pixels. 
@@ -3456,10 +3455,6 @@ def R_Gam_Summary(combined_Data, target_Data,
             across all locations & years to be used in training model
     :param Datafields: list of explanatory factors to be intered into model
     :param outPath: desired output location for predicted fire risk files (csv, pickle, and tif)
-    :param exampleRasterPath: example raster path for creating marginal maps - should be the mask used to mask out bad values if marginalMask is set to true
-    :param marginalMask: determines whether marginal maps should be masked.  If so, they will be masked using file specified in exampleDataRasterPath (assuming values of 1 are valid and of 0 are to be masked out)
-    :param splineType: determines type of spline for GAM
-    :param familytype: determines family of GAm to be used
     :return:  returns a list of all models, accompanied by a list of years being predicted 
             - note - return output is equivalent to data exported as models.pickle
     '''
@@ -3537,19 +3532,20 @@ def R_Gam_Summary(combined_Data, target_Data,
     
     fullData = pd.read_csv(fullDataPath)
     #fullData = fullData.loc[:, DataFields]
-    r_full = dataFrame_to_r(fullData)
-    fullTest = stats.predict(model,r_full, type = 'terms')
-    fullTest = np.asarray(fullTest)
+    
+    for j in DataFields:
 
-    if marginalMask == True:
-      mask = image_to_array(exampleRasterPath)
-      mask = mask.reshape(fullTest.shape[0], 1)
-      fullTest = np.where(mask ==1, fullTest, -9999)   
-
-
-    for j in range(0, len(DataFields), 1):
-
+        iter_FullData = copy.deepcopy(fullData.loc[j])
+        other_fields = copy.deepcopy(DataFields)
+        other_fields = other_fields.remove(j)
+        for k in other_fields:
+            iter_fullData[k] = fullData[k].mean()
+        r_full = dataFrame_to_r(iter_fullData)
+        fullTest = stats.predict(model,r_full, type = 'response')
+        fullTest = np.asarray(fullTest)
         arrayToRaster(fullTest[:, j], templateRasterPath = exampleRasterPath, outPath = outPath+ "Marginal_Map_"+ DataFields[j] + ".tif")
+    
+        
     
         
     

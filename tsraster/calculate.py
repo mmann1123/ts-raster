@@ -994,7 +994,8 @@ def multi_year_Annual_Summaries(inpath, outpath, startYear, endYear, length,
                          timeCode = 'time',
                          mean_out = True,
                          max_out = True,
-                         min_out = True):
+                         min_out = True,
+                         std_out = True):
     '''Extract multi-year minima, maxima, and mean values from annual features that have been previously exracted
     :param inpath: filepath to annual data, including filename with 4-digit years replaced by XXXX
         example - inpath = "C:/Users/isaac/Documents/wildfire_FRAP_working/wildfire_FRAP/Data/Examples/HadGES2_oneYear_Examples/extracted_featuresXXXX_XXXX.csv"
@@ -1038,7 +1039,7 @@ def multi_year_Annual_Summaries(inpath, outpath, startYear, endYear, length,
                 maxData = stackData.groupby(by = [id_val]).max()
                 maxData[timeCode] = str(iterYear-y) + '01_' + str(iterYear) + '12'
                 maxData.reset_index(inplace = True)
-                maxData = meanData[columns]
+                maxData = maxData[columns]
                 iter_outpath = outpath + 'Annual_maxima/extracted_features' + str(iterYear - length+1) + '_' + str(iterYear) + '.csv'
                 maxData.to_csv(iter_outpath, index = False)
                 
@@ -1046,10 +1047,17 @@ def multi_year_Annual_Summaries(inpath, outpath, startYear, endYear, length,
                 minData = stackData.groupby(by = [id_val]).min()
                 minData[timeCode] = str(iterYear-y) + '01_' + str(iterYear) + '12'
                 minData.reset_index(inplace = True)
-                minData = meanData[columns]
+                minData = minData[columns]
                 iter_outpath = outpath + 'Annual_minima/extracted_features' + str(iterYear - length+1) + '_' + str(iterYear) + '.csv'
                 minData.to_csv(iter_outpath, index = False)
             
+            if std_out == True:
+                stdData = stackData.groupby(by = [id_val]).std()
+                stdData[timeCode] = str(iterYear-y) + '01_' + str(iterYear) + '12'
+                stdData.reset_index(inplace = True)
+                stdData = stdData[columns]
+                iter_outpath = outpath + 'Annual_std/extracted_features' + str(iterYear - length+1) + '_' + str(iterYear) + '.csv'
+                stdData.to_csv(iter_outpath, index = False)
             
     
             
