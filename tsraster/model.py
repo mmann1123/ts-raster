@@ -9,7 +9,7 @@ from sklearn.metrics import r2_score
 from sklearn import preprocessing
 import pandas as pd
 from os.path import isfile
-from tsraster.prep import set_common_index, set_df_index,set_df_mindex, image_to_series_simple, seriesToRaster, arrayToRaster
+from tsraster.prep import set_common_index, set_df_index,set_df_mindex, image_to_series_simple, seriesToRaster, arrayToRaster, image_to_array
 from tsraster import random
 import pickle
 import numpy as np
