@@ -2925,10 +2925,11 @@ def predict_Test(model, testData, threshold, suffix = ''):
     
     return output_dict
 
-def R_GAM(X_train, y_train, X_test_pixels, y_test_pixels, 
-          X_test_years, y_test_years, 
-          X_test_pixels_years, y_test_pixels_years, 
-          formula, familyType, threshold = 0.5):
+def R_GAM(X_train, y_train, X_test_a, y_test_a, 
+          X_test_b, y_test_b, 
+          X_test_a_b, y_test_a_b, 
+          formula, familyType, threshold = 0.5,
+         groupVars = ['a', 'b']):
     '''
     Conduct elastic net regression on training data and test predictive power against test data
 
@@ -2955,20 +2956,20 @@ def R_GAM(X_train, y_train, X_test_pixels, y_test_pixels,
     
     
     
-    X_test_pixels['value'] = y_test_pixels['value']
+    X_test_a['value'] = y_test_a['value']
     #r_test_pixels = dataFrame_to_r(X_test_pixels)
     
-    X_test_years['value'] = y_test_years['value']
+    X_test_b['value'] = y_test_b['value']
     #r_test_years = dataFrame_to_r(X_test_years)
     
-    X_test_pixels_years['value'] = y_test_pixels_years['value']
+    X_test_a_b['value'] = y_test_a_b['value']
     #r_test_pixels_years = dataFrame_to_r(X_test_pixels_years)
     
 
 
     model = mgcv.gam(formula = base.eval(base.parse(text=formula)),family = base.eval(base.parse(text=familyType)), data = r_train)
 
-    blockDict = {"pixels": X_test_pixels, "years": X_test_years, "pixels_years": X_test_pixels_years}
+    blockDict = {groupVars[0]: X_test_a, groupVars[1]: X_test_b, groupVars[0] +'_' +  groupVars[1]: X_test_a_b}
     
     out_stats = {'blank': ''}
     for i in blockDict:
@@ -2985,6 +2986,7 @@ def R_GAM(X_train, y_train, X_test_pixels, y_test_pixels,
 
 def R_logGAM_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups, 
                         DataFields, outPath,
+                        preset_GroupVar = None,
                         splineType = 'cs', # list for creating space for identifing optimal wifggliness penalization:
                         familyType = "binomial" #where first value indicates minimum penalty, second indicates max penalty, and 3rd value indicates number of values
                         ):
@@ -3011,6 +3013,7 @@ def R_logGAM_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, test
     :param groupVars: list of (2) desired column names for the resulting randomized groups
     :param testGroups: number of distinct groups into which data sets should be divided (for each of two variables) 
     :param Datafields: list of explanatory factors to be intered into model
+    :param preset_GroupVar: if using region variable, or other grouping variable for which groups are already set, should be string of column name.  Default = None.  If str, replaces pixel_id
     :param outPath: desired output location for predicted fire risk files (csv, pickle, and tif)
     :param max_smoothing: maximum amount of smoothing to conduct in GAMs
     :param penalty_space: space to scan for amount of L2 penalization terms
@@ -3020,16 +3023,15 @@ def R_logGAM_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, test
     '''
     
     
-    
-    
-    combined_Data, target_Data = random.TestTrain_GroupMaker(combined_Data, target_Data, 
+    combined_Data, target_Data, varsToGroupBy, groupVars, testGroups = TestTrain_GroupMaker(combined_Data, target_Data, 
                                                              varsToGroupBy, 
                                                              groupVars, 
-                                                             testGroups)
-
+                                                             testGroups, 
+                                                             preset_GroupVar = preset_GroupVar)
+    
     #get list of group ids, since in cases where group # <10, may not begin at zero
-    pixel_testVals = list(set(combined_Data[groupVars[0]].tolist()))
-    year_testVals = list(set(combined_Data[groupVars[1]].tolist()))
+    a_testVals = list(set(combined_Data[groupVars[0]].tolist()))
+    b_testVals = list(set(combined_Data[groupVars[1]].tolist()))
 
     Models_Summary = pd.DataFrame([], columns = [])
 
@@ -3040,71 +3042,76 @@ def R_logGAM_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, test
   
   #used to create data for entry as columns into summary DataFrame
     
+    #blank list to be filled with the a & b groups used to test in each iteration
+    a_test= []
+    b_test = []
     
-    pixels_years_r2List = []
-    pixels_r2List = []
-    years_r2List = []
     
-    pixels_years_BalancedAccuracyList = []
-    pixels_BalancedAccuracyList = []
-    years_BalancedAccuracyList = []
+    a_b_r2List = []
+    a_r2List = []
+    b_r2List = []
     
-    pixels_years_F1_binaryList = []
-    pixels_F1_binaryList = []
-    years_F1_binaryList = []
+    a_b_BalancedAccuracyList = []
+    a_BalancedAccuracyList = []
+    b_BalancedAccuracyList = []
     
-    pixels_years_F1_MacroList = []
-    pixels_F1_MacroList = []
-    years_F1_MacroList = []
+    a_b_F1_binaryList = []
+    a_F1_binaryList = []
+    b_F1_binaryList = []
     
-    pixels_years_F1_MicroList = []
-    pixels_F1_MicroList = []
-    years_F1_MicroList = []
+    a_b_F1_MacroList = []
+    a_F1_MacroList = []
+    b_F1_MacroList = []
     
-    pixels_years_logLossList = []
-    pixels_logLossList = []
-    years_logLossList = []
+    a_b_F1_MicroList = []
+    a_F1_MicroList = []
+    b_F1_MicroList = []
     
-    pixels_years_recall_binaryList = []
-    pixels_recall_binaryList = []
-    years_recall_binaryList = []
+    a_b_logLossList = []
+    a_logLossList = []
+    b_logLossList = []
     
-    pixels_years_recall_MacroList = []
-    pixels_recall_MacroList = []
-    years_recall_MacroList = []
+    a_b_recall_binaryList = []
+    a_recall_binaryList = []
+    b_recall_binaryList = []
     
-    pixels_years_recall_MicroList = []
-    pixels_recall_MicroList = []
-    years_recall_MicroList = []
+    a_b_recall_MacroList = []
+    a_recall_MacroList = []
+    b_recall_MacroList = []
     
-    pixels_years_jaccard_binaryList = []
-    pixels_jaccard_binaryList = []
-    years_jaccard_binaryList = []
+    a_b_recall_MicroList = []
+    a_recall_MicroList = []
+    b_recall_MicroList = []
     
-    pixels_years_jaccard_MacroList = []
-    pixels_jaccard_MacroList = []
-    years_jaccard_MacroList = []
+    a_b_jaccard_binaryList = []
+    a_jaccard_binaryList = []
+    b_jaccard_binaryList = []
     
-    pixels_years_jaccard_MicroList = []
-    pixels_jaccard_MicroList = []
-    years_jaccard_MicroList = []
+    a_b_jaccard_MacroList = []
+    a_jaccard_MacroList = []
+    b_jaccard_MacroList = []
     
-    pixels_years_roc_auc_MacroList = []
-    pixels_roc_auc_MacroList = []
-    years_roc_auc_MacroList = []
+    a_b_jaccard_MicroList = []
+    a_jaccard_MicroList = []
+    b_jaccard_MicroList = []
     
-    pixels_years_roc_auc_MicroList = []
-    pixels_roc_auc_MicroList = []
-    years_roc_auc_MicroList = []
+    a_b_roc_auc_MacroList = []
+    a_roc_auc_MacroList = []
+    b_roc_auc_MacroList = []
     
-    pixels_years_average_precisionList = []
-    pixels_average_precisionList = []
-    years_average_precisionList = []
+    a_b_roc_auc_MicroList = []
+    a_roc_auc_MicroList = []
+    b_roc_auc_MicroList = []
+    
+    a_b_average_precisionList = []
+    a_average_precisionList = []
+    b_average_precisionList = []
 
     
     
   #used to create a list of lists of years that are excluded within each model run
-    excluded_Years = []
+    excluded_b = []
+    excluded_a = []
 
     #set up formula for use in model
     formula = 'value~'
@@ -3112,10 +3119,10 @@ def R_logGAM_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, test
         formula += " + s(" + iterparam + ', bs = \"' + splineType + '")'
     
     
-    for x in pixel_testVals:
+    for x in a_testVals:
 
 
-        for y in year_testVals:
+        for y in b_testVals:
             trainData_X = combined_Data[combined_Data[groupVars[0]] != x]
             trainData_X = trainData_X[trainData_X[groupVars[1]] != y]
             trainData_X = trainData_X.loc[:, DataFields]
@@ -3125,104 +3132,110 @@ def R_logGAM_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, test
             trainData_y = trainData_y[trainData_y[groupVars[1]] != y]
 
 
-            testData_X_pixels_years = combined_Data[combined_Data[groupVars[0]] == x]
-            testData_X_pixels_years = testData_X_pixels_years[testData_X_pixels_years[groupVars[1]] == y]
-            testData_X_pixels_years = testData_X_pixels_years.loc[:, DataFields]
+            testData_X_a_b = combined_Data[combined_Data[groupVars[0]] == x]
+            testData_X_a_b = testData_X_a_b[testData_X_a_b[groupVars[1]] == y]
+            testData_X_a_b = testData_X_a_b.loc[:, DataFields]
 
-            testData_X_pixels = combined_Data[combined_Data[groupVars[0]] == x]
-            testData_X_pixels = testData_X_pixels[testData_X_pixels[groupVars[1]] != y]
-            testData_X_pixels = testData_X_pixels.loc[:, DataFields]
+            testData_X_a = combined_Data[combined_Data[groupVars[0]] == x]
+            testData_X_a = testData_X_a[testData_X_a[groupVars[1]] != y]
+            testData_X_a = testData_X_a.loc[:, DataFields]
 
-            testData_X_years = combined_Data[combined_Data[groupVars[0]] != x]
-            testData_X_years = testData_X_years[testData_X_years[groupVars[1]] == y]
-            testData_X_years = testData_X_years.loc[:, DataFields]
-
-
-
-            testData_y_pixels_years = target_Data[target_Data[groupVars[0]] == x]
-            testData_y_pixels_years = testData_y_pixels_years[testData_y_pixels_years[groupVars[1]] == y]
+            testData_X_b = combined_Data[combined_Data[groupVars[0]] != x]
+            testData_X_b = testData_X_b[testData_X_b[groupVars[1]] == y]
+            testData_X_b = testData_X_b.loc[:, DataFields]
 
 
-            testData_y_pixels = target_Data[target_Data[groupVars[0]] == x]
-            testData_y_pixels = testData_y_pixels[testData_y_pixels[groupVars[1]] != y]
+
+            testData_y_a_b = target_Data[target_Data[groupVars[0]] == x]
+            testData_y_a_b = testData_y_a_b[testData_y_a_b[groupVars[1]] == y]
 
 
-            testData_y_years = target_Data[target_Data[groupVars[0]] != x]
-            testData_y_years = testData_y_years[testData_y_years[groupVars[1]] == y]
-            excluded_Years.append(list(set(testData_y_years[varsToGroupBy[1]].tolist())))
+            testData_y_a = target_Data[target_Data[groupVars[0]] == x]
+            testData_y_a = testData_y_a[testData_y_a[groupVars[1]] != y]
+            excluded_a.append(list(set(testData_y_a[varsToGroupBy[0]].tolist())))
+
+
+            testData_y_b = target_Data[target_Data[groupVars[0]] != x]
+            testData_y_b = testData_y_b[testData_y_b[groupVars[1]] == y]
+            excluded_b.append(list(set(testData_y_b[varsToGroupBy[1]].tolist())))
+            
             
            
         
             
         
             iterOutput = R_GAM(X_train = trainData_X, y_train = trainData_y, 
-                      X_test_pixels = testData_X_pixels, y_test_pixels = testData_y_pixels, 
-                      X_test_years = testData_X_years, y_test_years = testData_y_years, 
-                      X_test_pixels_years = testData_X_pixels_years, y_test_pixels_years = testData_y_pixels_years, 
+                      X_test_a = testData_X_a, y_test_a = testData_y_a, 
+                      X_test_b = testData_X_b, y_test_b = testData_y_b, 
+                      X_test_a_b = testData_X_a_b, y_test_a_b = testData_y_a_b, 
                       formula = formula,
-                      familyType = familyType, threshold = 0.5)
+                      familyType = familyType, threshold = 0.5, groupVars = groupVars)
             
             iter_stats = iterOutput['out_stats'] #get dictionary of stats summaries
-            
-            pixels_years_r2List.append(iter_stats["r2_pixels_years"])
-            pixels_r2List.append(iter_stats["r2_pixels"])
-            years_r2List.append(iter_stats["r2_years"])
 
-            pixels_years_BalancedAccuracyList.append(iter_stats["BalancedAccuracy_pixels_years"])
-            pixels_BalancedAccuracyList.append(iter_stats["BalancedAccuracy_pixels"])
-            years_BalancedAccuracyList.append(iter_stats["BalancedAccuracy_years"])
             
-            pixels_years_F1_binaryList.append(iter_stats["f1_binary_pixels_years"])
-            pixels_F1_binaryList.append(iter_stats["f1_binary_pixels"])
-            years_F1_binaryList.append(iter_stats["f1_binary_years"])
+            a_test.append(str(x))
+            b_test.append(str(y))
             
-            pixels_years_F1_MacroList.append(iter_stats["f1_macro_pixels_years"])
-            pixels_F1_MacroList.append(iter_stats["f1_macro_pixels"])
-            years_F1_MacroList.append(iter_stats["f1_macro_years"])
+            a_b_r2List.append(iter_stats['r2_' + groupVars[0] +  '_' + groupVars[1]])
+            a_r2List.append(iter_stats['r2_' + groupVars[0]])
+            b_r2List.append(iter_stats['r2_' + groupVars[1]])
+
+            a_b_BalancedAccuracyList.append(iter_stats['BalancedAccuracy_' + groupVars[0] +  '_' + groupVars[1]])
+            a_BalancedAccuracyList.append(iter_stats['BalancedAccuracy_' + groupVars[0]])
+            b_BalancedAccuracyList.append(iter_stats['BalancedAccuracy_'+ groupVars[1]])
             
-            pixels_years_F1_MicroList.append(iter_stats["f1_micro_pixels_years"])
-            pixels_F1_MicroList.append(iter_stats["f1_micro_pixels"])
-            years_F1_MicroList.append(iter_stats["f1_micro_years"])
+            a_b_F1_binaryList.append(iter_stats['f1_binary_' + groupVars[0] +  '_' + groupVars[1]])
+            a_F1_binaryList.append(iter_stats['f1_binary_' + groupVars[0]])
+            b_F1_binaryList.append(iter_stats['f1_binary_'+ groupVars[1]])
             
-            pixels_years_logLossList.append(iter_stats["log_loss_pixels_years"])
-            pixels_logLossList.append(iter_stats["log_loss_pixels"])
-            years_logLossList.append(iter_stats["log_loss_years"])
+            a_b_F1_MacroList.append(iter_stats['f1_macro_' + groupVars[0] +  '_' + groupVars[1]])
+            a_F1_MacroList.append(iter_stats['f1_macro_' + groupVars[0]])
+            b_F1_MacroList.append(iter_stats['f1_macro_'+ groupVars[1]])
             
-            pixels_years_recall_binaryList.append(iter_stats["recall_binary_pixels_years"])
-            pixels_recall_binaryList.append(iter_stats["recall_binary_pixels"])
-            years_recall_binaryList.append(iter_stats["recall_binary_years"])
+            a_b_F1_MicroList.append(iter_stats['f1_micro_' + groupVars[0] +  '_' + groupVars[1]])
+            a_F1_MicroList.append(iter_stats['f1_micro_' + groupVars[0]])
+            b_F1_MicroList.append(iter_stats['f1_micro_'+ groupVars[1]])
             
-            pixels_years_recall_MacroList.append(iter_stats["recall_macro_pixels_years"])
-            pixels_recall_MacroList.append(iter_stats["recall_macro_pixels"])
-            years_recall_MacroList.append(iter_stats["recall_macro_years"])
+            a_b_logLossList.append(iter_stats['log_loss_' + groupVars[0] +  '_' + groupVars[1]])
+            a_logLossList.append(iter_stats['log_loss_' + groupVars[0]])
+            b_logLossList.append(iter_stats['log_loss_'+ groupVars[1]])
             
-            pixels_years_recall_MicroList.append(iter_stats["recall_micro_pixels_years"])
-            pixels_recall_MicroList.append(iter_stats["recall_micro_pixels"])
-            years_recall_MicroList.append(iter_stats["recall_micro_years"])
+            a_b_recall_binaryList.append(iter_stats['recall_binary_' + groupVars[0] +  '_' + groupVars[1]])
+            a_recall_binaryList.append(iter_stats['recall_binary_' + groupVars[0]])
+            b_recall_binaryList.append(iter_stats['recall_binary_'+ groupVars[1]])
             
-            pixels_years_jaccard_binaryList.append(iter_stats["jaccard_binary_pixels_years"])
-            pixels_jaccard_binaryList.append(iter_stats["jaccard_binary_pixels"])
-            years_jaccard_binaryList.append(iter_stats["jaccard_binary_years"])
+            a_b_recall_MacroList.append(iter_stats['recall_macro_' + groupVars[0] +  '_' + groupVars[1]])
+            a_recall_MacroList.append(iter_stats['recall_macro_' + groupVars[0]])
+            b_recall_MacroList.append(iter_stats['recall_macro_'+ groupVars[1]])
             
-            pixels_years_jaccard_MacroList.append(iter_stats["jaccard_macro_pixels_years"])
-            pixels_jaccard_MacroList.append(iter_stats["jaccard_macro_pixels"])
-            years_jaccard_MacroList.append(iter_stats["jaccard_macro_years"])
+            a_b_recall_MicroList.append(iter_stats['recall_micro_' + groupVars[0] +  '_' + groupVars[1]])
+            a_recall_MicroList.append(iter_stats['recall_micro_' + groupVars[0]])
+            b_recall_MicroList.append(iter_stats['recall_micro_'+ groupVars[1]])
             
-            pixels_years_jaccard_MicroList.append(iter_stats["jaccard_micro_pixels_years"])
-            pixels_jaccard_MicroList.append(iter_stats["jaccard_micro_pixels"])
-            years_jaccard_MicroList.append(iter_stats["jaccard_micro_years"])
+            a_b_jaccard_binaryList.append(iter_stats['jaccard_binary_' + groupVars[0] +  '_' + groupVars[1]])
+            a_jaccard_binaryList.append(iter_stats['jaccard_binary_' + groupVars[0]])
+            b_jaccard_binaryList.append(iter_stats['jaccard_binary_'+ groupVars[1]])
             
-            pixels_years_roc_auc_MacroList.append(iter_stats["roc_auc_macro_pixels_years"])
-            pixels_roc_auc_MacroList.append(iter_stats["roc_auc_macro_pixels"])
-            years_roc_auc_MacroList.append(iter_stats["roc_auc_macro_years"])
+            a_b_jaccard_MacroList.append(iter_stats['jaccard_macro_' + groupVars[0] +  '_' + groupVars[1]])
+            a_jaccard_MacroList.append(iter_stats['jaccard_macro_' + groupVars[0]])
+            b_jaccard_MacroList.append(iter_stats['jaccard_macro_'+ groupVars[1]])
             
-            pixels_years_roc_auc_MicroList.append(iter_stats["roc_auc_micro_pixels_years"])
-            pixels_roc_auc_MicroList.append(iter_stats["roc_auc_micro_pixels"])
-            years_roc_auc_MicroList.append(iter_stats["roc_auc_micro_years"])
+            a_b_jaccard_MicroList.append(iter_stats['jaccard_micro_' + groupVars[0] +  '_' + groupVars[1]])
+            a_jaccard_MicroList.append(iter_stats['jaccard_micro_' + groupVars[0]])
+            b_jaccard_MicroList.append(iter_stats['jaccard_micro_'+ groupVars[1]])
             
-            pixels_years_average_precisionList.append(iter_stats["average_precision_pixels_years"])
-            pixels_average_precisionList.append(iter_stats["average_precision_pixels"])
-            years_average_precisionList.append(iter_stats["average_precision_years"])
+            a_b_roc_auc_MacroList.append(iter_stats['roc_auc_macro_' + groupVars[0] +  '_' + groupVars[1]])
+            a_roc_auc_MacroList.append(iter_stats['roc_auc_macro_' + groupVars[0]])
+            b_roc_auc_MacroList.append(iter_stats['roc_auc_macro_'+ groupVars[1]])
+            
+            a_b_roc_auc_MicroList.append(iter_stats['roc_auc_micro_' + groupVars[0] +  '_' + groupVars[1]])
+            a_roc_auc_MicroList.append(iter_stats['roc_auc_micro_' + groupVars[0]])
+            b_roc_auc_MicroList.append(iter_stats['roc_auc_micro_'+ groupVars[1]])
+            
+            a_b_average_precisionList.append(iter_stats['average_precision_' + groupVars[0] +  '_' + groupVars[1]])
+            a_average_precisionList.append(iter_stats['average_precision_' + groupVars[0]])
+            b_average_precisionList.append(iter_stats['average_precision_'+ groupVars[1]])
             models.append(iterOutput['model'])
             
     '''            
@@ -3253,178 +3266,85 @@ def R_logGAM_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, test
         
     #combine MSE and R2 Lists into single DataFrame
     
-    Models_Summary['Pixels_Years_r2'] = pixels_years_r2List
-    Models_Summary['Pixels_r2'] = pixels_r2List
-    Models_Summary['Years_r2'] = years_r2List
+    #combine MSE and R2 Lists into single DataFrame
     
-    Models_Summary['Pixels_Years_BalancedAccuracy'] = pixels_years_BalancedAccuracyList
-    Models_Summary['Pixels_BalancedAccuracy'] = pixels_BalancedAccuracyList
-    Models_Summary['Years_BalancedAccuracy'] = years_BalancedAccuracyList
     
-    Models_Summary['Pixels_Years_F1_binaryList'] = pixels_years_F1_binaryList
-    Models_Summary['Pixels_F1_binaryList'] = pixels_F1_binaryList
-    Models_Summary['Years_F1_binaryList'] = years_F1_binaryList
+    Models_Summary[groupVars[0] + 'excluded'] = a_test
+    Models_Summary[groupVars[1] + 'excluded'] = b_test
     
-    Models_Summary['Pixels_Years_F1_MacroList'] = pixels_years_F1_MacroList
-    Models_Summary['Pixels_F1_MacroList'] = pixels_F1_MacroList
-    Models_Summary['Years_F1_MacroList'] = years_F1_MacroList
+    Models_Summary[groupVars[0] + groupVars[1] + '_r2'] = a_b_r2List
+    Models_Summary[groupVars[0] +  '_r2'] = a_r2List
+    Models_Summary[groupVars[1] +  '_r2'] = b_r2List
     
-    Models_Summary['Pixels_Years_F1_MicroList'] = pixels_years_F1_MicroList
-    Models_Summary['Pixels_F1_MicroList'] = pixels_F1_MicroList
-    Models_Summary['Years_F1_MicroList'] = years_F1_MicroList
+    Models_Summary[groupVars[0] + groupVars[1] + '_BalancedAccuracy'] = a_b_BalancedAccuracyList
+    Models_Summary[groupVars[0] +  '_BalancedAccuracy'] = a_BalancedAccuracyList
+    Models_Summary[groupVars[1] +  '_BalancedAccuracy'] = b_BalancedAccuracyList
+    
+    Models_Summary[groupVars[0] + groupVars[1] + '_F1_binaryList'] = a_b_F1_binaryList
+    Models_Summary[groupVars[0] +  '_F1_binaryList'] = a_F1_binaryList
+    Models_Summary[groupVars[1] +  '_F1_binaryList'] = b_F1_binaryList
+    
+    Models_Summary[groupVars[0] + groupVars[1] + '_F1_MacroList'] = a_b_F1_MacroList
+    Models_Summary[groupVars[0] +  '_F1_MacroList'] = a_F1_MacroList
+    Models_Summary[groupVars[1] +  '_F1_MacroList'] = b_F1_MacroList
+    
+    Models_Summary[groupVars[0] + groupVars[1] + '_F1_MicroList'] = a_b_F1_MicroList
+    Models_Summary[groupVars[0] +  '_F1_MicroList'] = a_F1_MicroList
+    Models_Summary[groupVars[1] +  '_F1_MicroList'] = b_F1_MicroList
 
-    Models_Summary['Pixels_Years_log_loss'] = pixels_years_logLossList
-    Models_Summary['Pixels_log_loss'] = pixels_logLossList
-    Models_Summary['Years_log_loss'] = years_logLossList
+    Models_Summary[groupVars[0] + groupVars[1] + '_log_loss'] = a_b_logLossList
+    Models_Summary[groupVars[0] +  '_log_loss'] = a_logLossList
+    Models_Summary[groupVars[1] +  '_log_loss'] = b_logLossList
     
-    Models_Summary['Pixels_Years_recall_binaryList'] = pixels_years_recall_binaryList
-    Models_Summary['Pixels_recall_binaryList'] = pixels_recall_binaryList
-    Models_Summary['Years_recall_binaryList'] = years_recall_binaryList
+    Models_Summary[groupVars[0] + groupVars[1] + '_recall_binaryList'] = a_b_recall_binaryList
+    Models_Summary[groupVars[0] +  '_recall_binaryList'] = a_recall_binaryList
+    Models_Summary[groupVars[1] +  '_recall_binaryList'] = b_recall_binaryList
     
-    Models_Summary['Pixels_Years_recall_MacroList'] = pixels_years_recall_MacroList
-    Models_Summary['Pixels_recall_MacroList'] = pixels_recall_MacroList
-    Models_Summary['Years_recall_MacroList'] = years_recall_MacroList
+    Models_Summary[groupVars[0] + groupVars[1] + '_recall_MacroList'] = a_b_recall_MacroList
+    Models_Summary[groupVars[0] +  '_recall_MacroList'] = a_recall_MacroList
+    Models_Summary[groupVars[1] +  '_recall_MacroList'] = b_recall_MacroList
     
-    Models_Summary['Pixels_Years_recall_MicroList'] = pixels_years_recall_MicroList
-    Models_Summary['Pixels_recall_MicroList'] = pixels_recall_MicroList
-    Models_Summary['Years_recall_MicroList'] = years_recall_MicroList
+    Models_Summary[groupVars[0] + groupVars[1] + '_recall_MicroList'] = a_b_recall_MicroList
+    Models_Summary[groupVars[0] +  '_recall_MicroList'] = a_recall_MicroList
+    Models_Summary[groupVars[1] +  '_recall_MicroList'] = b_recall_MicroList
     
-    Models_Summary['Pixels_Years_jaccard_binaryList'] = pixels_years_jaccard_binaryList
-    Models_Summary['Pixels_jaccard_binaryList'] = pixels_jaccard_binaryList
-    Models_Summary['Years_jaccard_binaryList'] = years_jaccard_binaryList
+    Models_Summary[groupVars[0] + groupVars[1] + '_jaccard_binaryList'] = a_b_jaccard_binaryList
+    Models_Summary[groupVars[0] +  '_jaccard_binaryList'] = a_jaccard_binaryList
+    Models_Summary[groupVars[1] +  '_jaccard_binaryList'] = b_jaccard_binaryList
     
-    Models_Summary['Pixels_Years_jaccard_MacroList'] = pixels_years_jaccard_MacroList
-    Models_Summary['Pixels_jaccard_MacroList'] = pixels_jaccard_MacroList
-    Models_Summary['Years_jaccard_MacroList'] = years_jaccard_MacroList
+    Models_Summary[groupVars[0] + groupVars[1] + '_jaccard_MacroList'] = a_b_jaccard_MacroList
+    Models_Summary[groupVars[0] +  '_jaccard_MacroList'] = a_jaccard_MacroList
+    Models_Summary[groupVars[1] +  '_jaccard_MacroList'] = b_jaccard_MacroList
     
-    Models_Summary['Pixels_Years_jaccard_MicroList'] = pixels_years_jaccard_MicroList
-    Models_Summary['Pixels_jaccard_MicroList'] = pixels_jaccard_MicroList
-    Models_Summary['Years_jaccard_MicroList'] = years_jaccard_MicroList
+    Models_Summary[groupVars[0] + groupVars[1] + '_jaccard_MicroList'] = a_b_jaccard_MicroList
+    Models_Summary[groupVars[0] +  '_jaccard_MicroList'] = a_jaccard_MicroList
+    Models_Summary[groupVars[1] +  '_jaccard_MicroList'] = b_jaccard_MicroList
     
-    Models_Summary['Pixels_Years_roc_auc_MacroList'] = pixels_years_roc_auc_MacroList
-    Models_Summary['Pixels_roc_auc_MacroList'] = pixels_roc_auc_MacroList
-    Models_Summary['Years_roc_auc_MacroList'] = years_roc_auc_MacroList
+    Models_Summary[groupVars[0] + groupVars[1] + '_roc_auc_MacroList'] = a_b_roc_auc_MacroList
+    Models_Summary[groupVars[0] +  '_roc_auc_MacroList'] = a_roc_auc_MacroList
+    Models_Summary[groupVars[1] +  '_roc_auc_MacroList'] = b_roc_auc_MacroList
     
-    Models_Summary['Pixels_Years_roc_auc_MicroList'] = pixels_years_roc_auc_MicroList
-    Models_Summary['Pixels_roc_auc_MicroList'] = pixels_roc_auc_MicroList
-    Models_Summary['Years_roc_auc_MicroList'] = years_roc_auc_MicroList
+    Models_Summary[groupVars[0] + groupVars[1] + '_roc_auc_MicroList'] = a_b_roc_auc_MicroList
+    Models_Summary[groupVars[0] +  '_roc_auc_MicroList'] = a_roc_auc_MicroList
+    Models_Summary[groupVars[1] +  '_roc_auc_MicroList'] = b_roc_auc_MicroList
     
-    Models_Summary['Pixels_Years_average_precision'] = pixels_years_average_precisionList
-    Models_Summary['Pixels_average_precision'] = pixels_average_precisionList
-    Models_Summary['Years_average_precision'] = years_average_precisionList
+    Models_Summary[groupVars[0] + groupVars[1] + '_average_precision'] = a_b_average_precisionList
+    Models_Summary[groupVars[0] +  '_average_precision'] = a_average_precisionList
+    Models_Summary[groupVars[1] +  '_average_precision'] = b_average_precisionList
+    
     
 
     pickling_on = open(outPath + "logGAM_2dim.pickle", "wb")
     #pickle.dump([combined_Data, target_Data, Models_Summary, Models, excluded_Years], pickling_on)
     
-    pickle.dump([combined_Data, target_Data,  models, excluded_Years], pickling_on)
+    pickle.dump([combined_Data.loc[:, [groupVars[0], groupVars[1]]],  models, excluded_a, excluded_b, excluded_b], pickling_on)
     pickling_on.close
 
     Models_Summary.to_csv(outPath + "Model_Summary_logGAM.csv")
 
     #return combined_Data, target_Data, Models_Summary, Models, excluded_Years
 
-    return combined_Data, target_Data, Models_Summary, models, excluded_Years
-
-
-def R_Gam_Summary_old(combined_Data, target_Data,
-                        DataFields, outPath,
-                        splineType = 'cs', # list for creating space for identifing optimal wifggliness penalization:
-                        familyType = "binomial" #where first value indicates minimum penalty, second indicates max penalty, and 3rd value indicates number of values
-                        ):
-    '''Conduct logistic regressions on the data, with k-fold cross-validation conducted independently 
-        across both years and pixels. 
-        Returns a variety of diagnostics of model performance (including f1 scores, recall, and average precision) 
-        when predicting fire risk at 
-        A) locations outside of the training dataset
-        B) years outside of the training dataset
-        C) locations and years outside of the training dataset
-
-      Returns a list of objects, consisting of:
-        0: Combined_Data file with testing/training groups labeled
-        1: Target Data file with testing/training groups labeled
-        2: summary dataFrame of MSE and R2 for each model run
-            (against holdout data representing either novel locations, novel years, or both)
-        3: list of elastic net models for use in predicting Fires in further locations/years
-        4: list of list of years not used in model training for each run
-    :param combined_Data: dataFrame including all desired explanatory factors 
-            across all locations & years to be used in training model
-    :param target_Data: dataFrame including observed fire occurrences 
-            across all locations & years to be used in training model
-    :param Datafields: list of explanatory factors to be intered into model
-    :param outPath: desired output location for predicted fire risk files (csv, pickle, and tif)
-    :return:  returns a list of all models, accompanied by a list of years being predicted 
-            - note - return output is equivalent to data exported as models.pickle
-    '''
-    
-    mgcv = importr('mgcv') # import mgcv library from r
-    stats = importr('stats') # import stats library from r
-    base = importr('base') # import base library from r
-    
-    formula = 'value~'
-    for iterparam in DataFields:
-        formula += " + s(" + iterparam + ', bs = \"' + splineType + '")'
-    
-    
-    combined_Data['value'] = target_Data['value']
-    r_train = dataFrame_to_r(combined_Data)
-    
-    model = mgcv.gam(formula = base.eval(base.parse(text=formula)),family = base.eval(base.parse(text=familyType)), data = r_train)
-    
-    
-    #print model summary as text file
-    summary =str(base.summary(model))
-    #print(type(summary))
-    text_file = open(outPath + "summary.txt", "w")
-    n = text_file.write(summary)
-    text_file.close()
-    
-    
-    #get plot output and convert it into graphs
-    rplot = robjects.r('plot.gam')
-    q = rplot(model)
-    
-    '''each set will be one item in the list - 
-         within each set, the items will then be ordered as follows: 
-    0: x values corresponding to fit & se
-    1: True/False value pertaining to scale (ignore)
-    2: standard error (2* se)
-    3: raw (for all pixels)
-    4: string of X label
-    5: string of y label
-    6: ignore
-    7: multiplier of SE (ignore, defaults to 2)
-    8: x limits (ignore?)
-    9: fit (actual values to use)
-    10: True/False value indicating whether it should be plotted (ignore)
-'''
-    
-    for i in range(0,len(q)):
-    
-        x_Data=np.asarray(q[i][0])
-        y_Data=np.asarray(q[i][9]).flatten()
-        se_Data = np.asarray(q[i][2])
-        upper_Data = np.add(y_Data, se_Data)
-        lower_Data = np.subtract(y_Data, se_Data)
-        print(x_Data.shape)
-        print(y_Data.shape)
-        print(se_Data.shape)
-        print(upper_Data.shape)
-        x_label = str(q[i][4])
-        x_label= x_label[5:-2]
-        y_label = str(q[i][5])
-        y_label= y_label[5:-2]
-        plt.clf()
-
-        plt.plot(x_Data, y_Data, color = 'red', linewidth = 2)
-        plt.plot(x_Data, upper_Data, linewidth = 2, color = 'blue', alpha = 0.5, linestyle = "--")
-        plt.plot(x_Data, lower_Data, linewidth = 2, color = 'blue', alpha = 0.5, linestyle = "--")
-        plt.xlabel(x_label, fontsize = '16', fontweight = 'bold')
-        plt.ylabel(y_label, fontsize = '16', fontweight = 'bold')
-        plt.yticks(fontsize = '12', fontweight = 'bold')
-        plt.xticks(fontsize = '12', fontweight = 'bold')
-        plt.tight_layout()
-        plt.savefig(outPath + "Marginal_Response_"+ DataFields[i] + ".tif")
+    return combined_Data, target_Data, Models_Summary, models, excluded_a, excluded_b
 
 
 def R_Gam_Summary(combined_Data, target_Data,
@@ -3535,9 +3455,9 @@ def R_Gam_Summary(combined_Data, target_Data,
     
     for j in DataFields:
 
-        iter_FullData = copy.deepcopy(fullData.loc[j])
+        iter_fullData = copy.deepcopy(fullData[j])
         other_fields = copy.deepcopy(DataFields)
-        other_fields = other_fields.remove(j)
+        other_fields.remove(j)
         for k in other_fields:
             iter_fullData[k] = fullData[k].mean()
         r_full = dataFrame_to_r(iter_fullData)

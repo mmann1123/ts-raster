@@ -326,13 +326,13 @@ Create raster of cells to be selected (populated as ones) in a raster of backgro
 
 
 #### test_train
-def TestTrain_GroupMaker(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups = [10]):
+def TestTrain_GroupMaker(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups = [10], preset_GroupVar = None):
     '''
     :param combined_Data:  multivariate data for explaining target data - may be filename or csv
     :param combined_Data: target data - may be filename or csv
     :param varsToGroupBy: variable(s) on which to build groups for testing/training
     :param groupVars: variable(s) to name those groups
-    :param tesGroups: number of randomly assigned groups to provide for each variable
+    :param testGroups: number of randomly assigned groups to provide for each variable
     :return: modified forms of combined_Data and target_Data that include the randomly allocated groups
             (labeled according to groupVars)
     ''' 
@@ -343,13 +343,17 @@ def TestTrain_GroupMaker(combined_Data, target_Data, varsToGroupBy, groupVars, t
         groupVars is [groupVars]
     if type(testGroups) is not list:
         testGroups = [testGroups]
-        
+    
+    #filter out preset group vars
+    varsToGroupBy = list(filter(lambda a: a!= preset_GroupVar, varsToGroupBy))
+    groupVars = list(filter(lambda a: a!= preset_GroupVar, groupVars))
         
     if type(combined_Data) is str:
             combined_Data = pd.read_csv(combined_Data)
         
     if type(target_Data) is str:
         target_Data = pd.read_csv(target_Data)
+    
     
     for x in range(len(varsToGroupBy)):
         
@@ -377,7 +381,7 @@ def TestTrain_GroupMaker(combined_Data, target_Data, varsToGroupBy, groupVars, t
         groupSelector.reset_index(inplace = True)
 
         groupSelector = groupSelector.loc[:, [varsToGroupBy[x], groupVars[x]]]
-
+        
 
 
         combined_Data = pd.merge(combined_Data, groupSelector, on = [varsToGroupBy[x]], how = "left")
@@ -385,5 +389,17 @@ def TestTrain_GroupMaker(combined_Data, target_Data, varsToGroupBy, groupVars, t
 
         target_Data = pd.merge(target_Data, groupSelector, on = [varsToGroupBy[x]], how = "left")
 
-    return combined_Data, target_Data
+    if type(preset_GroupVar) == str:
+        preset_GroupVar = [preset_GroupVar]
+    
+    if type(preset_GroupVar) == list:
+        varsToGroupBy +=  preset_GroupVar
+        groupVars += preset_GroupVar
+        for y in range(len(preset_GroupVar)):
+            testGroups += [len(list(set(combined_Data[preset_GroupVar[y]])))]
+            
+    
+    return combined_Data, target_Data, varsToGroupBy, groupVars, testGroups
+ 
+
  
