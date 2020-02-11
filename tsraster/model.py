@@ -3023,7 +3023,7 @@ def R_logGAM_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, test
     '''
     
     
-    combined_Data, target_Data, varsToGroupBy, groupVars, testGroups = TestTrain_GroupMaker(combined_Data, target_Data, 
+    combined_Data, target_Data, varsToGroupBy, groupVars, testGroups = random.TestTrain_GroupMaker(combined_Data, target_Data, 
                                                              varsToGroupBy, 
                                                              groupVars, 
                                                              testGroups, 
