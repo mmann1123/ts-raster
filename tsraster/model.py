@@ -3347,6 +3347,29 @@ def R_logGAM_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, test
     return combined_Data, target_Data, Models_Summary, models, excluded_a, excluded_b
 
 
+def R_Gam_Summary_regional(combined_Data, target_Data,
+                        DataFields, outPath,
+                        fullDataPath = None,
+                        exampleRasterPath = None,
+                        splineType = 'cs', # list for creating space for identifing optimal wifggliness penalization:
+                        familyType = "binomial", #where first value indicates minimum penalty, second indicates max penalty, and 3rd value indicates number of values
+                        region = None # if not none, iterate across all values of region, to calculate regional models):
+  if region != None:
+    regionList = unique(combined_Data[region])
+
+    for x in regionList:
+      combined_Data_Regional = combined_Data[combined_Data[region] == x]
+      target_Data_Regional = target_Data[combined_Data[region] == x]
+
+      R_Gam_Summary(combined_Data_Regional, target_Data_Regional,
+                        DataFields, outPath = outPath + "Region_" + str(x) + '_',
+                        fullDataPath = fullDataPath,
+                        exampleRasterPath = exampleRasterPath,
+                        splineType = splineType, # list for creating space for identifing optimal wifggliness penalization:
+                        familyType = familyType #where first value indicates minimum penalty, second indicates max penalty, and 3rd value indicates number of values
+                        ):
+
+
 def R_Gam_Summary(combined_Data, target_Data,
                         DataFields, outPath,
                         fullDataPath = None,
