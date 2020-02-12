@@ -2800,7 +2800,7 @@ def R_GAM_YearPredictor_Class_Regional(combined_Data_Training, target_Data_Train
 
       R_GAM_YearPredictor_Class(combined_Data_Training = combined_Data_Regional, target_Data_Training = target_Data_Regional, 
                                 preMasked_Data_Path = preMasked_Data_Path,
-                                outPath = outPath = outPath + "Region_" + str(x) + '_',
+                                outPath = outPath + "Region_" + str(x) + '_',
                                 year_List = year_List, 
                                 periodLen = periodLen, 
                                 DataFields = DataFields, 
