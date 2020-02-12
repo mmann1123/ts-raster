@@ -3509,19 +3509,19 @@ def R_Gam_Summary(combined_Data, target_Data,
     
     for j in DataFields:
 
-        iter_fullData = copy.deepcopy(fullData[j])
+        iter_fullData = copy.deepcopy(fullData.loc[:, [j]])
         other_fields = copy.deepcopy(DataFields)
         other_fields.remove(j)
         for k in other_fields:
             print(k)
-            iter_fullData[str(k)] = fullData[str(k)].mean()
+            iter_fullData[k] = fullData[k].mean()
         r_full = dataFrame_to_r(iter_fullData)
         fullTest = stats.predict(model,r_full, type = 'response')
         print(type(fullTest))
-        fullTest = pandas2ri.ri2py_dataframe(fullTest)
-        #fullTest = np.asarray(fullTest)
+        #fullTest = pandas2ri.ri2py_dataframe(fullTest)
+        fullTest = np.asarray(fullTest)
         np.savetxt("testArray_" + j + ".csv", fullTest, delimiter = ",")
-        arrayToRaster(np.asarray(fullTest[j]), templateRasterPath = exampleRasterPath, outPath = outPath+ "Marginal_Map_"+ DataFields[j] + ".tif")
+        arrayToRaster(fullTest[j], templateRasterPath = exampleRasterPath, outPath = outPath+ "Marginal_Map_"+ DataFields[j] + ".tif")
     
         
     
