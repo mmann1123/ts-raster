@@ -31,10 +31,11 @@ import pygam
 from pygam import LogisticGAM
 from contextlib import redirect_stdout
 import rpy2
-from rpy2 .robjects.packages import importr
+from rpy2.robjects.packages import importr
 import rpy2.robjects as robjects
 import rpy2.robjects.packages as rpackages
 from rpy2.robjects.vectors import StrVector
+from rpy2.robjects import pandas2ri
 
 
 
@@ -3512,9 +3513,11 @@ def R_Gam_Summary(combined_Data, target_Data,
             iter_fullData[str(k)] = fullData[str(k)].mean()
         r_full = dataFrame_to_r(iter_fullData)
         fullTest = stats.predict(model,r_full, type = 'response')
-        fullTest = np.asarray(fullTest)
+        print(type(fullTest))
+        fullTest = pandas2ri.ri2py_dataframe(fullTest)
+        #fullTest = np.asarray(fullTest)
         np.savetxt("testArray_" + j + ".csv", fullTest, delimiter = ",")
-        arrayToRaster(fullTest[:, j], templateRasterPath = exampleRasterPath, outPath = outPath+ "Marginal_Map_"+ DataFields[j] + ".tif")
+        arrayToRaster(np.asarray(fullTest[j]), templateRasterPath = exampleRasterPath, outPath = outPath+ "Marginal_Map_"+ DataFields[j] + ".tif")
     
         
     
