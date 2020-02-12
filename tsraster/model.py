@@ -2784,6 +2784,31 @@ def dataFrame_to_r(in_frame):
     return r_in_frame
 
 
+def R_GAM_YearPredictor_Class_Regional(combined_Data_Training, target_Data_Training, 
+                              preMasked_Data_Path, outPath, year_List, periodLen, 
+                              DataFields, mask,
+                              splineType = 'cs', # list for creating space for identifing optimal wifggliness penalization:
+                              familyType = "binomial", #where first value indicates minimum penalty, second indicates max penalty, and 3rd value indicates number of values
+                              region = None # if not none, iterate across all values of region, to calculate regional models
+                              ):
+  if region != None:
+    regionList = unique(combined_Data_Training[region])
+
+    for x in regionList:
+      combined_Data_Regional = combined_Data_Training[combined_Data_Training[region] == x]
+      target_Data_Regional = target_Data_Training[combined_Data_Training[region] == x]
+
+      R_GAM_YearPredictor_Class(combined_Data_Training = combined_Data_Regional, target_Data_Training = target_Data_Regional, 
+                                preMasked_Data_Path = preMasked_Data_Path,
+                                outPath = outPath = outPath + "Region_" + str(x) + '_',
+                                year_List = year_List, 
+                                periodLen = periodLen, 
+                                DataFields = DataFields, 
+                                mask = mask,
+                                splineType = splineType, # list for creating space for identifing optimal wifggliness penalization:
+                                familyType = familyType #where first value indicates minimum penalty, second indicates max penalty, and 3rd value indicates number of values
+                                )
+
 def R_GAM_YearPredictor_Class(combined_Data_Training, target_Data_Training, 
                                 preMasked_Data_Path, outPath, year_List, periodLen, 
                                 DataFields, mask,
