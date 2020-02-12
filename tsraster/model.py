@@ -3508,7 +3508,8 @@ def R_Gam_Summary(combined_Data, target_Data,
         other_fields = copy.deepcopy(DataFields)
         other_fields.remove(j)
         for k in other_fields:
-            iter_fullData[k] = fullData[k].mean()
+            print(k)
+            iter_fullData[str(k)] = fullData[str(k)].mean()
         r_full = dataFrame_to_r(iter_fullData)
         fullTest = stats.predict(model,r_full, type = 'response')
         fullTest = np.asarray(fullTest)
