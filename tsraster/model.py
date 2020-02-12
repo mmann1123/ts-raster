@@ -3353,7 +3353,8 @@ def R_Gam_Summary_regional(combined_Data, target_Data,
                         exampleRasterPath = None,
                         splineType = 'cs', # list for creating space for identifing optimal wifggliness penalization:
                         familyType = "binomial", #where first value indicates minimum penalty, second indicates max penalty, and 3rd value indicates number of values
-                        region = None # if not none, iterate across all values of region, to calculate regional models):
+                        region = None # if not none, iterate across all values of region, to calculate regional models
+                        ):
   if region != None:
     regionList = unique(combined_Data[region])
 
