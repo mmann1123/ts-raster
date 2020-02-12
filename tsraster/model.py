@@ -3189,80 +3189,84 @@ def R_logGAM_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, test
            
         
             
-        
-            iterOutput = R_GAM(X_train = trainData_X, y_train = trainData_y, 
-                      X_test_a = testData_X_a, y_test_a = testData_y_a, 
-                      X_test_b = testData_X_b, y_test_b = testData_y_b, 
-                      X_test_a_b = testData_X_a_b, y_test_a_b = testData_y_a_b, 
-                      formula = formula,
-                      familyType = familyType, threshold = 0.5, groupVars = groupVars)
-            
-            iter_stats = iterOutput['out_stats'] #get dictionary of stats summaries
+            try:
+              iterOutput = R_GAM(X_train = trainData_X, y_train = trainData_y, 
+                        X_test_a = testData_X_a, y_test_a = testData_y_a, 
+                        X_test_b = testData_X_b, y_test_b = testData_y_b, 
+                        X_test_a_b = testData_X_a_b, y_test_a_b = testData_y_a_b, 
+                        formula = formula,
+                        familyType = familyType, threshold = 0.5, groupVars = groupVars)
+              
+              iter_stats = iterOutput['out_stats'] #get dictionary of stats summaries
 
-            
-            a_test.append(str(x))
-            b_test.append(str(y))
-            
-            a_b_r2List.append(iter_stats['r2_' + groupVars[0] +  '_' + groupVars[1]])
-            a_r2List.append(iter_stats['r2_' + groupVars[0]])
-            b_r2List.append(iter_stats['r2_' + groupVars[1]])
+              
+              a_test.append(str(x))
+              b_test.append(str(y))
+              
+              a_b_r2List.append(iter_stats['r2_' + groupVars[0] +  '_' + groupVars[1]])
+              a_r2List.append(iter_stats['r2_' + groupVars[0]])
+              b_r2List.append(iter_stats['r2_' + groupVars[1]])
 
-            a_b_BalancedAccuracyList.append(iter_stats['BalancedAccuracy_' + groupVars[0] +  '_' + groupVars[1]])
-            a_BalancedAccuracyList.append(iter_stats['BalancedAccuracy_' + groupVars[0]])
-            b_BalancedAccuracyList.append(iter_stats['BalancedAccuracy_'+ groupVars[1]])
-            
-            a_b_F1_binaryList.append(iter_stats['f1_binary_' + groupVars[0] +  '_' + groupVars[1]])
-            a_F1_binaryList.append(iter_stats['f1_binary_' + groupVars[0]])
-            b_F1_binaryList.append(iter_stats['f1_binary_'+ groupVars[1]])
-            
-            a_b_F1_MacroList.append(iter_stats['f1_macro_' + groupVars[0] +  '_' + groupVars[1]])
-            a_F1_MacroList.append(iter_stats['f1_macro_' + groupVars[0]])
-            b_F1_MacroList.append(iter_stats['f1_macro_'+ groupVars[1]])
-            
-            a_b_F1_MicroList.append(iter_stats['f1_micro_' + groupVars[0] +  '_' + groupVars[1]])
-            a_F1_MicroList.append(iter_stats['f1_micro_' + groupVars[0]])
-            b_F1_MicroList.append(iter_stats['f1_micro_'+ groupVars[1]])
-            
-            a_b_logLossList.append(iter_stats['log_loss_' + groupVars[0] +  '_' + groupVars[1]])
-            a_logLossList.append(iter_stats['log_loss_' + groupVars[0]])
-            b_logLossList.append(iter_stats['log_loss_'+ groupVars[1]])
-            
-            a_b_recall_binaryList.append(iter_stats['recall_binary_' + groupVars[0] +  '_' + groupVars[1]])
-            a_recall_binaryList.append(iter_stats['recall_binary_' + groupVars[0]])
-            b_recall_binaryList.append(iter_stats['recall_binary_'+ groupVars[1]])
-            
-            a_b_recall_MacroList.append(iter_stats['recall_macro_' + groupVars[0] +  '_' + groupVars[1]])
-            a_recall_MacroList.append(iter_stats['recall_macro_' + groupVars[0]])
-            b_recall_MacroList.append(iter_stats['recall_macro_'+ groupVars[1]])
-            
-            a_b_recall_MicroList.append(iter_stats['recall_micro_' + groupVars[0] +  '_' + groupVars[1]])
-            a_recall_MicroList.append(iter_stats['recall_micro_' + groupVars[0]])
-            b_recall_MicroList.append(iter_stats['recall_micro_'+ groupVars[1]])
-            
-            a_b_jaccard_binaryList.append(iter_stats['jaccard_binary_' + groupVars[0] +  '_' + groupVars[1]])
-            a_jaccard_binaryList.append(iter_stats['jaccard_binary_' + groupVars[0]])
-            b_jaccard_binaryList.append(iter_stats['jaccard_binary_'+ groupVars[1]])
-            
-            a_b_jaccard_MacroList.append(iter_stats['jaccard_macro_' + groupVars[0] +  '_' + groupVars[1]])
-            a_jaccard_MacroList.append(iter_stats['jaccard_macro_' + groupVars[0]])
-            b_jaccard_MacroList.append(iter_stats['jaccard_macro_'+ groupVars[1]])
-            
-            a_b_jaccard_MicroList.append(iter_stats['jaccard_micro_' + groupVars[0] +  '_' + groupVars[1]])
-            a_jaccard_MicroList.append(iter_stats['jaccard_micro_' + groupVars[0]])
-            b_jaccard_MicroList.append(iter_stats['jaccard_micro_'+ groupVars[1]])
-            
-            a_b_roc_auc_MacroList.append(iter_stats['roc_auc_macro_' + groupVars[0] +  '_' + groupVars[1]])
-            a_roc_auc_MacroList.append(iter_stats['roc_auc_macro_' + groupVars[0]])
-            b_roc_auc_MacroList.append(iter_stats['roc_auc_macro_'+ groupVars[1]])
-            
-            a_b_roc_auc_MicroList.append(iter_stats['roc_auc_micro_' + groupVars[0] +  '_' + groupVars[1]])
-            a_roc_auc_MicroList.append(iter_stats['roc_auc_micro_' + groupVars[0]])
-            b_roc_auc_MicroList.append(iter_stats['roc_auc_micro_'+ groupVars[1]])
-            
-            a_b_average_precisionList.append(iter_stats['average_precision_' + groupVars[0] +  '_' + groupVars[1]])
-            a_average_precisionList.append(iter_stats['average_precision_' + groupVars[0]])
-            b_average_precisionList.append(iter_stats['average_precision_'+ groupVars[1]])
-            models.append(iterOutput['model'])
+              a_b_BalancedAccuracyList.append(iter_stats['BalancedAccuracy_' + groupVars[0] +  '_' + groupVars[1]])
+              a_BalancedAccuracyList.append(iter_stats['BalancedAccuracy_' + groupVars[0]])
+              b_BalancedAccuracyList.append(iter_stats['BalancedAccuracy_'+ groupVars[1]])
+              
+              a_b_F1_binaryList.append(iter_stats['f1_binary_' + groupVars[0] +  '_' + groupVars[1]])
+              a_F1_binaryList.append(iter_stats['f1_binary_' + groupVars[0]])
+              b_F1_binaryList.append(iter_stats['f1_binary_'+ groupVars[1]])
+              
+              a_b_F1_MacroList.append(iter_stats['f1_macro_' + groupVars[0] +  '_' + groupVars[1]])
+              a_F1_MacroList.append(iter_stats['f1_macro_' + groupVars[0]])
+              b_F1_MacroList.append(iter_stats['f1_macro_'+ groupVars[1]])
+              
+              a_b_F1_MicroList.append(iter_stats['f1_micro_' + groupVars[0] +  '_' + groupVars[1]])
+              a_F1_MicroList.append(iter_stats['f1_micro_' + groupVars[0]])
+              b_F1_MicroList.append(iter_stats['f1_micro_'+ groupVars[1]])
+              
+              a_b_logLossList.append(iter_stats['log_loss_' + groupVars[0] +  '_' + groupVars[1]])
+              a_logLossList.append(iter_stats['log_loss_' + groupVars[0]])
+              b_logLossList.append(iter_stats['log_loss_'+ groupVars[1]])
+              
+              a_b_recall_binaryList.append(iter_stats['recall_binary_' + groupVars[0] +  '_' + groupVars[1]])
+              a_recall_binaryList.append(iter_stats['recall_binary_' + groupVars[0]])
+              b_recall_binaryList.append(iter_stats['recall_binary_'+ groupVars[1]])
+              
+              a_b_recall_MacroList.append(iter_stats['recall_macro_' + groupVars[0] +  '_' + groupVars[1]])
+              a_recall_MacroList.append(iter_stats['recall_macro_' + groupVars[0]])
+              b_recall_MacroList.append(iter_stats['recall_macro_'+ groupVars[1]])
+              
+              a_b_recall_MicroList.append(iter_stats['recall_micro_' + groupVars[0] +  '_' + groupVars[1]])
+              a_recall_MicroList.append(iter_stats['recall_micro_' + groupVars[0]])
+              b_recall_MicroList.append(iter_stats['recall_micro_'+ groupVars[1]])
+              
+              a_b_jaccard_binaryList.append(iter_stats['jaccard_binary_' + groupVars[0] +  '_' + groupVars[1]])
+              a_jaccard_binaryList.append(iter_stats['jaccard_binary_' + groupVars[0]])
+              b_jaccard_binaryList.append(iter_stats['jaccard_binary_'+ groupVars[1]])
+              
+              a_b_jaccard_MacroList.append(iter_stats['jaccard_macro_' + groupVars[0] +  '_' + groupVars[1]])
+              a_jaccard_MacroList.append(iter_stats['jaccard_macro_' + groupVars[0]])
+              b_jaccard_MacroList.append(iter_stats['jaccard_macro_'+ groupVars[1]])
+              
+              a_b_jaccard_MicroList.append(iter_stats['jaccard_micro_' + groupVars[0] +  '_' + groupVars[1]])
+              a_jaccard_MicroList.append(iter_stats['jaccard_micro_' + groupVars[0]])
+              b_jaccard_MicroList.append(iter_stats['jaccard_micro_'+ groupVars[1]])
+              
+              a_b_roc_auc_MacroList.append(iter_stats['roc_auc_macro_' + groupVars[0] +  '_' + groupVars[1]])
+              a_roc_auc_MacroList.append(iter_stats['roc_auc_macro_' + groupVars[0]])
+              b_roc_auc_MacroList.append(iter_stats['roc_auc_macro_'+ groupVars[1]])
+              
+              a_b_roc_auc_MicroList.append(iter_stats['roc_auc_micro_' + groupVars[0] +  '_' + groupVars[1]])
+              a_roc_auc_MicroList.append(iter_stats['roc_auc_micro_' + groupVars[0]])
+              b_roc_auc_MicroList.append(iter_stats['roc_auc_micro_'+ groupVars[1]])
+              
+              a_b_average_precisionList.append(iter_stats['average_precision_' + groupVars[0] +  '_' + groupVars[1]])
+              a_average_precisionList.append(iter_stats['average_precision_' + groupVars[0]])
+              b_average_precisionList.append(iter_stats['average_precision_'+ groupVars[1]])
+              models.append(iterOutput['model'])
+            except:
+              print('model error: ',x)
+              print('           : ',y)
+              pass
             
     '''            
     #create marginal response graphs - uses entire dataset
