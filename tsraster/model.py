@@ -3054,7 +3054,10 @@ def R_logGAM_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, test
                                                              groupVars, 
                                                              testGroups, 
                                                              preset_GroupVar = preset_GroupVar)
-    
+    print("varsToGroupBy:", varsToGroupBy)
+    print('groupVars: ', testGroups)
+    combined_Data.to_csv('testo.csv')
+
     #get list of group ids, since in cases where group # <10, may not begin at zero
     a_testVals = list(set(combined_Data[groupVars[0]].tolist()))
     b_testVals = list(set(combined_Data[groupVars[1]].tolist()))
