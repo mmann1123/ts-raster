@@ -397,7 +397,7 @@ def TestTrain_GroupMaker(combined_Data, target_Data, varsToGroupBy, groupVars, t
         groupVars += preset_GroupVar
         for y in range(len(preset_GroupVar)):
             testGroups += [len(list(set(combined_Data[preset_GroupVar[y]])))]
-            target_Data[[preset_GroupVar[y]] = combined_Data[[preset_GroupVar[y]]
+            target_Data[preset_GroupVar[y]] = combined_Data[preset_GroupVar[y]]
             
     
     return combined_Data, target_Data, varsToGroupBy, groupVars, testGroups
