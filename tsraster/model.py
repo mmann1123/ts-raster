@@ -3055,8 +3055,8 @@ def R_logGAM_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, test
                                                              testGroups, 
                                                              preset_GroupVar = preset_GroupVar)
     print("varsToGroupBy:", varsToGroupBy)
-    print('groupVars: ', testGroups)
-    combined_Data.to_csv('testo.csv')
+    print('groupVars: ', groupVars)
+    print('testGroups: ', testGroups)
 
     #get list of group ids, since in cases where group # <10, may not begin at zero
     a_testVals = list(set(combined_Data[groupVars[0]].tolist()))
@@ -3522,7 +3522,7 @@ def R_Gam_Summary(combined_Data, target_Data,
         fullTest = stats.predict(model,r_full, type = 'response')
         print(type(fullTest))
         fullTest = pandas2ri.ri2py_dataframe(fullTest)
-        fullTest.to_csv("testArray_" + j + ".csv", fullTest, delimiter = ",")
+        fullTest.to_csv(outPath + "testArray_" + j + ".csv", fullTest, delimiter = ",")
         fullTest = np.asarray(fullTest[j])
         
         arrayToRaster(fullTest, templateRasterPath = exampleRasterPath, outPath = outPath+ "Marginal_Map_"+ DataFields[j] + ".tif")
