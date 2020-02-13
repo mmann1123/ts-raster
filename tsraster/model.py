@@ -3521,7 +3521,8 @@ def R_Gam_Summary(combined_Data, target_Data,
         r_full = dataFrame_to_r(iter_fullData)
         fullTest = stats.predict(model,r_full, type = 'response')
         print(type(fullTest))
-        fullTest = pandas2ri.ri2py_dataframe(fullTest)
+        print(fullTest)
+        #fullTest = pandas2ri.ri2py_dataframe(fullTest)
         fullTest.to_csv(outPath + "testArray_" + j + ".csv", fullTest, delimiter = ",")
         fullTest = np.asarray(fullTest[j])
         
