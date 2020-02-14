@@ -3522,13 +3522,13 @@ def R_Gam_Summary(combined_Data, target_Data,
             iter_fullData[k] = fullData[k].mean()
         r_full = dataFrame_to_r(iter_fullData)
         fullTest = stats.predict(model,r_full, type = 'response')
-        print(type(fullTest))
-        print(fullTest)
+        #print(type(fullTest))
+        #print(fullTest)
         #fullTest = pandas2ri.ri2py_dataframe(fullTest)
-        fullTest.to_csv(outPath + "testArray_" + j + ".csv", fullTest, delimiter = ",")
-        fullTest = np.asarray(fullTest[j])
+        #fullTest.to_csv(outPath + "testArray_" + j + ".csv", fullTest, delimiter = ",")
+        fullTest = np.asarray(fullTest)
         
-        arrayToRaster(fullTest, templateRasterPath = exampleRasterPath, outPath = outPath+ "Marginal_Map_"+ DataFields[j] + ".tif")
+        arrayToRaster(fullTest, templateRasterPath = exampleRasterPath, outPath = outPath+ "Marginal_Map_"+ j + ".tif")
     
         
     
