@@ -2810,6 +2810,9 @@ def R_GAM_YearPredictor_Class_Regional(combined_Data_Training, target_Data_Train
                                 familyType = familyType #where first value indicates minimum penalty, second indicates max penalty, and 3rd value indicates number of values
                                 )
 
+
+
+
 def R_GAM_YearPredictor_Class(combined_Data_Training, target_Data_Training, 
                                 preMasked_Data_Path, outPath, year_List, periodLen, 
                                 DataFields, mask,
@@ -2893,7 +2896,29 @@ def R_GAM_YearPredictor_Class(combined_Data_Training, target_Data_Training,
         
         #output predicted risk as tiff
         seriesToRaster(data['PredRisk_Masked'], mask, outPath + "PredRisk_" + str(iterYear) + "_" + str(iterYear + periodLen - 1) + "LogGam_Class.tif")
-    
+ 
+def R_Gam_YearPredictor_regional(combined_Data_Training, target_Data_Training, 
+                              preMasked_Data_Path, outPath, year_List, periodLen, 
+                              DataFields, mask,
+                              splineType = 'cs', # list for creating space for identifing optimal wifggliness penalization:
+                              familyType = "binomial", #where first value indicates minimum penalty, second indicates max penalty, and 3rd value indicates number of values
+                              region = None # if not none, iterate across all values of region, to calculate regional models
+                        ):
+  if region != None:
+    regionList = unique(combined_Data[region])
+
+    for x in regionList:
+      combined_Data_Regional = combined_Data[combined_Data[region] == x]
+      target_Data_Regional = target_Data[combined_Data[region] == x]
+
+      R_GAM_YearPredictor_Class(combined_Data_Regional, target_Data_Regional, 
+                              preMasked_Data_Path, outPath = outPath + "Region_" + str(x) + '_',
+                              year_List, periodLen, 
+                              DataFields, mask,
+                              splineType = 'cs', # list for creating space for identifing optimal wifggliness penalization:
+                              familyType = "binomial" #where first value indicates minimum penalty, second indicates max penalty, and 3rd value indicates number of values
+                        )
+   
         
 def predict_Test(model, testData, threshold, suffix = ''):
     '''iterates predictions across pixels_years, pixels, and years 
@@ -3009,6 +3034,8 @@ def R_GAM(X_train, y_train, X_test_a, y_test_a,
                    "out_stats": out_stats}
     
     return output_dict
+
+
 
 def R_logGAM_2dimTest(combined_Data, target_Data, varsToGroupBy, groupVars, testGroups, 
                         DataFields, outPath,
