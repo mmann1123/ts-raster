@@ -2905,7 +2905,7 @@ def R_Gam_YearPredictor_regional(combined_Data_Training, target_Data_Training,
                               region = None # if not none, iterate across all values of region, to calculate regional models
                         ):
   if region != None:
-    regionList = unique(combined_Data[region])
+    regionList = pd.unique(combined_Data[region])
 
     for x in regionList:
       combined_Data_Regional = combined_Data[combined_Data[region] == x]
@@ -3546,7 +3546,7 @@ def R_Gam_Summary_regional(combined_Data, target_Data,
                         region = None # if not none, iterate across all values of region, to calculate regional models
                         ):
   if region != None:
-    regionList = unique(combined_Data[region])
+    regionList = pd.unique(combined_Data[region])
 
     for x in regionList:
       combined_Data_Regional = combined_Data[combined_Data[region] == x]
