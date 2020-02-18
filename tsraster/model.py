@@ -2905,11 +2905,11 @@ def R_Gam_YearPredictor_regional(combined_Data_Training, target_Data_Training,
                               region = None # if not none, iterate across all values of region, to calculate regional models
                         ):
   if region != None:
-    regionList = pd.unique(combined_Data[region])
+    regionList = pd.unique(combined_Data_Training[region])
 
     for x in regionList:
-      combined_Data_Regional = combined_Data[combined_Data[region] == x]
-      target_Data_Regional = target_Data[combined_Data[region] == x]
+      combined_Data_Regional = combined_Data_Training[combined_Data_Training[region] == x]
+      target_Data_Regional = target_Data_Training[combined_Data_Training[region] == x]
 
       R_GAM_YearPredictor_Class(combined_Data_Regional, target_Data_Regional, 
                               preMasked_Data_Path, outPath + "Region_" + str(x) + '_',
