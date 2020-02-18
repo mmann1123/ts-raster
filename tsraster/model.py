@@ -2910,6 +2910,8 @@ def R_Gam_YearPredictor_regional(combined_Data_Training, target_Data_Training,
     for x in regionList:
       combined_Data_Regional = combined_Data_Training[combined_Data_Training[region] == x]
       target_Data_Regional = target_Data_Training[combined_Data_Training[region] == x]
+      print('Region = ', x)
+      print('length = ', len(combined_Data_Training))
 
       R_GAM_YearPredictor_Class(combined_Data_Regional, target_Data_Regional, 
                               preMasked_Data_Path, outPath + "Region_" + str(x) + '_',
