@@ -17,7 +17,7 @@ stable version:
 
 from github: 
 
-    git clone https://github.com/adbeda/ts-raster
+    git clone https://github.com/mmann1123/ts-raster.git
     cd ts-raster
     pip install e .
 
