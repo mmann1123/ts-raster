@@ -19,6 +19,7 @@ EMAIL = "adbe@gwu.edu"
 AUTHOR = "Adane Bedada & Michael Mann"
 REQUIRES_PYTHON = ">=3.6.0"
 VERSION = 0.15
+os.system("pip install GDAL==$(gdal-config --version)")
 
 
 # What packages are required for this module to be executed?
@@ -29,8 +30,9 @@ REQUIRED = [
     "scikit-learn>=0.19.0",
     "pandas>=1.0.0,<2.0.0",
     "rasterio>=1.0.8",
+    "dask>=1.0.0",
+    "matplotlib",
 ]
-
 
 here = os.path.abspath(os.path.dirname(__file__))
 
